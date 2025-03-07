@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useContext, useState} from 'react';
 import {
   View,
   Text,
@@ -11,30 +11,27 @@ import {
 } from 'react-native';
 import {ArrowRight, Edit2, Calendar, MapPin, Hash} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {DepthAverageContext} from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA1'>;
 
 const FormDA1 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [formData, setFormData] = useState({
-    jumlahLubang: '',
-    lokasi: '',
-    tanggal: '',
-  });
+  const {formData, setFormData} = useContext(DepthAverageContext);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({...prev, [field]: value}));
+    setFormData({[field]: value});
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       const formattedDate = selectedDate.toISOString().split('T')[0];
-      setFormData(prev => ({...prev, tanggal: formattedDate}));
+      setFormData({tanggal: formattedDate});
     }
   };
 
