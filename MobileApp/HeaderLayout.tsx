@@ -27,15 +27,13 @@ const HeaderLayout: React.FC<HeaderLayoutProps> = ({
         backgroundColor="#D1D5DB"
         translucent
       />
-      <View className="flex-row justify-between items-center px-5 py-4">
+      <View className="flex-row justify-between items-center px-6 py-4">
         {onBackPress && (
           <TouchableOpacity
-            className="bg-green-700 px-5 py-2.5 rounded-lg shadow-sm"
+            className="bg-green-700 rounded-lg shadow-sm flex-row items-center px-3 py-3"
             onPress={onBackPress}>
-            <View className="flex-row items-center">
-              <ArrowLeft width={18} height={18} color="white" />
-              <Text className="text-white font-semibold ml-1.5">Back</Text>
-            </View>
+            <ArrowLeft width={24} height={24} color="white" />
+            <Text className="text-white font-semibold ml-2 text-lg">Back</Text>
           </TouchableOpacity>
         )}
 
