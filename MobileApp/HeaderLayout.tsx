@@ -21,9 +21,13 @@ const HeaderLayout: React.FC<HeaderLayoutProps> = ({
   icon2Source = require('./public/assets/kpp.png'),
 }) => {
   return (
-    <SafeAreaView>
-      <StatusBar barStyle="dark-content" backgroundColor="#D1D5DB" />
-      <View className="flex-row justify-between items-center px-5 py-4 ">
+    <SafeAreaView style={{paddingTop: StatusBar.currentHeight}}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#D1D5DB"
+        translucent
+      />
+      <View className="flex-row justify-between items-center px-5 py-4">
         {onBackPress && (
           <TouchableOpacity
             className="bg-green-700 px-5 py-2.5 rounded-lg shadow-sm"
@@ -35,16 +39,20 @@ const HeaderLayout: React.FC<HeaderLayoutProps> = ({
           </TouchableOpacity>
         )}
 
-        <View className="flex-row items-center space-x-2 bg-white w-[200px] rounded-full py-1 px-2">
+        <View
+          className="flex-row items-center bg-white rounded-full py-1 px-3"
+          style={{minWidth: 150}}>
           <Image
             source={icon1Source}
             style={{width: 60, height: 42}}
             resizeMode="contain"
+            resizeMethod="resize"
           />
           <Image
             source={icon2Source}
             style={{width: 62, height: 42}}
             resizeMode="contain"
+            resizeMethod="resize"
           />
         </View>
       </View>

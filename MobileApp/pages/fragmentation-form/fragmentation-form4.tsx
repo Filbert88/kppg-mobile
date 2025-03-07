@@ -31,7 +31,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Fragmentati
 export default function FragmentationForm4() {
   const navigation = useNavigation<NavigationProp>();
   return (
-    <SafeAreaView className="flex-1 bg-gray-200 py-20 gap-10 px-4">
+    <SafeAreaView className="flex-1 py-20 gap-10 px-4">
       {/* Toolbar */}
       <View className="mx-4 mt-4 bg-rose-50 rounded-lg p-2 flex-row justify-between items-center">
         <TouchableOpacity className="p-2">
