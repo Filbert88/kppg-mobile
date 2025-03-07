@@ -16,7 +16,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Fragmentati
 export default function FragmentationForm3() {
   const navigation = useNavigation<NavigationProp>();
   return (
-    <SafeAreaView className="flex-1 bg-gray-200">
+    <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
@@ -38,7 +38,7 @@ export default function FragmentationForm3() {
 
           {/* Next Button */}
           <TouchableOpacity
-            className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6 mb-4"
+            className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6"
             onPress={() => navigation.navigate('FragmentationForm4')}
           >
             <Text className="text-white font-medium">Next</Text>

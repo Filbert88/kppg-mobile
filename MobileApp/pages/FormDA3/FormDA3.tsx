@@ -6,7 +6,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import {ArrowRight, Percent} from 'react-native-feather';
+import {Save, Percent} from 'react-native-feather';
 
 const FormDA3 = () => {
   const averageValue = '22,5 cm';
@@ -36,7 +36,7 @@ const FormDA3 = () => {
           onPress={() => console.log('Next pressed')}>
           <View className="flex-row items-center">
             <Text className="text-white font-bold mr-2">Simpan</Text>
-            <ArrowRight width={18} height={18} color="white" />
+            <Save width={20} height={20} color="white" className="mr-4" />
           </View>
         </TouchableOpacity>
       </View>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,32 +6,65 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
+  Image,
+  Alert,
 } from 'react-native';
 import { ChevronDown, Edit } from 'react-native-feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
+import { launchImageLibrary } from 'react-native-image-picker';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm1'>;
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'FragmentationForm1'
+>;
 
 export default function FragmentationForm1() {
   const navigation = useNavigation<NavigationProp>();
+  const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const handleImagePicker = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 1,
+    });
+
+    if (result.didCancel) {
+      console.log('User cancelled image picker');
+    } else if (result.errorCode) {
+      console.error('ImagePicker Error: ', result.errorMessage);
+      Alert.alert('Error', 'An error occurred while picking the image.');
+    } else if (result.assets && result.assets.length > 0) {
+      const selectedImage = result.assets[0];
+      setImageUri(selectedImage.uri || null);
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-200">
+    <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          className="w-full my-20"
+          className="w-full my-8"
         >
           {/* Image Upload Area */}
           <TouchableOpacity
-            className="w-full aspect-[16/9] bg-white rounded-lg mt-4 items-center justify-center border border-gray-300"
-            onPress={() => console.log('Upload image')}
+            className="w-full aspect-[16/9] bg-white rounded-lg items-center justify-center border border-gray-300"
+            onPress={handleImagePicker}
           >
-            <View className="items-center">
-              <Text className="text-4xl text-gray-300 mb-2">+</Text>
-              <Text className="text-gray-400">Masukkan gambar...</Text>
-            </View>
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                className="w-full h-full rounded-lg"
+                resizeMode="contain"
+              />
+            ) : (
+              <View className="items-center">
+                <Text className="text-4xl text-gray-300 mb-2">+</Text>
+                <Text className="text-gray-400">Masukkan gambar...</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Form Fields with Larger Gaps */}
