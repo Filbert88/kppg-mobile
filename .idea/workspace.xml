@@ -7,16 +7,9 @@
     <list default="true" id="5aaec060-4463-4909-b802-ef94df1d9dd6" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MobileApp/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/MainLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/MainLayout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/AddOrHistory/AddOrHistory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/AddOrHistory/AddOrHistory.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form2.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form2.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form3.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form3.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form4.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form4.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form5.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form5.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/pages/homepage/homepage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/homepage/homepage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/FormDA1/FormDA1.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/FormDA1/FormDA1.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/FormDA2/FormDA2.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/FormDA2/FormDA2.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/FormDA3/FormDA3.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/FormDA3/FormDA3.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
