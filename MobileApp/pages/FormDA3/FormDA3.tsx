@@ -8,9 +8,15 @@ import {
 } from 'react-native';
 import {Save, Percent} from 'react-native-feather';
 import {DepthAverageContext} from '../../context/DepthAverageContext';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA3'>;
 
 const FormDA3 = () => {
   const {formData, setFormData, saveToDatabase} = useContext(DepthAverageContext);
+  const navigation = useNavigation<NavigationProp>();
   const [calculatedAverage, setCalculatedAverage] = useState<string>('N/A');
 
   const depthValues = Object.values(formData.kedalaman)
@@ -29,6 +35,15 @@ const FormDA3 = () => {
       setCalculatedAverage(averageValue);
     }
   }, [averageValue, formData.average, setFormData]);
+
+  const handleSaveAndNavigate = async () => {
+    try {
+      await saveToDatabase();
+      navigation.navigate('DAHistory');
+    } catch (error) {
+      console.error('Failed to save data:', error);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 ">
@@ -52,7 +67,7 @@ const FormDA3 = () => {
       <View className="p-6 mb-4">
         <TouchableOpacity
           className="bg-green-700 px-6 py-3 rounded-lg shadow-md active:bg-green-800 ml-auto"
-          onPress={saveToDatabase}>
+          onPress={handleSaveAndNavigate}>
           <View className="flex-row items-center">
             <Text className="text-white font-bold mr-2">Simpan</Text>
             <Save width={20} height={20} color="white" className="mr-4" />
