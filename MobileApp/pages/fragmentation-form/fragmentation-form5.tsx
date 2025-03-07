@@ -21,7 +21,15 @@ import EraseIcon from '../../assets/erase.svg';
 import SquareIcon from '../../assets/square.svg';
 import PaintIcon from '../../assets/paint.svg';
 import LineIcon from '../../assets/line.svg';
-export default function ImageEditorScreen() {
+
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm5'>;
+
+export default function FragmentationForm5() {
+  const navigation = useNavigation<NavigationProp>();
   return (
     <SafeAreaView className="flex-1 bg-gray-200 py-20 gap-10 px-4">
       {/* Toolbar */}
@@ -65,7 +73,7 @@ export default function ImageEditorScreen() {
       <View className="flex-1 justify-end px-4 pb-4">
         <TouchableOpacity
           className="w-full bg-green-700 rounded-lg px-4 py-3 items-center"
-          onPress={() => console.log('Next pressed')}
+          onPress={() => navigation.navigate('FragmentationResult')}
         >
           <Text className="text-white font-medium">Next</Text>
         </TouchableOpacity>

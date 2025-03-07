@@ -1,8 +1,17 @@
 import React, {useState} from 'react';
 import {View, Text, TouchableOpacity, Image, Alert} from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'DepthAverageUpload'
+>;
 
 const DepthAverageUpload = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   const handleImagePicker = async () => {
@@ -20,14 +29,6 @@ const DepthAverageUpload = () => {
       const selectedImage = result.assets[0];
       setImageUri(selectedImage.uri || null);
     }
-  };
-
-  const handleNextPress = () => {
-    if (!imageUri) {
-      Alert.alert('No Image', 'Please select an image before proceeding.');
-      return;
-    }
-    console.log('Next pressed, image selected:', imageUri);
   };
 
   return (
@@ -57,7 +58,7 @@ const DepthAverageUpload = () => {
       <View className="absolute bottom-5 right-5">
         <TouchableOpacity
           className="bg-green-700 px-5 py-2.5 rounded-lg shadow-md"
-          onPress={handleNextPress}>
+          onPress={() => navigation.navigate('FormDA1')}>
           <Text className="text-white font-semibold">Next</Text>
         </TouchableOpacity>
       </View>

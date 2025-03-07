@@ -35,7 +35,7 @@ const FormDA3 = () => {
           className="bg-green-700 px-6 py-3 rounded-lg shadow-md active:bg-green-800 ml-auto"
           onPress={() => console.log('Next pressed')}>
           <View className="flex-row items-center">
-            <Text className="text-white font-bold mr-2">Next</Text>
+            <Text className="text-white font-bold mr-2">Simpan</Text>
             <ArrowRight width={18} height={18} color="white" />
           </View>
         </TouchableOpacity>

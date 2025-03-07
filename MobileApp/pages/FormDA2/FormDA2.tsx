@@ -9,6 +9,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { ArrowRight, Edit2, Hash } from 'react-native-feather';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA2'>;
 
 type DepthsType = {
   depth1: string;
@@ -23,6 +28,7 @@ type DepthsType = {
 };
 
 const FormDA2 = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [depths, setDepths] = useState<DepthsType>({
     depth1: '',
     depth2: '',
@@ -123,7 +129,7 @@ const FormDA2 = () => {
       <View className="p-6 mb-4">
         <TouchableOpacity 
           className="bg-green-700 px-6 py-3 rounded-lg shadow-md active:bg-green-800 ml-auto"
-          onPress={() => console.log('Next pressed', depths)}
+          onPress={() => navigation.navigate('FormDA3')}
         >
           <View className="flex-row items-center">
             <Text className="text-white font-bold mr-2">Next</Text>
