@@ -7,9 +7,14 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { ChevronDown, Edit } from 'react-native-feather';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
-export default function FormScreen() {
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm3'>;
+
+export default function FragmentationForm3() {
+  const navigation = useNavigation<NavigationProp>();
   return (
     <SafeAreaView className="flex-1 bg-gray-200">
       <View className="flex-1 justify-center items-center px-6">
@@ -34,7 +39,7 @@ export default function FormScreen() {
           {/* Next Button */}
           <TouchableOpacity
             className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6 mb-4"
-            onPress={() => console.log('Next pressed')}
+            onPress={() => navigation.navigate('FragmentationForm4')}
           >
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>

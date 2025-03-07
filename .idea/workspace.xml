@@ -5,16 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5aaec060-4463-4909-b802-ef94df1d9dd6" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MobileApp/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MobileApp/android/app/src/debug/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/android/app/src/debug/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/MainLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/MainLayout.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MobileApp/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MobileApp/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MobileApp/pages/AddOrHistory/AddOrHistory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/AddOrHistory/AddOrHistory.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.AssemblyInfo.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.AssemblyInfo.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.AssemblyInfoInputs.cache" beforeDir="false" afterPath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.AssemblyInfoInputs.cache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.GeneratedMSBuildEditorConfig.editorconfig" beforeDir="false" afterPath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.GeneratedMSBuildEditorConfig.editorconfig" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.assets.cache" beforeDir="false" afterPath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.assets.cache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/aspnet/obj/Debug/net8.0/aspnet.csproj.AssemblyReference.cache" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form2.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form2.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form3.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form3.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form4.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form4.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form5.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/fragmentation-form/fragmentation-form5.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MobileApp/pages/homepage/homepage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/MobileApp/pages/homepage/homepage.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,20 +37,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Project/kppg-mobile&quot;,
-    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "feat/depth-average",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/Project/kppg-mobile",
+    "show.migrate.to.gradle.popup": "false"
   }
-}</component>
+}]]></component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">

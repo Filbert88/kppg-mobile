@@ -11,8 +11,14 @@ import {
 } from 'react-native';
 import {ArrowRight, Edit2, Calendar, MapPin, Hash} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA1'>;
 
 const FormDA1 = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [formData, setFormData] = useState({
     jumlahLubang: '',
     lokasi: '',
@@ -121,7 +127,7 @@ const FormDA1 = () => {
       <View className="p-5 items-end mb-4">
         <TouchableOpacity
           className="bg-green-700 px-6 py-3 rounded-lg shadow-md"
-          onPress={() => console.log('Next pressed', formData)}>
+          onPress={() => navigation.navigate('FormDA2')}>
           <View className="flex-row items-center">
             <Text className="text-white font-semibold mr-2">Next</Text>
             <ArrowRight width={18} height={18} color="white" />
