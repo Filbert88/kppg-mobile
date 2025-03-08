@@ -1,0 +1,30 @@
+# Ignore build output directories
+bin/
+obj/
+
+# Ignore Visual Studio specific files
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Ignore configuration and publishing files
+appsettings*.json
+*.psess
+*.vspx
+*.vspscc
+
+# Ignore Entity Framework migration files
+Migrations/
+
+# Ignore Rider and VSCode config
+.idea/
+*.code-workspace
+
+# Ignore npm & Node modules (if using with React Native)
+node_modules/
+
+# Ignore sensitive files (customize as needed)
+secrets.json
+.env
