@@ -11,31 +11,32 @@ import {
   Dimensions,
   GestureResponderEvent,
 } from 'react-native';
-import Svg, { Path, Circle, Rect, Polygon } from 'react-native-svg';
 
+// Example icons – adjust to your actual imports:
 import { ZoomIn, ZoomOut, Crop, Edit2 } from 'react-native-feather';
 import EraseIcon from '../../assets/erase.svg';
 import SquareIcon from '../../assets/square.svg';
 import PaintIcon from '../../assets/paint.svg';
 import LineIcon from '../../assets/line.svg';
 
-// Tools
-type Tool = 'draw' | 'erase' | 'line' | 'paint' | 'shape' | null;
+import Svg, { Path, Circle, Rect, Polygon, Line as SvgLine } from 'react-native-svg';
 
-// Shape types
+// === TOOLS & TYPES ===
+type Tool = 'draw' | 'erase' | 'line' | 'paint' | 'shape' | null;
 type ShapeType = 'rect' | 'circle' | 'triangle';
 
+// For freehand strokes
 interface Point {
   x: number;
   y: number;
 }
-
 interface Stroke {
   points: Point[];
   color: string;
   width: number;
 }
 
+// For bounding box shapes (rect/circle/triangle)
 interface ShapeBox {
   id: string;
   type: ShapeType;
@@ -43,7 +44,17 @@ interface ShapeBox {
   y: number;
   width: number;
   height: number;
-  fill: string;
+  fill: string; // e.g. 'none' or 'red'
+}
+
+// For line shapes
+interface LineShape {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -51,7 +62,7 @@ const PAGE_PADDING = 16;
 const ERASE_THRESHOLD = 15;
 const HANDLE_SIZE = 15;
 
-// Convert points => Path
+// Convert freehand stroke array => single SVG path
 function strokeToPath(points: Point[]): string {
   if (!points.length) return '';
   const [first, ...rest] = points;
@@ -62,39 +73,47 @@ function strokeToPath(points: Point[]): string {
   return d;
 }
 
+// Example color & line width options
 const COLORS = ['red', 'blue', 'green', 'black', 'orange'];
 const LINE_THICKNESS_OPTIONS = [2, 4, 6];
 
 export default function FragmentationForm4() {
-  const [activeTool, setActiveTool] = useState<Tool>(null);
-  // Zoom
+  // === STATE: Active Tool & Zoom ===
+  const [activeTool, setActiveTool] = useState<Tool>(null); // default no tool
   const [scale, setScale] = useState<number>(1);
-  // Selected color
-  const [selectedColor, setSelectedColor] = useState<string>('red');
 
-  // Modal toggles
+  // === STATE: Color & Modals ===
+  const [selectedColor, setSelectedColor] = useState<string>('red');
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [showLineThicknessPicker, setShowLineThicknessPicker] = useState<boolean>(false);
   const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
 
-  // line thickness
+  // === STATE: line thickness ===
   const [lineThickness, setLineThickness] = useState<number>(2);
 
-  // freehand / line
+  // === STATE: Freehand strokes ===
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
   const [lineStartPoint, setLineStartPoint] = useState<Point | null>(null);
 
-  // bounding box shapes
+  // === STATE: bounding-box shapes ===
   const [shapes, setShapes] = useState<ShapeBox[]>([]);
   const [shapeType, setShapeType] = useState<ShapeType | null>(null);
   const [activeShapeId, setActiveShapeId] = useState<string | null>(null);
 
-  // for drag/resize
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // === STATE: line shapes ===
+  const [lines, setLines] = useState<LineShape[]>([]);
+  const [activeLineId, setActiveLineId] = useState<string | null>(null);
+
+  // For dragging shapes
+  const [draggingShapeId, setDraggingShapeId] = useState<string | null>(null);
   const [resizeCorner, setResizeCorner] = useState<string | null>(null);
 
-  // container layout
+  // For dragging lines
+  const [draggingLineId, setDraggingLineId] = useState<string | null>(null);
+  const [resizingLineEndpoint, setResizingLineEndpoint] = useState<'start'|'end'|null>(null);
+
+  // For layout
   const [containerX, setContainerX] = useState<number>(0);
   const [containerY, setContainerY] = useState<number>(0);
   const handleContainerLayout = (e: LayoutChangeEvent) => {
@@ -103,12 +122,24 @@ export default function FragmentationForm4() {
     setContainerY(y);
   };
 
-  // Zoom
-  const zoomIn = () => setScale((prev) => prev + 0.2);
-  const zoomOut = () => setScale((prev) => (prev > 0.2 ? prev - 0.2 : prev));
+  // === HELPER: highlight tool icon
+  function isActiveTool(t: Tool) {
+    return activeTool === t;
+  }
 
-  // ========== Freehand/Line/Erase ==========
-  const handleDrawGrant = (evt: GestureResponderEvent) => {
+  // === ZOOM ===
+  function zoomIn() {
+    setScale((prev) => prev + 0.2);
+  }
+  function zoomOut() {
+    setScale((prev) => (prev > 0.2 ? prev - 0.2 : prev));
+  }
+
+  // === FREEHAND / LINE / ERASE ===
+  function handleDrawGrant(evt: GestureResponderEvent) {
+    // If we are currently dragging a shape or line, skip new creation
+    if (draggingShapeId || draggingLineId) return;
+
     const { locationX, locationY } = evt.nativeEvent;
     if (activeTool === 'draw') {
       setCurrentStroke([{ x: locationX, y: locationY }]);
@@ -118,8 +149,11 @@ export default function FragmentationForm4() {
     } else if (activeTool === 'erase') {
       handleEraseAtPoint(locationX, locationY);
     }
-  };
-  const handleDrawMove = (evt: GestureResponderEvent) => {
+  }
+  function handleDrawMove(evt: GestureResponderEvent) {
+    // If we are dragging shape/line, skip new creation
+    if (draggingShapeId || draggingLineId) return;
+
     const { locationX, locationY } = evt.nativeEvent;
     if (activeTool === 'draw' && currentStroke.length) {
       setCurrentStroke((prev) => [...prev, { x: locationX, y: locationY }]);
@@ -128,9 +162,13 @@ export default function FragmentationForm4() {
     } else if (activeTool === 'erase') {
       handleEraseAtPoint(locationX, locationY);
     }
-  };
-  const handleDrawRelease = () => {
-    if (activeTool === 'draw' && currentStroke.length) {
+  }
+  function handleDrawRelease() {
+    // If we are dragging shape/line, skip
+    if (draggingShapeId || draggingLineId) return;
+
+    if (activeTool === 'draw' && currentStroke.length > 1) {
+      // finalize freehand stroke
       const newStroke: Stroke = {
         points: currentStroke,
         color: selectedColor,
@@ -139,16 +177,22 @@ export default function FragmentationForm4() {
       setStrokes((prev) => [...prev, newStroke]);
       setCurrentStroke([]);
     } else if (activeTool === 'line' && currentStroke.length === 2) {
-      const newStroke: Stroke = {
-        points: currentStroke,
+      // finalize line
+      const [p1, p2] = currentStroke;
+      const newLine: LineShape = {
+        id: Date.now().toString(),
+        x1: p1.x,
+        y1: p1.y,
+        x2: p2.x,
+        y2: p2.y,
         color: selectedColor,
-        width: lineThickness,
       };
-      setStrokes((prev) => [...prev, newStroke]);
+      setLines((prev) => [...prev, newLine]);
       setCurrentStroke([]);
       setLineStartPoint(null);
+      // remain in line tool => can draw again
     }
-  };
+  }
   function handleEraseAtPoint(x: number, y: number) {
     // remove strokes
     setStrokes((prev) =>
@@ -157,39 +201,28 @@ export default function FragmentationForm4() {
         return !hit;
       })
     );
-    // remove shape
+    // remove shapes
     setShapes((prev) =>
-      prev.filter((shape) => {
-        if (
-          x >= shape.x &&
-          x <= shape.x + shape.width &&
-          y >= shape.y &&
-          y <= shape.y + shape.height
-        ) {
-          return false;
-        }
+      prev.filter((sh) => {
+        if (x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height) return false;
+        return true;
+      })
+    );
+    // remove lines
+    setLines((prev) =>
+      prev.filter((ln) => {
+        const minX = Math.min(ln.x1, ln.x2) - 10;
+        const maxX = Math.max(ln.x1, ln.x2) + 10;
+        const minY = Math.min(ln.y1, ln.y2) - 10;
+        const maxY = Math.max(ln.y1, ln.y2) + 10;
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) return false;
         return true;
       })
     );
   }
 
-  // ========== Shape creation & drag/resize logic in parent overlay ==========
-
-  // Fungsi mengecek corner bounding box shape
-  function getShapeCorners(shape: ShapeBox) {
-    return {
-      topLeft: { x: shape.x, y: shape.y },
-      topRight: { x: shape.x + shape.width, y: shape.y },
-      bottomLeft: { x: shape.x, y: shape.y + shape.height },
-      bottomRight: { x: shape.x + shape.width, y: shape.y + shape.height },
-    };
-  }
-  function distance(x1: number, y1: number, x2: number, y2: number) {
-    return Math.hypot(x1 - x2, y1 - y2);
-  }
-
-  // Buat shape 1x tap
-  function handleShapeTap(evt: GestureResponderEvent) {
+  // === SHAPE CREATION ===
+  function createShape(evt: GestureResponderEvent) {
     if (!shapeType) return;
     const { locationX, locationY } = evt.nativeEvent;
     const newShape: ShapeBox = {
@@ -203,292 +236,444 @@ export default function FragmentationForm4() {
     };
     setShapes((prev) => [...prev, newShape]);
     setActiveShapeId(newShape.id);
-    // tool = shape tetap
+    // remain shape tool => can create more shapes or drag existing
     setShapeType(null);
   }
 
-  // onResponderGrant => user men-tap overlay
-function handleShapeStart(evt: GestureResponderEvent) {
-  const { locationX, locationY } = evt.nativeEvent;
-  let foundShape = false;
+  // === DETECT SHAPE & LINE bounding box ===
+  function lineBoundingBox(ln: LineShape) {
+    const minX = Math.min(ln.x1, ln.x2);
+    const maxX = Math.max(ln.x1, ln.x2);
+    const minY = Math.min(ln.y1, ln.y2);
+    const maxY = Math.max(ln.y1, ln.y2);
+    return { minX, maxX, minY, maxY };
+  }
+  function distance(x1: number, y1: number, x2: number, y2: number) {
+    return Math.hypot(x1 - x2, y1 - y2);
+  }
+  function nearPoint(x: number, y: number, px: number, py: number) {
+    return distance(x, y, px, py) < HANDLE_SIZE;
+  }
 
-  for (const shape of shapes) {
-    // Buat "padding" agar corner di tepi masih terdeteksi
-    const minX = shape.x - HANDLE_SIZE;
-    const maxX = shape.x + shape.width + HANDLE_SIZE;
-    const minY = shape.y - HANDLE_SIZE;
-    const maxY = shape.y + shape.height + HANDLE_SIZE;
+  // === OVERLAY DRAG/RESIZE LOGIC ===
+  function handleOverlayStart(evt: GestureResponderEvent) {
+    const { locationX, locationY } = evt.nativeEvent;
+    let found = false;
 
-    if (locationX >= minX && locationX <= maxX && locationY >= minY && locationY <= maxY) {
-      // user men-tap "dalam" bounding box (plus margin)
-      setActiveShapeId(shape.id);
-      setActiveTool('shape');
-
-      // Cek corner => resize
-      const corners = getShapeCorners(shape);
-      let cornerFound = false;
-      for (const cornerName in corners) {
-        const cornerPt = (corners as any)[cornerName];
-        if (distance(locationX, locationY, cornerPt.x, cornerPt.y) < HANDLE_SIZE) {
-          setResizeCorner(cornerName);
-          setDraggingId(shape.id);
-          cornerFound = true;
+    // 1) check shapes
+    for (const sh of shapes) {
+      const minX = sh.x - HANDLE_SIZE;
+      const maxX = sh.x + sh.width + HANDLE_SIZE;
+      const minY = sh.y - HANDLE_SIZE;
+      const maxY = sh.y + sh.height + HANDLE_SIZE;
+      if (locationX >= minX && locationX <= maxX && locationY >= minY && locationY <= maxY) {
+        // user tapped shape => drag or resize corner
+        setActiveShapeId(sh.id);
+        setActiveLineId(null);
+        setActiveTool('shape');
+        // check corners
+        const corners = {
+          topLeft: { x: sh.x, y: sh.y },
+          topRight: { x: sh.x+sh.width, y: sh.y },
+          bottomLeft: { x: sh.x, y: sh.y+sh.height },
+          bottomRight: { x: sh.x+sh.width, y: sh.y+sh.height },
+        };
+        let cornerFound = false;
+        for (const cornerName in corners) {
+          const c = (corners as any)[cornerName];
+          if (distance(locationX, locationY, c.x, c.y) < HANDLE_SIZE) {
+            setDraggingShapeId(sh.id);
+            setResizeCorner(cornerName);
+            cornerFound = true;
+            break;
+          }
+        }
+        if (!cornerFound) {
+          // drag entire shape
+          setDraggingShapeId(sh.id);
+          setResizeCorner(null);
+        }
+        found = true;
+        break;
+      }
+    }
+    // 2) check lines
+    if (!found) {
+      for (const ln of lines) {
+        const box = lineBoundingBox(ln);
+        const minX = box.minX - 10, maxX = box.maxX + 10;
+        const minY = box.minY - 10, maxY = box.maxY + 10;
+        if (locationX >= minX && locationX <= maxX && locationY >= minY && locationY <= maxY) {
+          // check endpoints
+          if (nearPoint(locationX, locationY, ln.x1, ln.y1)) {
+            // drag endpoint x1,y1
+            setResizingLineEndpoint('start');
+            setDraggingLineId(ln.id);
+          } else if (nearPoint(locationX, locationY, ln.x2, ln.y2)) {
+            // drag endpoint x2,y2
+            setResizingLineEndpoint('end');
+            setDraggingLineId(ln.id);
+          } else {
+            // drag entire line
+            setDraggingLineId(ln.id);
+            setResizingLineEndpoint(null);
+          }
+          setActiveLineId(ln.id);
+          setActiveShapeId(null);
+          setActiveTool('line');
+          found = true;
           break;
         }
       }
-      if (!cornerFound) {
-        // drag
-        setResizeCorner(null);
-        setDraggingId(shape.id);
-      }
-
-      foundShape = true;
-      break;
     }
-  }
 
-  if (!foundShape) {
-    // user menekan luar shape
-    if (shapeType) {
-      handleShapeTap(evt);
-    } else {
+    // 3) if not found => maybe create shape
+    if (!found) {
+      if (shapeType) {
+        createShape(evt);
+        found = true;
+      }
+    }
+
+    // 4) if still not found => user tapped outside => reset
+    if (!found) {
       setActiveShapeId(null);
-      setDraggingId(null);
+      setActiveLineId(null);
+      setDraggingShapeId(null);
       setResizeCorner(null);
+      setDraggingLineId(null);
+      setResizingLineEndpoint(null);
       setActiveTool(null);
     }
   }
-}
 
-
-  // onResponderMove => drag or resize shape
-  function handleShapeMove(evt: GestureResponderEvent) {
-    if (!draggingId) return;
+  function handleOverlayMove(evt: GestureResponderEvent) {
     const { locationX, locationY } = evt.nativeEvent;
-
-    setShapes((prev) =>
-      prev.map((shape) => {
-        if (shape.id !== draggingId) return shape;
-
-        // Perhitungan anchor
-        const oldRight = shape.x + shape.width;
-        const oldBottom = shape.y + shape.height;
-        const oldLeft = shape.x;
-        const oldTop = shape.y;
-
-        if (resizeCorner) {
-          // Resize
-          let newX = shape.x;
-          let newY = shape.y;
-          let newW = shape.width;
-          let newH = shape.height;
-
-          if (resizeCorner === 'topLeft') {
-            // anchor bottomRight => oldRight, oldBottom
-            newX = locationX;
-            newY = locationY;
-            newW = oldRight - locationX;
-            newH = oldBottom - locationY;
-          } else if (resizeCorner === 'topRight') {
-            // anchor bottomLeft => oldLeft, oldBottom
-            newY = locationY;
-            newW = locationX - oldLeft;
-            newH = oldBottom - locationY;
-          } else if (resizeCorner === 'bottomLeft') {
-            // anchor topRight => oldRight, oldTop
-            newX = locationX;
-            newW = oldRight - locationX;
-            newH = locationY - oldTop;
-          } else if (resizeCorner === 'bottomRight') {
-            // anchor topLeft => oldLeft, oldTop
-            newW = locationX - oldLeft;
-            newH = locationY - oldTop;
+    // shape drag or resize
+    if (draggingShapeId) {
+      setShapes((prev) =>
+        prev.map((sh) => {
+          if (sh.id !== draggingShapeId) return sh;
+          const oldRight = sh.x + sh.width;
+          const oldBottom = sh.y + sh.height;
+          if (resizeCorner) {
+            // corner resize
+            let newX = sh.x, newY = sh.y;
+            let newW = sh.width, newH = sh.height;
+            if (resizeCorner === 'topLeft') {
+              newX = locationX;
+              newY = locationY;
+              newW = oldRight - locationX;
+              newH = oldBottom - locationY;
+            } else if (resizeCorner === 'topRight') {
+              newY = locationY;
+              newW = locationX - sh.x;
+              newH = oldBottom - locationY;
+            } else if (resizeCorner === 'bottomLeft') {
+              newX = locationX;
+              newW = oldRight - locationX;
+              newH = locationY - sh.y;
+            } else if (resizeCorner === 'bottomRight') {
+              newW = locationX - sh.x;
+              newH = locationY - sh.y;
+            }
+            if (newW < 10) newW = 10;
+            if (newH < 10) newH = 10;
+            return { ...sh, x: newX, y: newY, width: newW, height: newH };
+          } else {
+            // drag entire shape
+            return {
+              ...sh,
+              x: locationX - sh.width / 2,
+              y: locationY - sh.height / 2,
+            };
           }
-          if (newW < 10) newW = 10;
-          if (newH < 10) newH = 10;
-          return { ...shape, x: newX, y: newY, width: newW, height: newH };
-        } else {
-          // Drag
-          return {
-            ...shape,
-            x: locationX - shape.width / 2,
-            y: locationY - shape.height / 2,
-          };
-        }
-      })
-    );
+        })
+      );
+    }
+    // line drag or resize
+    if (draggingLineId) {
+      setLines((prev) =>
+        prev.map((ln) => {
+          if (ln.id !== draggingLineId) return ln;
+          if (resizingLineEndpoint === 'start') {
+            // move x1,y1
+            return { ...ln, x1: locationX, y1: locationY };
+          } else if (resizingLineEndpoint === 'end') {
+            // move x2,y2
+            return { ...ln, x2: locationX, y2: locationY };
+          } else {
+            // drag entire line => shift by difference from midpoint
+            const midX = (ln.x1 + ln.x2)/2;
+            const midY = (ln.y1 + ln.y2)/2;
+            const diffX = locationX - midX;
+            const diffY = locationY - midY;
+            return {
+              ...ln,
+              x1: ln.x1 + diffX,
+              y1: ln.y1 + diffY,
+              x2: ln.x2 + diffX,
+              y2: ln.y2 + diffY,
+            };
+          }
+        })
+      );
+    }
   }
 
-  // onResponderRelease => reset drag
-  function handleShapeEnd() {
-    setDraggingId(null);
+  function handleOverlayEnd() {
+    setDraggingShapeId(null);
     setResizeCorner(null);
+    setDraggingLineId(null);
+    setResizingLineEndpoint(null);
   }
 
-
-  // Render bounding box shape
-  function renderShape(shape: ShapeBox) {
-    const commonProps = {
-      fill: shape.fill,
-      stroke: 'black',
-      strokeWidth: 2,
-      pointerEvents: 'none' as const, // shape tak menangkap event
-    };
-    switch (shape.type) {
-      case 'rect': {
-        return (
+  // === RENDERING HELPERS ===
+  function renderStrokes() {
+    return strokes.map((stroke, i) => (
+      <Path
+        key={i}
+        d={strokeToPath(stroke.points)}
+        stroke={stroke.color}
+        strokeWidth={stroke.width}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ));
+  }
+  function renderCurrentStroke() {
+    if (!currentStroke.length) return null;
+    if (activeTool === 'line' && currentStroke.length === 2) {
+      const [p1, p2] = currentStroke;
+      return (
+        <SvgLine
+          x1={p1.x}
+          y1={p1.y}
+          x2={p2.x}
+          y2={p2.y}
+          stroke={selectedColor}
+          strokeWidth={lineThickness}
+        />
+      );
+    } else if (activeTool === 'draw') {
+      return (
+        <Path
+          d={strokeToPath(currentStroke)}
+          stroke={selectedColor}
+          strokeWidth={3}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      );
+    }
+    return null;
+  }
+  function renderShapes() {
+    return shapes.map((sh) => {
+      const isActive = (sh.id === activeShapeId);
+      const commonProps = {
+        fill: sh.fill,
+        stroke: 'black',
+        strokeWidth: 2,
+        pointerEvents: 'none' as const,
+      };
+      let shapeElem: React.ReactNode = null;
+      if (sh.type === 'rect') {
+        shapeElem = (
           <Rect
-            key={shape.id}
-            x={shape.x}
-            y={shape.y}
-            width={shape.width}
-            height={shape.height}
+            key={sh.id}
+            x={sh.x}
+            y={sh.y}
+            width={sh.width}
+            height={sh.height}
             {...commonProps}
           />
         );
-      }
-      case 'circle': {
-        const r = Math.min(shape.width, shape.height) / 2;
-        return (
+      } else if (sh.type === 'circle') {
+        const r = Math.min(sh.width, sh.height)/2;
+        shapeElem = (
           <Circle
-            key={shape.id}
-            cx={shape.x + shape.width / 2}
-            cy={shape.y + shape.height / 2}
+            key={sh.id}
+            cx={sh.x + sh.width/2}
+            cy={sh.y + sh.height/2}
             r={r}
             {...commonProps}
           />
         );
-      }
-      case 'triangle': {
-        const x1 = shape.x + shape.width / 2;
-        const y1 = shape.y;
-        const x2 = shape.x;
-        const y2 = shape.y + shape.height;
-        const x3 = shape.x + shape.width;
-        const y3 = shape.y + shape.height;
-        return (
+      } else if (sh.type === 'triangle') {
+        const x1 = sh.x + sh.width/2;
+        const y1 = sh.y;
+        const x2 = sh.x;
+        const y2 = sh.y + sh.height;
+        const x3 = sh.x + sh.width;
+        const y3 = sh.y + sh.height;
+        shapeElem = (
           <Polygon
-            key={shape.id}
+            key={sh.id}
             points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`}
             {...commonProps}
           />
         );
       }
-      default:
-        return null;
-    }
+      return (
+        <React.Fragment key={sh.id}>
+          {shapeElem}
+          {isActive && (
+            <>
+              <Circle cx={sh.x} cy={sh.y} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+              <Circle cx={sh.x+sh.width} cy={sh.y} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+              <Circle cx={sh.x} cy={sh.y+sh.height} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+              <Circle cx={sh.x+sh.width} cy={sh.y+sh.height} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+            </>
+          )}
+        </React.Fragment>
+      );
+    });
+  }
+  function renderLines() {
+    return lines.map((ln) => {
+      const isActive = (ln.id === activeLineId);
+      return (
+        <React.Fragment key={ln.id}>
+          <SvgLine
+            x1={ln.x1}
+            y1={ln.y1}
+            x2={ln.x2}
+            y2={ln.y2}
+            stroke={ln.color}
+            strokeWidth={lineThickness}
+            pointerEvents="none"
+          />
+          {isActive && (
+            <>
+              <Circle cx={ln.x1} cy={ln.y1} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+              <Circle cx={ln.x2} cy={ln.y2} r={HANDLE_SIZE/2} fill="gray" pointerEvents="none"/>
+            </>
+          )}
+        </React.Fragment>
+      );
+    });
   }
 
-  function isActiveTool(t: Tool) {
-    return activeTool === t;
+  // === TOOL TOGGLES ===
+  function toggleToolErase() {
+    if (activeTool === 'erase') setActiveTool(null);
+    else setActiveTool('erase');
   }
-
-  // modal line thickness
-  function openLineThicknessPicker() {
-    setShowLineThicknessPicker(true);
+  function toggleToolPaint() {
+    if (activeTool === 'paint') setActiveTool(null);
+    else setActiveTool('paint');
   }
-  function selectLineThicknessFn(t: number) {
-    setLineThickness(t);
-    setShowLineThicknessPicker(false);
-    setActiveTool('line');
-  }
-
-  // modal color
-  function openColorPicker() {
-    setShowColorPicker(true);
-  }
-  function selectColorFn(c: string) {
-    setSelectedColor(c);
-    setShowColorPicker(false);
-    if (activeTool !== 'paint') setActiveTool('draw');
-  }
-
-  // modal shape
+  // Instead of toggling shape or line, we open modals for them:
   function openShapePicker() {
     setShowShapePicker(true);
   }
-  function pickShapeFn(type: ShapeType) {
-    setShapeType(type);
-    setActiveTool('shape');
-    setShowShapePicker(false);
+  function openLineThicknessPicker() {
+    setShowLineThicknessPicker(true);
+  }
+  function openColorPicker() {
+    setShowColorPicker(true);
+  }
+  // If we want toggles for 'draw' or 'line' we can do:
+  function setToolDraw() {
+    if (activeTool === 'draw') setActiveTool(null);
+    else setActiveTool('draw');
+  }
+  function setToolLine() {
+    if (activeTool === 'line') setActiveTool(null);
+    else setActiveTool('line');
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pageContainer}>
-        {/* Toolbar */}
+        {/* === Toolbar === */}
         <View style={styles.toolbar}>
-          <TouchableOpacity
-            style={[styles.iconButton, activeTool === null && styles.activeIcon]}
-            onPress={zoomIn}
-          >
+          {/* Zoom */}
+          <TouchableOpacity style={styles.iconButton} onPress={zoomIn}>
             <ZoomIn stroke="#666" width={20} height={20} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconButton, activeTool === null && styles.activeIcon]}
-            onPress={zoomOut}
-          >
+          <TouchableOpacity style={styles.iconButton} onPress={zoomOut}>
             <ZoomOut stroke="#666" width={20} height={20} />
           </TouchableOpacity>
 
+          {/* Erase */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveTool('erase') && styles.activeIcon]}
-            onPress={() => setActiveTool('erase')}
+            onPress={toggleToolErase}
           >
             <EraseIcon width={20} height={20} />
           </TouchableOpacity>
 
+          {/* Shape -> opens shape picker modal */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveTool('shape') && styles.activeIcon]}
-            onPress={openShapePicker}
+            onPress={() => {
+              if (activeTool === 'shape') setActiveTool(null);
+              else setActiveTool('shape');
+              setShowShapePicker(true);
+            }}
           >
             <SquareIcon width={20} height={20} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.iconButton, activeTool === null && styles.activeIcon]}
-            onPress={() => {}}
-          >
+          {/* dummy Crop icon */}
+          <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
             <Crop stroke="#666" width={20} height={20} />
           </TouchableOpacity>
 
+          {/* Paint */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveTool('paint') && styles.activeIcon]}
-            onPress={() => setActiveTool('paint')}
+            onPress={toggleToolPaint}
           >
             <PaintIcon width={20} height={20} />
           </TouchableOpacity>
 
+          {/* Line => open line thickness picker */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveTool('line') && styles.activeIcon]}
-            onPress={openLineThicknessPicker}
+            onPress={() => {
+              if (activeTool === 'line') setActiveTool(null);
+              else setActiveTool('line');
+              setShowLineThicknessPicker(true);
+            }}
           >
             <LineIcon width={20} height={20} />
           </TouchableOpacity>
 
+          {/* Draw => open color picker */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveTool('draw') && styles.activeIcon]}
-            onPress={openColorPicker}
+            onPress={() => {
+              if (activeTool === 'draw') setActiveTool(null);
+              else setActiveTool('draw');
+              setShowColorPicker(true);
+            }}
           >
             <Edit2 stroke="#666" width={20} height={20} />
           </TouchableOpacity>
         </View>
 
-        {/* Main content */}
+        {/* === Main content area === */}
         <View style={styles.imageArea} onLayout={handleContainerLayout}>
           <View style={styles.fixedContainer}>
+            {/* Scale content */}
             <View style={[styles.scaledContent, { transform: [{ scale }] }]}>
-              {/* Gambar background */}
+              {/* Background image */}
               <Image
                 source={require('../../public/assets/batu.png')}
                 style={styles.image}
                 resizeMode="contain"
               />
-              {/* Overlay freehand/line/erase */}
+
+              {/* Freehand / line / erase creation layer */}
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents={
-                  activeTool === 'draw' || activeTool === 'line' || activeTool === 'erase'
+                  (activeTool === 'draw' || activeTool === 'line' || activeTool === 'erase')
                     ? 'auto'
                     : 'none'
                 }
@@ -498,97 +683,46 @@ function handleShapeStart(evt: GestureResponderEvent) {
                 onResponderRelease={handleDrawRelease}
               >
                 <Svg style={StyleSheet.absoluteFill}>
-                  {strokes.map((stroke, i) => (
-                    <Path
-                      key={i}
-                      d={strokeToPath(stroke.points)}
-                      stroke={stroke.color}
-                      strokeWidth={stroke.width}
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  ))}
-                  {currentStroke.length > 0 && (
-                    <Path
-                      d={strokeToPath(currentStroke)}
-                      stroke={activeTool === 'erase' ? 'white' : selectedColor}
-                      strokeWidth={activeTool === 'line' ? lineThickness : 3}
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
+                  {/* existing strokes */}
+                  {renderStrokes()}
+                  {/* current stroke or line preview */}
+                  {renderCurrentStroke()}
                 </Svg>
               </View>
 
-              {/* Overlay bounding box shape => drag/resize */}
+              {/* bounding box shapes & lines => drag/resize layer */}
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents={
-                  activeTool === 'shape' || activeTool === 'paint' || activeTool === null
+                  (activeTool === 'shape' || activeTool === 'paint' || activeTool === 'line' || activeTool === null)
                     ? 'auto'
                     : 'none'
                 }
                 onStartShouldSetResponder={() => true}
-                onResponderGrant={handleShapeStart}
-                onResponderMove={handleShapeMove}
-                onResponderRelease={handleShapeEnd}
+                onResponderGrant={handleOverlayStart}
+                onResponderMove={handleOverlayMove}
+                onResponderRelease={handleOverlayEnd}
               >
                 <Svg style={StyleSheet.absoluteFill}>
-                  {/* Render shape bounding box => pointerEvents:none (visual) */}
-                  {shapes.map((sh) => (
-                    <React.Fragment key={sh.id}>
-                      {renderShape(sh)}
-                      {/* Tampilkan corner handle jika shape ini adalah activeShape */}
-                      {sh.id === activeShapeId && (
-                        <React.Fragment>
-                          {/* corner circle => pointerEvents:none => cuma visual */}
-                          <Circle
-                            cx={sh.x}
-                            cy={sh.y}
-                            r={HANDLE_SIZE / 2}
-                            fill="gray"
-                            pointerEvents="none"
-                          />
-                          <Circle
-                            cx={sh.x + sh.width}
-                            cy={sh.y}
-                            r={HANDLE_SIZE / 2}
-                            fill="gray"
-                            pointerEvents="none"
-                          />
-                          <Circle
-                            cx={sh.x}
-                            cy={sh.y + sh.height}
-                            r={HANDLE_SIZE / 2}
-                            fill="gray"
-                            pointerEvents="none"
-                          />
-                          <Circle
-                            cx={sh.x + sh.width}
-                            cy={sh.y + sh.height}
-                            r={HANDLE_SIZE / 2}
-                            fill="gray"
-                            pointerEvents="none"
-                          />
-                        </React.Fragment>
-                      )}
-                    </React.Fragment>
-                  ))}
+                  {/* shapes */}
+                  {renderShapes()}
+                  {/* lines */}
+                  {renderLines()}
                 </Svg>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Next Button */}
+        {/* Next Button (example) */}
         <View style={styles.nextButtonContainer}>
           <TouchableOpacity style={styles.nextButton} onPress={() => {}}>
             <Text style={styles.nextButtonText}>Next</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* === MODALS === */}
 
       {/* Color Picker Modal */}
       <Modal visible={showColorPicker} transparent animationType="slide">
@@ -602,24 +736,22 @@ function handleShapeStart(evt: GestureResponderEvent) {
                   onPress={() => {
                     setSelectedColor(c);
                     setShowColorPicker(false);
-                    if (activeTool !== 'paint') setActiveTool('draw');
+                    // default tool => draw
+                    setActiveTool('draw');
                   }}
                 >
                   <View style={[styles.colorCircle, { backgroundColor: c }]} />
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity
-              onPress={() => setShowColorPicker(false)}
-              style={{ marginTop: 16 }}
-            >
+            <TouchableOpacity onPress={() => setShowColorPicker(false)} style={{ marginTop: 16 }}>
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Line Thickness Modal */}
+      {/* Line Thickness Picker */}
       <Modal visible={showLineThicknessPicker} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -629,8 +761,8 @@ function handleShapeStart(evt: GestureResponderEvent) {
                 key={t}
                 onPress={() => {
                   setLineThickness(t);
-                  setActiveTool('line');
                   setShowLineThicknessPicker(false);
+                  setActiveTool('line');
                 }}
               >
                 <Text style={{ margin: 8 }}>{t}</Text>
@@ -651,11 +783,13 @@ function handleShapeStart(evt: GestureResponderEvent) {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text>Pilih Bentuk:</Text>
-            {(['rect', 'circle', 'triangle'] as ShapeType[]).map((type) => (
+            {(['rect','circle','triangle'] as ShapeType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 onPress={() => {
-                  pickShapeFn(type);
+                  setShapeType(type);
+                  setActiveTool('shape');
+                  setShowShapePicker(false);
                 }}
               >
                 <Text style={{ margin: 8 }}>{type}</Text>
@@ -674,63 +808,16 @@ function handleShapeStart(evt: GestureResponderEvent) {
   );
 }
 
-// Hanya visual shape + handle => pointerEvents="none"
-function renderShape(shape: ShapeBox) {
-  const commonProps = {
-    fill: shape.fill,
-    stroke: 'black',
-    strokeWidth: 2,
-    pointerEvents: 'none' as const, // agar event tak berhenti di shape
-  };
-  switch (shape.type) {
-    case 'rect': {
-      return (
-        <Rect
-          key={shape.id}
-          x={shape.x}
-          y={shape.y}
-          width={shape.width}
-          height={shape.height}
-          {...commonProps}
-        />
-      );
-    }
-    case 'circle': {
-      const r = Math.min(shape.width, shape.height) / 2;
-      return (
-        <Circle
-          key={shape.id}
-          cx={shape.x + shape.width / 2}
-          cy={shape.y + shape.height / 2}
-          r={r}
-          {...commonProps}
-        />
-      );
-    }
-    case 'triangle': {
-      const x1 = shape.x + shape.width / 2;
-      const y1 = shape.y;
-      const x2 = shape.x;
-      const y2 = shape.y + shape.height;
-      const x3 = shape.x + shape.width;
-      const y3 = shape.y + shape.height;
-      return (
-        <Polygon
-          key={shape.id}
-          points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`}
-          {...commonProps}
-        />
-      );
-    }
-    default:
-      return null;
-  }
-}
-
-
+// === STYLES ===
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  pageContainer: { flex: 1, paddingHorizontal: PAGE_PADDING },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  pageContainer: {
+    flex: 1,
+    paddingHorizontal: PAGE_PADDING,
+  },
   toolbar: {
     marginTop: 20,
     backgroundColor: '#ffe4e6',
@@ -740,9 +827,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  iconButton: { padding: 8 },
-  activeIcon: { backgroundColor: 'rgba(0,255,0,0.2)', borderRadius: 8 },
-  imageArea: { flex: 1, marginTop: 20 },
+  iconButton: {
+    padding: 8,
+  },
+  activeIcon: {
+    backgroundColor: 'rgba(0,255,0,0.2)',
+    borderRadius: 8,
+  },
+  imageArea: {
+    flex: 1,
+    marginTop: 20,
+  },
   fixedContainer: {
     width: '100%',
     aspectRatio: 1,
@@ -750,8 +845,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  scaledContent: { flex: 1 },
-  image: { width: '100%', height: '100%' },
+  scaledContent: {
+    flex: 1,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
   nextButtonContainer: {
     flex: 0.5,
     justifyContent: 'flex-end',
