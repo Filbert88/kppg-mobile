@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Rect, Polygon, Line as SvgLine } from 'react-native-svg';
 
-// Example icons – adjust these imports to your actual project
+// Example icons – adjust these imports to your project
 import { ZoomIn, ZoomOut, Crop, Edit2 } from 'react-native-feather';
 import EraseIcon from '../../assets/erase.svg';
 import SquareIcon from '../../assets/square.svg';
@@ -72,6 +72,7 @@ function strokeToPath(points: Point[]): string {
   });
   return d;
 }
+
 function lineBoundingBox(ln: LineShape) {
   const minX = Math.min(ln.x1, ln.x2);
   const maxX = Math.max(ln.x1, ln.x2);
@@ -79,9 +80,11 @@ function lineBoundingBox(ln: LineShape) {
   const maxY = Math.max(ln.y1, ln.y2);
   return { minX, maxX, minY, maxY };
 }
+
 function distance(x1: number, y1: number, x2: number, y2: number) {
   return Math.hypot(x1 - x2, y1 - y2);
 }
+
 function nearPoint(x: number, y: number, px: number, py: number) {
   return distance(x, y, px, py) < HANDLE_SIZE;
 }
@@ -99,7 +102,7 @@ export default function FragmentationForm4() {
   const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
   const [lineThickness, setLineThickness] = useState<number>(2);
 
-  // --- FREEHAND / LINE ---
+  // --- FREEHAND / LINE DRAWING ---
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
   const [lineStartPoint, setLineStartPoint] = useState<Point | null>(null);
@@ -175,29 +178,59 @@ export default function FragmentationForm4() {
       setLines(prev => [...prev, newLine]);
       setCurrentStroke([]);
       setLineStartPoint(null);
+      // Remain in line tool so user can draw more lines.
     }
   }
   function handleEraseAtPoint(x: number, y: number) {
     setStrokes(prev => prev.filter(stroke => !stroke.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < ERASE_THRESHOLD)));
     setShapes(prev => prev.filter(sh => !(x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height)));
-    setLines(prev => prev.filter(ln => {
-      const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
-      return !(x >= minX - 10 && x <= maxX + 10 && y >= minY - 10 && y <= maxY + 10);
-    }));
+    setLines(prev =>
+      prev.filter(ln => {
+        const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
+        return !(x >= minX - 10 && x <= maxX + 10 && y >= minY - 10 && y <= maxY + 10);
+      })
+    );
+  }
+
+  // === PAINT FEATURE ===
+  // When in paint mode, tapping inside a shape fills it with the selected color.
+  function handlePaint(evt: GestureResponderEvent): boolean {
+    const { locationX, locationY } = evt.nativeEvent;
+    for (const sh of shapes) {
+      if (locationX >= sh.x && locationX <= sh.x + sh.width &&
+          locationY >= sh.y && locationY <= sh.y + sh.height) {
+        setShapes(prev =>
+          prev.map(shape =>
+            shape.id === sh.id ? { ...shape, fill: selectedColor } : shape
+          )
+        );
+        setActiveShapeId(sh.id);
+        return true;
+      }
+    }
+    return false;
   }
 
   // === SHAPE CREATION ===
   function createShape(evt: GestureResponderEvent) {
     if (!shapeType) return;
     const { locationX, locationY } = evt.nativeEvent;
-    const newShape: ShapeBox = { id: Date.now().toString(), type: shapeType, x: locationX, y: locationY, width: 80, height: 80, fill: 'none' };
+    const newShape: ShapeBox = {
+      id: Date.now().toString(),
+      type: shapeType,
+      x: locationX,
+      y: locationY,
+      width: 80,
+      height: 80,
+      fill: 'none',
+    };
     setShapes(prev => [...prev, newShape]);
     setActiveShapeId(newShape.id);
-    // Remain in shape tool so user can drag/resize; shapeType is reset.
+    // Remain in shape tool; reset shapeType.
     setShapeType(null);
   }
 
-  // === OVERLAY DRAG/RESIZE LOGIC FOR SHAPES & LINES ===
+  // === OVERLAY DRAG/RESIZE HANDLERS FOR SHAPES & LINES ===
   function getShapeCorners(shape: ShapeBox) {
     return {
       topLeft: { x: shape.x, y: shape.y },
@@ -207,18 +240,21 @@ export default function FragmentationForm4() {
     };
   }
 
-  // This overlay handler deals with all pointer events on the main canvas.
+  // Single overlay handler that deals with pointer events on the canvas.
   function handleOverlayStart(evt: GestureResponderEvent) {
     const { locationX, locationY } = evt.nativeEvent;
 
-    // If eraser is active, immediately erase and return.
     if (activeTool === 'erase') {
       handleEraseAtPoint(locationX, locationY);
       return;
     }
+    // If in paint mode, try to fill a shape and return.
+    if (activeTool === 'paint') {
+      if (handlePaint(evt)) return;
+    }
 
     let found = false;
-    // 1) Check shapes first
+    // 1) Check shapes first.
     for (const sh of shapes) {
       const minX = sh.x - HANDLE_SIZE;
       const maxX = sh.x + sh.width + HANDLE_SIZE;
@@ -240,7 +276,6 @@ export default function FragmentationForm4() {
           }
         }
         if (!cornerFound) {
-          // Drag entire shape if tapped inside but not on a corner.
           setDraggingShapeId(sh.id);
           setResizeCorner(null);
         }
@@ -248,7 +283,8 @@ export default function FragmentationForm4() {
         break;
       }
     }
-    // 2) Check lines if no shape found
+
+    // 2) Check lines if no shape was found.
     if (!found) {
       for (const ln of lines) {
         const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
@@ -273,7 +309,8 @@ export default function FragmentationForm4() {
         }
       }
     }
-    // 3) If nothing found, then:
+
+    // 3) If nothing was found:
     if (!found) {
       if (activeTool === 'shape' && shapeType) {
         createShape(evt);
@@ -283,7 +320,7 @@ export default function FragmentationForm4() {
         setLineStartPoint({ x: locationX, y: locationY });
         setCurrentStroke([{ x: locationX, y: locationY }]);
       } else {
-        // tapped empty area => reset active elements if in paint/shape mode or null
+        // Tapped empty area: reset if in paint/shape mode or null.
         setActiveShapeId(null);
         setActiveLineId(null);
         setDraggingShapeId(null);
@@ -393,6 +430,27 @@ export default function FragmentationForm4() {
     setResizingLineEndpoint(null);
   }
 
+  // === PAINT FEATURE ===
+  // When in 'paint' mode, tapping inside a shape fills it with the selected color.
+  function handlePaint(evt: GestureResponderEvent): boolean {
+    const { locationX, locationY } = evt.nativeEvent;
+    for (const sh of shapes) {
+      if (locationX >= sh.x && locationX <= sh.x + sh.width &&
+          locationY >= sh.y && locationY <= sh.y + sh.height) {
+        setShapes(prev =>
+          prev.map(shape => shape.id === sh.id ? { ...shape, fill: selectedColor } : shape)
+        );
+        setActiveShapeId(sh.id);
+        return true;
+      }
+    }
+    return false;
+  }
+
+
+
+  
+
   // === RENDER HELPERS ===
   const renderStrokes = () =>
     strokes.map((stroke, i) => (
@@ -488,7 +546,7 @@ export default function FragmentationForm4() {
       );
     });
 
-  // === RENDER ===
+  // === RENDERING THE COMPONENT ===
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pageContainer}>
@@ -553,7 +611,7 @@ export default function FragmentationForm4() {
                 style={styles.image}
                 resizeMode="contain"
               />
-              {/* Overlay for drawing, shapes, and lines */}
+              {/* Single overlay handling all pointer events */}
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents="auto"
@@ -636,7 +694,7 @@ export default function FragmentationForm4() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text>Pilih Bentuk:</Text>
-            {(['rect','circle','triangle'] as ShapeType[]).map(type => (
+            {(['rect', 'circle', 'triangle'] as ShapeType[]).map(type => (
               <TouchableOpacity
                 key={type}
                 onPress={() => {
