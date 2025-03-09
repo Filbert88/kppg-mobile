@@ -39,15 +39,15 @@ namespace aspnet.Controllers
 
         // POST: api/DepthAverage
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] DepthAverage depthAverage)
+        public async Task<IActionResult> Create([FromBody] List<DepthAverage> depthAverages)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            _context.DepthAverages.Add(depthAverage);
+            _context.DepthAverages.AddRange(depthAverages);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetById), new { id = depthAverage.Id }, depthAverage);
+            return Ok(depthAverages);
         }
 
         // PUT: api/DepthAverage/5
