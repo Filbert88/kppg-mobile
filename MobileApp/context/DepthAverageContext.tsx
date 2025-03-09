@@ -57,7 +57,7 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
 
   const saveToDatabase = async () => {
     try {
-      await sqliteService.saveData(formData);
+      await sqliteService.saveData('DepthAverage',formData);
       console.log('Data saved locally');
       await sqliteService.debugGetAllData();
       console.log('tes');

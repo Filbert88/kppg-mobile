@@ -9,18 +9,24 @@ namespace aspnet.Models
         public int Id { get; set; }
 
         [Required]
-        public required string ImageUri { get; set; }
+        public string ImageUri { get; set; } = "default_uri";
 
-        public required string JumlahLubang { get; set; }
+        [Required]
+        public string JumlahLubang { get; set; } = "N/A";
 
-        public required string Lokasi { get; set; }
+        [Required]
+        public string Lokasi { get; set; } = "Unknown";
 
-        public DateTime Tanggal { get; set; }
+        [Required]
+        public string Kedalaman { get; set; } = "{}";
 
-        public required string Kedalaman { get; set; }
+        [Required]
+        public string Average { get; set; } = "0";
 
-        public required string Average { get; set; }
+        public DateTime Tanggal { get; set; } = DateTime.Now;
 
-        public bool Synced { get; set; } = false;
+        [Required]
+        [Range(0, 1)]
+        public int Synced { get; set; } = 0;
     }
 }

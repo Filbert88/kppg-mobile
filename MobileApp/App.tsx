@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from './types/navigation';
@@ -19,11 +19,27 @@ import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
 import {DepthAverageProvider} from './context/DepthAverageContext';
+import NetInfo from '@react-native-community/netinfo';
+import {syncLocalDataWithBackend} from './database/services/syncService';
 import './global.css';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      console.log('Connection type:', state.type);
+      console.log('Is connected?', state.isConnected);
+      if (state.isConnected) {
+        console.log('Device is online. Initiating sy..');
+        syncLocalDataWithBackend();
+      } else {
+        console.log('Device is offline.');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
   return (
     <NavigationContainer>
       <DepthAverageProvider>
