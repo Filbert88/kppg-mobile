@@ -36,7 +36,6 @@ interface Stroke {
   width: number;
 }
 
-// Bounding box shape
 interface ShapeBox {
   id: string;
   type: ShapeType;
@@ -67,36 +66,35 @@ const COLORS = ['red', 'blue', 'green', 'black', 'orange'];
 const LINE_THICKNESS_OPTIONS = [2, 4, 6];
 
 export default function FragmentationForm4() {
-  // Active tool
   const [activeTool, setActiveTool] = useState<Tool>(null);
   // Zoom
   const [scale, setScale] = useState<number>(1);
-  // Color
+  // Selected color
   const [selectedColor, setSelectedColor] = useState<string>('red');
 
-  // Modals
+  // Modal toggles
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [showLineThicknessPicker, setShowLineThicknessPicker] = useState<boolean>(false);
   const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
 
-  // Line thickness
+  // line thickness
   const [lineThickness, setLineThickness] = useState<number>(2);
 
-  // Freehand & line
+  // freehand / line
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
   const [lineStartPoint, setLineStartPoint] = useState<Point | null>(null);
 
-  // Shapes
+  // bounding box shapes
   const [shapes, setShapes] = useState<ShapeBox[]>([]);
   const [shapeType, setShapeType] = useState<ShapeType | null>(null);
   const [activeShapeId, setActiveShapeId] = useState<string | null>(null);
 
-  // Drag & resize
+  // for drag/resize
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [resizeCorner, setResizeCorner] = useState<string | null>(null);
 
-  // Container layout
+  // container layout
   const [containerX, setContainerX] = useState<number>(0);
   const [containerY, setContainerY] = useState<number>(0);
   const handleContainerLayout = (e: LayoutChangeEvent) => {
@@ -105,11 +103,11 @@ export default function FragmentationForm4() {
     setContainerY(y);
   };
 
-  // Zoom In/Out
+  // Zoom
   const zoomIn = () => setScale((prev) => prev + 0.2);
   const zoomOut = () => setScale((prev) => (prev > 0.2 ? prev - 0.2 : prev));
 
-  // =================== Freehand / Line / Erase ===================
+  // ========== Freehand/Line/Erase ==========
   const handleDrawGrant = (evt: GestureResponderEvent) => {
     const { locationX, locationY } = evt.nativeEvent;
     if (activeTool === 'draw') {
@@ -121,7 +119,6 @@ export default function FragmentationForm4() {
       handleEraseAtPoint(locationX, locationY);
     }
   };
-
   const handleDrawMove = (evt: GestureResponderEvent) => {
     const { locationX, locationY } = evt.nativeEvent;
     if (activeTool === 'draw' && currentStroke.length) {
@@ -132,7 +129,6 @@ export default function FragmentationForm4() {
       handleEraseAtPoint(locationX, locationY);
     }
   };
-
   const handleDrawRelease = () => {
     if (activeTool === 'draw' && currentStroke.length) {
       const newStroke: Stroke = {
@@ -153,7 +149,6 @@ export default function FragmentationForm4() {
       setLineStartPoint(null);
     }
   };
-
   function handleEraseAtPoint(x: number, y: number) {
     // remove strokes
     setStrokes((prev) =>
@@ -178,7 +173,9 @@ export default function FragmentationForm4() {
     );
   }
 
-  // ==================== SHAPE CREATION + DRAG/RESIZE ====================
+  // ========== Shape creation & drag/resize logic in parent overlay ==========
+
+  // Fungsi mengecek corner bounding box shape
   function getShapeCorners(shape: ShapeBox) {
     return {
       topLeft: { x: shape.x, y: shape.y },
@@ -191,7 +188,7 @@ export default function FragmentationForm4() {
     return Math.hypot(x1 - x2, y1 - y2);
   }
 
-  // Membuat shape baru (1 kali tap)
+  // Buat shape 1x tap
   function handleShapeTap(evt: GestureResponderEvent) {
     if (!shapeType) return;
     const { locationX, locationY } = evt.nativeEvent;
@@ -205,80 +202,80 @@ export default function FragmentationForm4() {
       fill: 'none',
     };
     setShapes((prev) => [...prev, newShape]);
-    // set shape active
     setActiveShapeId(newShape.id);
-    // tool tetap shape, user bisa langsung drag/resize
+    // tool = shape tetap
     setShapeType(null);
   }
 
-  // onResponderGrant => user menekan overlay shape
-  function handleShapeStart(evt: GestureResponderEvent) {
-      console.log("masuk3")
-    const { locationX, locationY } = evt.nativeEvent;
+  // onResponderGrant => user men-tap overlay
+function handleShapeStart(evt: GestureResponderEvent) {
+  const { locationX, locationY } = evt.nativeEvent;
+  let foundShape = false;
 
-    let foundShape = false;
-    for (const shape of shapes) {
-      const { x, y, width, height } = shape;
-      if (locationX >= x && locationX <= x + width && locationY >= y && locationY <= y + height) {
-        // user menekan shape => set shape active
-        setActiveShapeId(shape.id);
-        setActiveTool('shape'); // user sedang shape mode
+  for (const shape of shapes) {
+    // Buat "padding" agar corner di tepi masih terdeteksi
+    const minX = shape.x - HANDLE_SIZE;
+    const maxX = shape.x + shape.width + HANDLE_SIZE;
+    const minY = shape.y - HANDLE_SIZE;
+    const maxY = shape.y + shape.height + HANDLE_SIZE;
 
-        // cek corner => resize
-        const corners = getShapeCorners(shape);
-        let foundCorner = false;
-        for (const cornerName in corners) {
-          const c = (corners as any)[cornerName];
-          if (distance(locationX, locationY, c.x, c.y) < HANDLE_SIZE) {
-            setResizeCorner(cornerName);
-            setDraggingId(shape.id);
-            foundCorner = true;
-            break;
-          }
-        }
-        // jika tidak di corner => drag
-        if (!foundCorner) {
-            console.log("masuk2")
+    if (locationX >= minX && locationX <= maxX && locationY >= minY && locationY <= maxY) {
+      // user men-tap "dalam" bounding box (plus margin)
+      setActiveShapeId(shape.id);
+      setActiveTool('shape');
+
+      // Cek corner => resize
+      const corners = getShapeCorners(shape);
+      let cornerFound = false;
+      for (const cornerName in corners) {
+        const cornerPt = (corners as any)[cornerName];
+        if (distance(locationX, locationY, cornerPt.x, cornerPt.y) < HANDLE_SIZE) {
+          setResizeCorner(cornerName);
           setDraggingId(shape.id);
-          setResizeCorner(null);
+          cornerFound = true;
+          break;
         }
-        foundShape = true;
-        break;
       }
-    }
-
-    // Tidak menekan shape mana pun => matikan shape, tool => null
-    if (!foundShape) {
-      if (shapeType) {
-        // jika user masih punya shapeType => buat shape baru
-        handleShapeTap(evt);
-      } else {
-        // user menekan luar shape => reset shape & tool
-        console.log("sini1")
-        setActiveShapeId(null);
-        setDraggingId(null);
+      if (!cornerFound) {
+        // drag
         setResizeCorner(null);
-        setActiveTool(null);
+        setDraggingId(shape.id);
       }
+
+      foundShape = true;
+      break;
     }
   }
 
-  // onResponderMove => drag/resize shape jika draggingId ada
-  function handleShapeMove(evt: GestureResponderEvent) {
-      console.log("masuk")
-    if (draggingId == null) return; // tak ada shape yg didrag/resize
+  if (!foundShape) {
+    // user menekan luar shape
+    if (shapeType) {
+      handleShapeTap(evt);
+    } else {
+      setActiveShapeId(null);
+      setDraggingId(null);
+      setResizeCorner(null);
+      setActiveTool(null);
+    }
+  }
+}
 
+
+  // onResponderMove => drag or resize shape
+  function handleShapeMove(evt: GestureResponderEvent) {
+    if (!draggingId) return;
     const { locationX, locationY } = evt.nativeEvent;
+
     setShapes((prev) =>
       prev.map((shape) => {
         if (shape.id !== draggingId) return shape;
 
-        // "anchor" corners
+        // Perhitungan anchor
         const oldRight = shape.x + shape.width;
         const oldBottom = shape.y + shape.height;
         const oldLeft = shape.x;
         const oldTop = shape.y;
-        console.log(resizeCorner)
+
         if (resizeCorner) {
           // Resize
           let newX = shape.x;
@@ -287,32 +284,31 @@ export default function FragmentationForm4() {
           let newH = shape.height;
 
           if (resizeCorner === 'topLeft') {
-            // anchor bottomRight => (oldRight, oldBottom) tetap
+            // anchor bottomRight => oldRight, oldBottom
             newX = locationX;
             newY = locationY;
             newW = oldRight - locationX;
             newH = oldBottom - locationY;
           } else if (resizeCorner === 'topRight') {
-            // anchor bottomLeft => (oldLeft, oldBottom)
+            // anchor bottomLeft => oldLeft, oldBottom
             newY = locationY;
             newW = locationX - oldLeft;
             newH = oldBottom - locationY;
           } else if (resizeCorner === 'bottomLeft') {
-            // anchor topRight => (oldRight, oldTop)
+            // anchor topRight => oldRight, oldTop
             newX = locationX;
             newW = oldRight - locationX;
             newH = locationY - oldTop;
           } else if (resizeCorner === 'bottomRight') {
-            // anchor topLeft => (oldLeft, oldTop)
+            // anchor topLeft => oldLeft, oldTop
             newW = locationX - oldLeft;
             newH = locationY - oldTop;
           }
-
           if (newW < 10) newW = 10;
           if (newH < 10) newH = 10;
           return { ...shape, x: newX, y: newY, width: newW, height: newH };
         } else {
-          // Drag (seluruh shape)
+          // Drag
           return {
             ...shape,
             x: locationX - shape.width / 2,
@@ -323,42 +319,71 @@ export default function FragmentationForm4() {
     );
   }
 
-  // onResponderRelease => reset dragging
+  // onResponderRelease => reset drag
   function handleShapeEnd() {
     setDraggingId(null);
     setResizeCorner(null);
   }
 
-  // paint shape
-  function handleShapePress(id: string) {
-    if (activeTool === 'paint') {
-      setShapes((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, fill: selectedColor } : s))
-      );
-    } else {
-      // user menekan shape => active
-      setActiveShapeId(id);
-      setDraggingId(id);
-      setActiveTool('shape');
+
+  // Render bounding box shape
+  function renderShape(shape: ShapeBox) {
+    const commonProps = {
+      fill: shape.fill,
+      stroke: 'black',
+      strokeWidth: 2,
+      pointerEvents: 'none' as const, // shape tak menangkap event
+    };
+    switch (shape.type) {
+      case 'rect': {
+        return (
+          <Rect
+            key={shape.id}
+            x={shape.x}
+            y={shape.y}
+            width={shape.width}
+            height={shape.height}
+            {...commonProps}
+          />
+        );
+      }
+      case 'circle': {
+        const r = Math.min(shape.width, shape.height) / 2;
+        return (
+          <Circle
+            key={shape.id}
+            cx={shape.x + shape.width / 2}
+            cy={shape.y + shape.height / 2}
+            r={r}
+            {...commonProps}
+          />
+        );
+      }
+      case 'triangle': {
+        const x1 = shape.x + shape.width / 2;
+        const y1 = shape.y;
+        const x2 = shape.x;
+        const y2 = shape.y + shape.height;
+        const x3 = shape.x + shape.width;
+        const y3 = shape.y + shape.height;
+        return (
+          <Polygon
+            key={shape.id}
+            points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`}
+            {...commonProps}
+          />
+        );
+      }
+      default:
+        return null;
     }
   }
 
-
-  // Tool highlight
   function isActiveTool(t: Tool) {
     return activeTool === t;
   }
 
-  // === Modals ===
-  function openColorPicker() {
-    setShowColorPicker(true);
-  }
-  function selectColorFn(c: string) {
-    setSelectedColor(c);
-    setShowColorPicker(false);
-    if (activeTool !== 'paint') setActiveTool('draw');
-  }
-
+  // modal line thickness
   function openLineThicknessPicker() {
     setShowLineThicknessPicker(true);
   }
@@ -368,6 +393,17 @@ export default function FragmentationForm4() {
     setActiveTool('line');
   }
 
+  // modal color
+  function openColorPicker() {
+    setShowColorPicker(true);
+  }
+  function selectColorFn(c: string) {
+    setSelectedColor(c);
+    setShowColorPicker(false);
+    if (activeTool !== 'paint') setActiveTool('draw');
+  }
+
+  // modal shape
   function openShapePicker() {
     setShowShapePicker(true);
   }
@@ -442,13 +478,13 @@ export default function FragmentationForm4() {
         <View style={styles.imageArea} onLayout={handleContainerLayout}>
           <View style={styles.fixedContainer}>
             <View style={[styles.scaledContent, { transform: [{ scale }] }]}>
-              {/* Background image */}
+              {/* Gambar background */}
               <Image
                 source={require('../../public/assets/batu.png')}
                 style={styles.image}
                 resizeMode="contain"
               />
-              {/* Freehand/Line/Erase overlay */}
+              {/* Overlay freehand/line/erase */}
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents={
@@ -486,81 +522,60 @@ export default function FragmentationForm4() {
                 </Svg>
               </View>
 
-              {/* bounding box shape overlay */}
+              {/* Overlay bounding box shape => drag/resize */}
               <View
                 style={StyleSheet.absoluteFill}
-                // pointerEvents => kita izinkan user menekan shape walaupun tool= null/pain/shape
-                pointerEvents={activeTool === 'shape' || activeTool === 'paint' || activeTool === null ? 'auto' : 'none'}
+                pointerEvents={
+                  activeTool === 'shape' || activeTool === 'paint' || activeTool === null
+                    ? 'auto'
+                    : 'none'
+                }
                 onStartShouldSetResponder={() => true}
-                onResponderGrant={(evt) => {
-                  handleShapeStart(evt);
-                }}
-                onResponderMove={(evt) => {
-                  handleShapeMove(evt);
-                }}
-                onResponderRelease={(evt) => {
-                  handleShapeEnd();
-                }}
+                onResponderGrant={handleShapeStart}
+                onResponderMove={handleShapeMove}
+                onResponderRelease={handleShapeEnd}
               >
                 <Svg style={StyleSheet.absoluteFill}>
-                  {shapes.map((sh) => renderShape(sh))}
-                  {/* Tampilkan corner handle hanya jika shape aktif */}
-                  {activeShapeId &&
-                    shapes
-                      .filter((obj) => obj.id === activeShapeId)
-                      .map((obj) => {
-                        // Corner handle => masing2 anchor corner seberangnya
-                        const corners = getShapeCorners(obj);
-                        return (
-                          <React.Fragment key={obj.id + '_handles'}>
-                            <Circle
-                              cx={corners.topLeft.x}
-                              cy={corners.topLeft.y}
-                              r={HANDLE_SIZE / 2}
-                              fill="gray"
-                              onStartShouldSetResponder={() => true}
-                              onResponderGrant={() => {
-                                  console.log('top left')
-                                setResizeCorner('topLeft');
-                                setDraggingId(obj.id);
-                              }}
-                            />
-                            <Circle
-                              cx={corners.topRight.x}
-                              cy={corners.topRight.y}
-                              r={HANDLE_SIZE / 2}
-                              fill="gray"
-                              onStartShouldSetResponder={() => true}
-                              onResponderGrant={() => {
-                                setResizeCorner('topRight');
-                                setDraggingId(obj.id);
-                              }}
-                            />
-                            <Circle
-                              cx={corners.bottomLeft.x}
-                              cy={corners.bottomLeft.y}
-                              r={HANDLE_SIZE / 2}
-                              fill="gray"
-                              onStartShouldSetResponder={() => true}
-                              onResponderGrant={() => {
-                                setResizeCorner('bottomLeft');
-                                setDraggingId(obj.id);
-                              }}
-                            />
-                            <Circle
-                              cx={corners.bottomRight.x}
-                              cy={corners.bottomRight.y}
-                              r={HANDLE_SIZE / 2}
-                              fill="gray"
-                              onStartShouldSetResponder={() => true}
-                              onResponderGrant={() => {
-                                setResizeCorner('bottomRight');
-                                setDraggingId(obj.id);
-                              }}
-                            />
-                          </React.Fragment>
-                        );
-                      })}
+                  {/* Render shape bounding box => pointerEvents:none (visual) */}
+                  {shapes.map((sh) => (
+                    <React.Fragment key={sh.id}>
+                      {renderShape(sh)}
+                      {/* Tampilkan corner handle jika shape ini adalah activeShape */}
+                      {sh.id === activeShapeId && (
+                        <React.Fragment>
+                          {/* corner circle => pointerEvents:none => cuma visual */}
+                          <Circle
+                            cx={sh.x}
+                            cy={sh.y}
+                            r={HANDLE_SIZE / 2}
+                            fill="gray"
+                            pointerEvents="none"
+                          />
+                          <Circle
+                            cx={sh.x + sh.width}
+                            cy={sh.y}
+                            r={HANDLE_SIZE / 2}
+                            fill="gray"
+                            pointerEvents="none"
+                          />
+                          <Circle
+                            cx={sh.x}
+                            cy={sh.y + sh.height}
+                            r={HANDLE_SIZE / 2}
+                            fill="gray"
+                            pointerEvents="none"
+                          />
+                          <Circle
+                            cx={sh.x + sh.width}
+                            cy={sh.y + sh.height}
+                            r={HANDLE_SIZE / 2}
+                            fill="gray"
+                            pointerEvents="none"
+                          />
+                        </React.Fragment>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </Svg>
               </View>
             </View>
@@ -594,7 +609,10 @@ export default function FragmentationForm4() {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity onPress={() => setShowColorPicker(false)} style={{ marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => setShowColorPicker(false)}
+              style={{ marginTop: 16 }}
+            >
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
@@ -618,7 +636,10 @@ export default function FragmentationForm4() {
                 <Text style={{ margin: 8 }}>{t}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity onPress={() => setShowLineThicknessPicker(false)} style={{ marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => setShowLineThicknessPicker(false)}
+              style={{ marginTop: 16 }}
+            >
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
@@ -640,7 +661,10 @@ export default function FragmentationForm4() {
                 <Text style={{ margin: 8 }}>{type}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity onPress={() => setShowShapePicker(false)} style={{ marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => setShowShapePicker(false)}
+              style={{ marginTop: 16 }}
+            >
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
@@ -650,17 +674,16 @@ export default function FragmentationForm4() {
   );
 }
 
+// Hanya visual shape + handle => pointerEvents="none"
 function renderShape(shape: ShapeBox) {
   const commonProps = {
     fill: shape.fill,
     stroke: 'black',
     strokeWidth: 2,
-    // <-- Kunci: pointerEvents="none"
-    pointerEvents: 'none' as const,
+    pointerEvents: 'none' as const, // agar event tak berhenti di shape
   };
-
   switch (shape.type) {
-    case 'rect':
+    case 'rect': {
       return (
         <Rect
           key={shape.id}
@@ -671,6 +694,7 @@ function renderShape(shape: ShapeBox) {
           {...commonProps}
         />
       );
+    }
     case 'circle': {
       const r = Math.min(shape.width, shape.height) / 2;
       return (
@@ -702,6 +726,7 @@ function renderShape(shape: ShapeBox) {
       return null;
   }
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
