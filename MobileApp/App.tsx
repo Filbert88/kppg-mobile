@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from './types/navigation';
@@ -26,19 +26,37 @@ import './global.css';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const syncTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerSync = () => {
+    
+    if (syncTimeout.current) {
+      clearTimeout(syncTimeout.current);
+    }
+
+    syncTimeout.current = setTimeout(() => {
+      syncLocalDataWithBackend();
+    }, 3000);
+  };
+
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       console.log('Connection type:', state.type);
       console.log('Is connected?', state.isConnected);
       if (state.isConnected) {
-        console.log('Device is online. Initiating sy..');
-        syncLocalDataWithBackend();
+        console.log('Device is online. Initiating sync...');
+        triggerSync();
       } else {
         console.log('Device is offline.');
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (syncTimeout.current) {
+        clearTimeout(syncTimeout.current);
+      }
+      unsubscribe();
+    };
   }, []);
   return (
     <NavigationContainer>

@@ -10,10 +10,18 @@ const API_ENDPOINTS: {[key: string]: string} = {
 
 const MODELS = ['DepthAverage', 'FragmentationData'];
 
-export const syncLocalDataWithBackend = async () => {
-  await sqliteService.init();
+let isSyncing = false;
 
-  NetInfo.fetch().then(async state => {
+export const syncLocalDataWithBackend = async () => {
+  if (isSyncing) {
+    console.log('Sync already in progress, skipping...');
+    return;
+  }
+  isSyncing = true;
+  try {
+    await sqliteService.init();
+
+    const state = await NetInfo.fetch();
     if (state.isConnected) {
       for (const model of MODELS) {
         const unsyncedData = await sqliteService.getUnsyncedData(model);
@@ -24,15 +32,13 @@ export const syncLocalDataWithBackend = async () => {
           const endpoint = API_ENDPOINTS[model];
 
           const formattedData = unsyncedData.map(data => ({
-            imageUri: data.imageUri ?? 'default_uri', 
+            imageUri: data.imageUri ?? 'default_uri',
             jumlahLubang: data.jumlahLubang || 'N/A',
             lokasi: data.lokasi || 'Unknown',
-            tanggal: data.tanggal
-              ? new Date(data.tanggal).toISOString()
-              : new Date().toISOString(),
-            kedalaman: data.kedalaman ?? '{}', 
-            average: data.average ?? '0', 
-            synced: data.synced ?? 0, 
+            tanggal: data.tanggal ? new Date(data.tanggal).toISOString() : new Date().toISOString(),
+            kedalaman: data.kedalaman || '{}',
+            average: data.average || '0',
+            synced: data.synced ?? 0,
           }));
 
           try {
@@ -49,20 +55,17 @@ export const syncLocalDataWithBackend = async () => {
               console.log(`${model} data synced successfully`);
             } else {
               const errorText = await response.text();
-              console.error(
-                `Failed to sync ${model} data, server error: ${errorText}`,
-              );
+              console.error(`Failed to sync ${model} data, server error: ${errorText}`);
             }
           } catch (error: any) {
-            console.error(
-              `Failed to sync ${model} data:`,
-              error.message ?? error,
-            );
+            console.error(`Failed to sync ${model} data:`, error.message ?? error);
           }
         }
       }
     } else {
       console.log('No internet connection, sync postponed');
     }
-  });
+  } finally {
+    isSyncing = false;
+  }
 };
