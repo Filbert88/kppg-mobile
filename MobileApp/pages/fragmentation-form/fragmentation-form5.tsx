@@ -567,8 +567,15 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('shape') && styles.activeIcon]}
             onPress={() => {
-              setActiveTool('shape');
-              setShowShapePicker(true);
+
+            if (activeTool === 'shape'){
+                setActiveTool(null);
+            }else {
+                  setActiveTool('shape');
+                  setShowShapePicker(true);
+
+            }
+
             }}
           >
             <SquareIcon width={20} height={20} />
@@ -585,8 +592,14 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('line') && styles.activeIcon]}
             onPress={() => {
-              setActiveTool('line');
-              setShowLineThicknessPicker(true);
+                if(activeTool === 'line'){
+                    setActiveTool(null)
+
+                }else{
+                     setActiveTool('line');
+                     setShowLineThicknessPicker(true);
+                }
+
             }}
           >
             <LineIcon width={20} height={20} />
@@ -594,8 +607,13 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('draw') && styles.activeIcon]}
             onPress={() => {
-              setActiveTool('draw');
-              setShowColorPicker(true);
+                if(activeTool === 'draw'){
+                    setActiveTool(null)
+                }else {
+                  setActiveTool('draw');
+                  setShowColorPicker(true);
+                }
+
             }}
           >
             <Edit2 stroke="#666" width={20} height={20} />
