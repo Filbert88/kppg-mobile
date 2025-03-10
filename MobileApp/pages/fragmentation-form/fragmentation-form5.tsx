@@ -29,10 +29,15 @@ interface Point {
   y: number;
 }
 
+/** Strokes can also be “closed” and filled. */
 interface Stroke {
   points: Point[];
   color: string;
   width: number;
+  /** If user finished near start => isClosed */
+  isClosed?: boolean;
+  /** Fill color if closed. */
+  fillColor?: string;
 }
 
 interface ShapeBox {
@@ -61,6 +66,7 @@ const HANDLE_SIZE = 15;
 const { width: screenWidth } = Dimensions.get('window');
 const COLORS = ['red', 'blue', 'green', 'black', 'orange'];
 const LINE_THICKNESS_OPTIONS = [2, 4, 6];
+const CLOSE_THRESHOLD = 15; // how close the last point must be to the first point to be considered "closed"
 
 // ===== UTILITY FUNCTIONS =====
 function strokeToPath(points: Point[]): string {
@@ -89,7 +95,24 @@ function nearPoint(x: number, y: number, px: number, py: number) {
   return distance(x, y, px, py) < HANDLE_SIZE;
 }
 
-// ================= MAIN COMPONENT =================
+/**
+ * Ray-casting algorithm for point-in-polygon test.
+ * Assumes the polygon is described by the array of points in order.
+ */
+function pointInPolygon(testX: number, testY: number, polygon: Point[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const { x: xi, y: yi } = polygon[i];
+    const { x: xj, y: yj } = polygon[j];
+
+    const intersect =
+      (yi > testY) !== (yj > testY) &&
+      testX < ((xj - xi) * (testY - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 export default function FragmentationForm4() {
   // --- TOOL & ZOOM ---
   const [activeTool, setActiveTool] = useState<Tool>(null);
@@ -142,7 +165,9 @@ export default function FragmentationForm4() {
     setScale(prev => (prev > 0.2 ? prev - 0.2 : prev));
   }
 
-  // === FREEHAND / LINE / ERASE HANDLERS ===
+  // ===================================================================
+  // ==================== DRAW / ERASE / LINE LOGIC =====================
+  // ===================================================================
   function handleDrawGrant(evt: GestureResponderEvent) {
     if (draggingShapeId || draggingLineId) return;
     const { locationX, locationY } = evt.nativeEvent;
@@ -155,6 +180,7 @@ export default function FragmentationForm4() {
       handleEraseAtPoint(locationX, locationY);
     }
   }
+
   function handleDrawMove(evt: GestureResponderEvent) {
     if (draggingShapeId || draggingLineId) return;
     const { locationX, locationY } = evt.nativeEvent;
@@ -166,52 +192,138 @@ export default function FragmentationForm4() {
       handleEraseAtPoint(locationX, locationY);
     }
   }
+
+  /**
+   * Called when user lifts finger after a draw or line operation.
+   * This is where we detect if a freehand stroke is “closed.”
+   */
   function handleDrawRelease() {
     if (draggingShapeId || draggingLineId) return;
+
+    // ---- FREEHAND DRAW ----
     if (activeTool === 'draw' && currentStroke.length > 1) {
-      const newStroke: Stroke = { points: currentStroke, color: selectedColor, width: 3 };
-      setStrokes(prev => [...prev, newStroke]);
+      const strokePoints = [...currentStroke];
       setCurrentStroke([]);
-    } else if (activeTool === 'line' && currentStroke.length === 2) {
+
+      // Check if stroke is closed
+      const firstPt = strokePoints[0];
+      const lastPt = strokePoints[strokePoints.length - 1];
+      const closed = distance(firstPt.x, firstPt.y, lastPt.x, lastPt.y) < CLOSE_THRESHOLD;
+
+      const newStroke: Stroke = {
+        points: strokePoints,
+        color: selectedColor,
+        width: 3,
+        isClosed: closed,
+        fillColor: closed ? 'none' : undefined,
+      };
+      setStrokes(prev => [...prev, newStroke]);
+    }
+
+    // ---- LINE DRAW ----
+    else if (activeTool === 'line' && currentStroke.length === 2) {
       const [p1, p2] = currentStroke;
-      const newLine: LineShape = { id: Date.now().toString(), x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, color: selectedColor };
+      const newLine: LineShape = {
+        id: Date.now().toString(),
+        x1: p1.x,
+        y1: p1.y,
+        x2: p2.x,
+        y2: p2.y,
+        color: selectedColor,
+      };
       setLines(prev => [...prev, newLine]);
       setCurrentStroke([]);
       setLineStartPoint(null);
-      // Remain in line tool so user can draw more lines.
+      // remain in line tool
     }
   }
+
+  /**
+   * If user is in erase mode, remove any strokes/shapes/lines near that point.
+   */
   function handleEraseAtPoint(x: number, y: number) {
-    setStrokes(prev => prev.filter(stroke => !stroke.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < ERASE_THRESHOLD)));
-    setShapes(prev => prev.filter(sh => !(x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height)));
+    setStrokes(prev =>
+      prev.filter(stroke =>
+        // Keep the stroke if there's NO point near (x, y) within ERASE_THRESHOLD
+        !stroke.points.some(pt => distance(pt.x, pt.y, x, y) < ERASE_THRESHOLD),
+      ),
+    );
+    setShapes(prev =>
+      prev.filter(sh => !(x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height)),
+    );
     setLines(prev =>
       prev.filter(ln => {
         const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
         return !(x >= minX - 10 && x <= maxX + 10 && y >= minY - 10 && y <= maxY + 10);
-      })
+      }),
     );
   }
 
-  // === PAINT FEATURE ===
-  // When in paint mode, tapping inside a shape fills it with the selected color.
-  function handlePaint(evt: GestureResponderEvent): boolean {
-    const { locationX, locationY } = evt.nativeEvent;
+  // ===================================================================
+  // ==================== PAINT FEATURE (FILL) ==========================
+  // ===================================================================
+  /**
+   * Attempt to paint inside a shape OR a closed stroke at (x,y).
+   * Returns true if something was painted, false otherwise.
+   */
+  function handlePaintAtPoint(x: number, y: number): boolean {
+    // 1) Check if user tapped inside any rectangle/circle/triangle shapes
     for (const sh of shapes) {
-      if (locationX >= sh.x && locationX <= sh.x + sh.width &&
-          locationY >= sh.y && locationY <= sh.y + sh.height) {
+      if (
+        x >= sh.x &&
+        x <= sh.x + sh.width &&
+        y >= sh.y &&
+        y <= sh.y + sh.height
+      ) {
         setShapes(prev =>
           prev.map(shape =>
-            shape.id === sh.id ? { ...shape, fill: selectedColor } : shape
-          )
+            shape.id === sh.id ? { ...shape, fill: selectedColor } : shape,
+          ),
         );
         setActiveShapeId(sh.id);
         return true;
       }
     }
+
+    // 2) Check closed freehand strokes
+    //    We do bounding-box check first, then a pointInPolygon test if closed.
+    //    If inside => fill that stroke.
+    for (let i = 0; i < strokes.length; i++) {
+      const stroke = strokes[i];
+      if (!stroke.isClosed) continue; // skip open strokes
+
+      // bounding box of the stroke:
+      const xs = stroke.points.map(p => p.x);
+      const ys = stroke.points.map(p => p.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+
+      // quick bounding box test
+      if (x < minX || x > maxX || y < minY || y > maxY) {
+        continue;
+      }
+
+      // deeper point-in-polygon test
+      const inside = pointInPolygon(x, y, stroke.points);
+      if (inside) {
+        setStrokes(prev =>
+          prev.map((s, idx) => {
+            if (idx !== i) return s;
+            return { ...s, fillColor: selectedColor };
+          }),
+        );
+        return true;
+      }
+    }
+
     return false;
   }
 
-  // === SHAPE CREATION ===
+  // ===================================================================
+  // ==================== SHAPE CREATION & DRAGGING =====================
+  // ===================================================================
   function createShape(evt: GestureResponderEvent) {
     if (!shapeType) return;
     const { locationX, locationY } = evt.nativeEvent;
@@ -226,11 +338,10 @@ export default function FragmentationForm4() {
     };
     setShapes(prev => [...prev, newShape]);
     setActiveShapeId(newShape.id);
-    // Remain in shape tool; reset shapeType.
+    // remain in shape tool
     setShapeType(null);
   }
 
-  // === OVERLAY DRAG/RESIZE HANDLERS FOR SHAPES & LINES ===
   function getShapeCorners(shape: ShapeBox) {
     return {
       topLeft: { x: shape.x, y: shape.y },
@@ -240,7 +351,9 @@ export default function FragmentationForm4() {
     };
   }
 
-  // Single overlay handler that deals with pointer events on the canvas.
+  // ===================================================================
+  // ================ SHARED OVERLAY POINTER HANDLERS ==================
+  // ===================================================================
   function handleOverlayStart(evt: GestureResponderEvent) {
     const { locationX, locationY } = evt.nativeEvent;
 
@@ -248,13 +361,16 @@ export default function FragmentationForm4() {
       handleEraseAtPoint(locationX, locationY);
       return;
     }
-    // If in paint mode, try to fill a shape and return.
+
+    // If in paint mode, try to fill a shape or closed stroke
     if (activeTool === 'paint') {
-      if (handlePaint(evt)) return;
+      const painted = handlePaintAtPoint(locationX, locationY);
+      if (painted) return; // if we painted something, we can stop
     }
 
     let found = false;
-    // 1) Check shapes first.
+
+    // 1) Check shapes first
     for (const sh of shapes) {
       const minX = sh.x - HANDLE_SIZE;
       const maxX = sh.x + sh.width + HANDLE_SIZE;
@@ -284,11 +400,17 @@ export default function FragmentationForm4() {
       }
     }
 
-    // 2) Check lines if no shape was found.
+    // 2) Check lines if no shape was found
     if (!found) {
       for (const ln of lines) {
         const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
-        if (locationX >= minX - 10 && locationX <= maxX + 10 && locationY >= minY - 10 && locationY <= maxY + 10) {
+        if (
+          locationX >= minX - 10 &&
+          locationX <= maxX + 10 &&
+          locationY >= minY - 10 &&
+          locationY <= maxY + 10
+        ) {
+          // Check endpoints first
           if (nearPoint(locationX, locationY, ln.x1, ln.y1)) {
             setResizingLineEndpoint('start');
             setDraggingLineId(ln.id);
@@ -312,21 +434,28 @@ export default function FragmentationForm4() {
 
     // 3) If nothing was found:
     if (!found) {
+      // If currently in shape mode and we have a shapeType, create a shape
       if (activeTool === 'shape' && shapeType) {
         createShape(evt);
-      } else if (activeTool === 'draw') {
+      }
+      // If in freehand draw
+      else if (activeTool === 'draw') {
         setCurrentStroke([{ x: locationX, y: locationY }]);
-      } else if (activeTool === 'line') {
+      }
+      // If in line mode
+      else if (activeTool === 'line') {
         setLineStartPoint({ x: locationX, y: locationY });
         setCurrentStroke([{ x: locationX, y: locationY }]);
       } else {
-        // Tapped empty area: reset if in paint/shape mode or null.
+        // Tapped empty area
         setActiveShapeId(null);
         setActiveLineId(null);
         setDraggingShapeId(null);
         setResizeCorner(null);
         setDraggingLineId(null);
         setResizingLineEndpoint(null);
+
+        // If tool is paint/shape/null, revert to null
         if (activeTool === 'paint' || activeTool === 'shape' || activeTool === null) {
           setActiveTool(null);
         }
@@ -344,7 +473,11 @@ export default function FragmentationForm4() {
           const oldRight = sh.x + sh.width;
           const oldBottom = sh.y + sh.height;
           if (resizeCorner) {
-            let newX = sh.x, newY = sh.y, newW = sh.width, newH = sh.height;
+            // resizing
+            let newX = sh.x,
+              newY = sh.y,
+              newW = sh.width,
+              newH = sh.height;
             if (resizeCorner === 'topLeft') {
               newX = locationX;
               newY = locationY;
@@ -366,9 +499,14 @@ export default function FragmentationForm4() {
             if (newH < 10) newH = 10;
             return { ...sh, x: newX, y: newY, width: newW, height: newH };
           } else {
-            return { ...sh, x: locationX - sh.width / 2, y: locationY - sh.height / 2 };
+            // dragging whole shape
+            return {
+              ...sh,
+              x: locationX - sh.width / 2,
+              y: locationY - sh.height / 2,
+            };
           }
-        })
+        }),
       );
       return;
     }
@@ -382,6 +520,7 @@ export default function FragmentationForm4() {
           } else if (resizingLineEndpoint === 'end') {
             return { ...ln, x2: locationX, y2: locationY };
           } else {
+            // dragging whole line
             const midX = (ln.x1 + ln.x2) / 2;
             const midY = (ln.y1 + ln.y2) / 2;
             const diffX = locationX - midX;
@@ -394,7 +533,7 @@ export default function FragmentationForm4() {
               y2: ln.y2 + diffY,
             };
           }
-        })
+        }),
       );
       return;
     }
@@ -413,59 +552,69 @@ export default function FragmentationForm4() {
   }
 
   function handleOverlayEnd() {
+    // End a freehand stroke or line stroke
     if (activeTool === 'draw' && currentStroke.length > 1) {
-      const newStroke: Stroke = { points: currentStroke, color: selectedColor, width: 3 };
-      setStrokes(prev => [...prev, newStroke]);
+      const strokePoints = [...currentStroke];
       setCurrentStroke([]);
+
+      // Check if stroke is closed
+      const firstPt = strokePoints[0];
+      const lastPt = strokePoints[strokePoints.length - 1];
+      const closed = distance(firstPt.x, firstPt.y, lastPt.x, lastPt.y) < CLOSE_THRESHOLD;
+
+      const newStroke: Stroke = {
+        points: strokePoints,
+        color: selectedColor,
+        width: 3,
+        isClosed: closed,
+        fillColor: closed ? 'none' : undefined,
+      };
+      setStrokes(prev => [...prev, newStroke]);
     } else if (activeTool === 'line' && currentStroke.length === 2) {
       const [p1, p2] = currentStroke;
-      const newLine: LineShape = { id: Date.now().toString(), x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, color: selectedColor };
+      const newLine: LineShape = {
+        id: Date.now().toString(),
+        x1: p1.x,
+        y1: p1.y,
+        x2: p2.x,
+        y2: p2.y,
+        color: selectedColor,
+      };
       setLines(prev => [...prev, newLine]);
       setCurrentStroke([]);
       setLineStartPoint(null);
     }
+
+    // Clean up dragging/resizing
     setDraggingShapeId(null);
     setResizeCorner(null);
     setDraggingLineId(null);
     setResizingLineEndpoint(null);
   }
 
-  // === PAINT FEATURE ===
-  // When in 'paint' mode, tapping inside a shape fills it with the selected color.
-  function handlePaint(evt: GestureResponderEvent): boolean {
-    const { locationX, locationY } = evt.nativeEvent;
-    for (const sh of shapes) {
-      if (locationX >= sh.x && locationX <= sh.x + sh.width &&
-          locationY >= sh.y && locationY <= sh.y + sh.height) {
-        setShapes(prev =>
-          prev.map(shape => shape.id === sh.id ? { ...shape, fill: selectedColor } : shape)
-        );
-        setActiveShapeId(sh.id);
-        return true;
-      }
-    }
-    return false;
+  // ===================================================================
+  // ==================== RENDERING HELPERS =============================
+  // ===================================================================
+  function renderStrokes() {
+    return strokes.map((stroke, i) => {
+      const path = strokeToPath(stroke.points);
+      return (
+        <Path
+          key={'st' + i}
+          d={path}
+          stroke={stroke.color}
+          strokeWidth={stroke.width}
+          fill={stroke.isClosed ? (stroke.fillColor || 'none') : 'none'}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      );
+    });
   }
 
-
-
-  
-
-  // === RENDER HELPERS ===
-  const renderStrokes = () =>
-    strokes.map((stroke, i) => (
-      <Path
-        key={'st' + i}
-        d={strokeToPath(stroke.points)}
-        stroke={stroke.color}
-        strokeWidth={stroke.width}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ));
-  const renderCurrentStroke = () => {
+  function renderCurrentStroke() {
     if (!currentStroke.length) return null;
+    // If user is drawing a line
     if (activeTool === 'line' && currentStroke.length === 2) {
       const [p1, p2] = currentStroke;
       return (
@@ -478,10 +627,13 @@ export default function FragmentationForm4() {
           strokeWidth={lineThickness}
         />
       );
-    } else if (activeTool === 'draw') {
+    }
+    // If user is freehand drawing
+    if (activeTool === 'draw') {
+      const d = strokeToPath(currentStroke);
       return (
         <Path
-          d={strokeToPath(currentStroke)}
+          d={d}
           stroke={selectedColor}
           strokeWidth={3}
           fill="none"
@@ -491,39 +643,101 @@ export default function FragmentationForm4() {
       );
     }
     return null;
-  };
-  const renderShapes = () =>
-    shapes.map(sh => {
+  }
+
+  function renderShapes() {
+    return shapes.map(sh => {
       const isActive = sh.id === activeShapeId;
-      const commonProps = { fill: sh.fill, stroke: 'black', strokeWidth: 2, pointerEvents: 'none' as const };
+      const commonProps = {
+        fill: sh.fill,
+        stroke: 'black',
+        strokeWidth: 2,
+        pointerEvents: 'none' as const,
+      };
+
       let shapeElem: React.ReactNode;
       if (sh.type === 'rect') {
-        shapeElem = <Rect key={sh.id} x={sh.x} y={sh.y} width={sh.width} height={sh.height} {...commonProps} />;
+        shapeElem = (
+          <Rect
+            key={sh.id}
+            x={sh.x}
+            y={sh.y}
+            width={sh.width}
+            height={sh.height}
+            {...commonProps}
+          />
+        );
       } else if (sh.type === 'circle') {
         const r = Math.min(sh.width, sh.height) / 2;
-        shapeElem = <Circle key={sh.id} cx={sh.x + sh.width / 2} cy={sh.y + sh.height / 2} r={r} {...commonProps} />;
+        shapeElem = (
+          <Circle
+            key={sh.id}
+            cx={sh.x + sh.width / 2}
+            cy={sh.y + sh.height / 2}
+            r={r}
+            {...commonProps}
+          />
+        );
       } else {
-        const x1 = sh.x + sh.width / 2, y1 = sh.y;
-        const x2 = sh.x, y2 = sh.y + sh.height;
-        const x3 = sh.x + sh.width, y3 = sh.y + sh.height;
-        shapeElem = <Polygon key={sh.id} points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`} {...commonProps} />;
+        // Triangle
+        const x1 = sh.x + sh.width / 2,
+          y1 = sh.y;
+        const x2 = sh.x,
+          y2 = sh.y + sh.height;
+        const x3 = sh.x + sh.width,
+          y3 = sh.y + sh.height;
+        shapeElem = (
+          <Polygon
+            key={sh.id}
+            points={`${x1},${y1} ${x2},${y2} ${x3},${y3}`}
+            {...commonProps}
+          />
+        );
       }
+
       return (
         <React.Fragment key={sh.id}>
           {shapeElem}
           {isActive && (
             <>
-              <Circle cx={sh.x} cy={sh.y} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
-              <Circle cx={sh.x + sh.width} cy={sh.y} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
-              <Circle cx={sh.x} cy={sh.y + sh.height} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
-              <Circle cx={sh.x + sh.width} cy={sh.y + sh.height} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
+              {/* Show resize handles if active */}
+              <Circle
+                cx={sh.x}
+                cy={sh.y}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
+              <Circle
+                cx={sh.x + sh.width}
+                cy={sh.y}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
+              <Circle
+                cx={sh.x}
+                cy={sh.y + sh.height}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
+              <Circle
+                cx={sh.x + sh.width}
+                cy={sh.y + sh.height}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
             </>
           )}
         </React.Fragment>
       );
     });
-  const renderLines = () =>
-    lines.map(ln => {
+  }
+
+  function renderLines() {
+    return lines.map(ln => {
       const isActive = ln.id === activeLineId;
       return (
         <React.Fragment key={ln.id}>
@@ -538,15 +752,30 @@ export default function FragmentationForm4() {
           />
           {isActive && (
             <>
-              <Circle cx={ln.x1} cy={ln.y1} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
-              <Circle cx={ln.x2} cy={ln.y2} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
+              <Circle
+                cx={ln.x1}
+                cy={ln.y1}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
+              <Circle
+                cx={ln.x2}
+                cy={ln.y2}
+                r={HANDLE_SIZE / 2}
+                fill="gray"
+                pointerEvents="none"
+              />
             </>
           )}
         </React.Fragment>
       );
     });
+  }
 
-  // === RENDERING THE COMPONENT ===
+  // ===================================================================
+  // ===================== COMPONENT RENDER =============================
+  // ===================================================================
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.pageContainer}>
@@ -567,15 +796,12 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('shape') && styles.activeIcon]}
             onPress={() => {
-
-            if (activeTool === 'shape'){
+              if (activeTool === 'shape') {
                 setActiveTool(null);
-            }else {
-                  setActiveTool('shape');
-                  setShowShapePicker(true);
-
-            }
-
+              } else {
+                setActiveTool('shape');
+                setShowShapePicker(true);
+              }
             }}
           >
             <SquareIcon width={20} height={20} />
@@ -592,14 +818,12 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('line') && styles.activeIcon]}
             onPress={() => {
-                if(activeTool === 'line'){
-                    setActiveTool(null)
-
-                }else{
-                     setActiveTool('line');
-                     setShowLineThicknessPicker(true);
-                }
-
+              if (activeTool === 'line') {
+                setActiveTool(null);
+              } else {
+                setActiveTool('line');
+                setShowLineThicknessPicker(true);
+              }
             }}
           >
             <LineIcon width={20} height={20} />
@@ -607,13 +831,12 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('draw') && styles.activeIcon]}
             onPress={() => {
-                if(activeTool === 'draw'){
-                    setActiveTool(null)
-                }else {
-                  setActiveTool('draw');
-                  setShowColorPicker(true);
-                }
-
+              if (activeTool === 'draw') {
+                setActiveTool(null);
+              } else {
+                setActiveTool('draw');
+                setShowColorPicker(true);
+              }
             }}
           >
             <Edit2 stroke="#666" width={20} height={20} />
@@ -700,7 +923,10 @@ export default function FragmentationForm4() {
                 <Text style={{ margin: 8 }}>{t}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity onPress={() => setShowLineThicknessPicker(false)} style={{ marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => setShowLineThicknessPicker(false)}
+              style={{ marginTop: 16 }}
+            >
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
@@ -734,8 +960,7 @@ export default function FragmentationForm4() {
   );
 }
 
-export default FragmentationForm4;
-
+// ======================= STYLES =========================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   pageContainer: { flex: 1, paddingHorizontal: PAGE_PADDING },
@@ -751,13 +976,35 @@ const styles = StyleSheet.create({
   iconButton: { padding: 8 },
   activeIcon: { backgroundColor: 'rgba(0,255,0,0.2)', borderRadius: 8 },
   imageArea: { flex: 1, marginTop: 20 },
-  fixedContainer: { width: '100%', aspectRatio: 1, backgroundColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' },
+  fixedContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
   image: { width: '100%', height: '100%' },
   nextButtonContainer: { flex: 0.5, justifyContent: 'flex-end', paddingBottom: 16 },
   nextButton: { backgroundColor: 'green', borderRadius: 8, padding: 12, alignItems: 'center' },
   nextButtonText: { color: 'white', fontWeight: '500' },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', padding: 16, borderRadius: 8, width: '80%', alignItems: 'center' },
-  colorPickerRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginVertical: 8 },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    width: '80%',
+    alignItems: 'center',
+  },
+  colorPickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginVertical: 8,
+  },
   colorCircle: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 8 },
 });
