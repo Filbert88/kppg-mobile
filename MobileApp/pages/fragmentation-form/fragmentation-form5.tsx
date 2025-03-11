@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import PaintIcon from '../../assets/paint.svg';
 import LineIcon from '../../assets/line.svg';
 
 // ===== TYPES & INTERFACES =====
-type Tool = 'draw' | 'erase' | 'line' | 'paint' | 'shape' | null;
+type Tool = 'draw' | 'erase' | 'line' | 'paint' | 'shape' | 'crop' | null;
 type ShapeType = 'rect' | 'circle' | 'triangle';
 
 interface Point {
@@ -29,14 +29,11 @@ interface Point {
   y: number;
 }
 
-/** Strokes can also be “closed” and filled. */
 interface Stroke {
   points: Point[];
   color: string;
   width: number;
-  /** If the stroke is closed (its start and end are near) */
   isClosed?: boolean;
-  /** Fill color if closed */
   fillColor?: string;
 }
 
@@ -47,7 +44,7 @@ interface ShapeBox {
   y: number;
   width: number;
   height: number;
-  fill: string; // e.g. 'none' or 'red'
+  fill: string;
 }
 
 interface LineShape {
@@ -66,8 +63,16 @@ const HANDLE_SIZE = 15;
 const { width: screenWidth } = Dimensions.get('window');
 const COLORS = ['red', 'blue', 'green', 'black', 'orange'];
 const LINE_THICKNESS_OPTIONS = [2, 4, 6];
-const CLOSE_THRESHOLD = 15; // how close the last point must be to the first to be considered closed
-const CONNECT_THRESHOLD = 20; // threshold to consider endpoints "connected" between strokes
+
+const CLOSE_THRESHOLD = 15;    // stroke start/end distance for "closed"
+const CONNECT_THRESHOLD = 20;  // stroke endpoints distance for merging
+const CROP_HANDLE_SIZE = 20;   // diameter for crop corner handles
+const MIN_CROP_SIZE = 50;      // minimum width/height for the crop box
+
+// Lower sensitivity factor so changes are smaller (values <1 slow down the change)
+const RESIZE_SENSITIVITY = 0.2;
+// Increase corner detection threshold so it's easier to grab a handle
+const CORNER_THRESHOLD = CROP_HANDLE_SIZE * 1.2;
 
 // ===== UTILITY FUNCTIONS =====
 function strokeToPath(points: Point[]): string {
@@ -97,7 +102,7 @@ function nearPoint(x: number, y: number, px: number, py: number) {
 }
 
 /**
- * Ray-casting algorithm for point-in-polygon test.
+ * Simple point-in-polygon test (ray-casting).
  */
 function pointInPolygon(testX: number, testY: number, polygon: Point[]): boolean {
   let inside = false;
@@ -113,9 +118,7 @@ function pointInPolygon(testX: number, testY: number, polygon: Point[]): boolean
 }
 
 /**
- * Merges strokes that are connected (their endpoints are within CONNECT_THRESHOLD)
- * Returns an array of groups; each group has the indices of strokes in the group
- * and a merged polygon (an array of points).
+ * Merges strokes that have endpoints within CONNECT_THRESHOLD.
  */
 function mergeConnectedStrokes(strokes: Stroke[]): { indices: number[]; polygon: Point[] }[] {
   const groups: { indices: number[]; polygon: Point[] }[] = [];
@@ -125,7 +128,7 @@ function mergeConnectedStrokes(strokes: Stroke[]): { indices: number[]; polygon:
     if (visited[i]) continue;
     let groupIndices = [i];
     visited[i] = true;
-    // Start with a copy of the stroke's points
+
     let polyline = strokes[i].points.slice();
     let merged = true;
     while (merged) {
@@ -139,25 +142,21 @@ function mergeConnectedStrokes(strokes: Stroke[]): { indices: number[]; polygon:
         const candidateEnd = candidate[candidate.length - 1];
 
         if (distance(endPoly.x, endPoly.y, candidateStart.x, candidateStart.y) < CONNECT_THRESHOLD) {
-          // Append candidate (skip first point)
           polyline = polyline.concat(candidate.slice(1));
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
         } else if (distance(endPoly.x, endPoly.y, candidateEnd.x, candidateEnd.y) < CONNECT_THRESHOLD) {
-          // Append reversed candidate (skip last point)
           polyline = polyline.concat(candidate.slice(0, candidate.length - 1).reverse());
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
         } else if (distance(startPoly.x, startPoly.y, candidateEnd.x, candidateEnd.y) < CONNECT_THRESHOLD) {
-          // Prepend candidate (skip last point)
           polyline = candidate.slice(0, candidate.length - 1).reverse().concat(polyline);
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
         } else if (distance(startPoly.x, startPoly.y, candidateStart.x, candidateStart.y) < CONNECT_THRESHOLD) {
-          // Prepend reversed candidate (skip first point)
           const reversedCandidate = candidate.slice().reverse();
           polyline = reversedCandidate.slice(1).concat(polyline);
           visited[j] = true;
@@ -204,16 +203,36 @@ export default function FragmentationForm4() {
   const [draggingLineId, setDraggingLineId] = useState<string | null>(null);
   const [resizingLineEndpoint, setResizingLineEndpoint] = useState<'start' | 'end' | null>(null);
 
-  // --- LAYOUT ---
-  const [containerX, setContainerX] = useState<number>(0);
-  const [containerY, setContainerY] = useState<number>(0);
+  // --- IMAGE & CROP STATES ---
+  const [imageLayout, setImageLayout] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [cropRect, setCropRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [isCropped, setIsCropped] = useState<boolean>(false);
+
+  // Crop dragging/resizing states (using global page coordinates)
+  const [activeCropHandle, setActiveCropHandle] = useState<
+    'move' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null
+  >(null);
+  const [cropStartPage, setCropStartPage] = useState<{ x: number; y: number } | null>(null);
+  const [initialCropRect, setInitialCropRect] = useState(cropRect);
+
+  useEffect(() => {
+    setInitialCropRect(cropRect);
+  }, [cropRect]);
+
   function handleContainerLayout(e: LayoutChangeEvent) {
-    const { x, y } = e.nativeEvent.layout;
-    setContainerX(x);
-    setContainerY(y);
+    const { width, height } = e.nativeEvent.layout;
+    setImageLayout({ width, height });
+    if (activeTool === 'crop' && !cropRect) {
+      setCropRect({
+        x: width * 0.1,
+        y: height * 0.1,
+        width: width * 0.8,
+        height: height * 0.8,
+      });
+    }
   }
 
-  // --- TOOLBAR HELPERS ---
+  // === TOOLBAR UTILS ===
   function isActiveToolFunc(t: Tool) {
     return activeTool === t;
   }
@@ -225,7 +244,7 @@ export default function FragmentationForm4() {
   }
 
   // ===================================================================
-  // ==================== DRAW / ERASE / LINE LOGIC =====================
+  // DRAW / ERASE / LINE LOGIC
   // ===================================================================
   function handleDrawGrant(evt: GestureResponderEvent) {
     if (draggingShapeId || draggingLineId) return;
@@ -252,13 +271,8 @@ export default function FragmentationForm4() {
     }
   }
 
-  /**
-   * When the user releases a draw gesture, check if the freehand stroke is closed.
-   * If so, mark it so that the paint tool can fill it.
-   */
   function handleDrawRelease() {
     if (draggingShapeId || draggingLineId) return;
-
     if (activeTool === 'draw' && currentStroke.length > 1) {
       const strokePoints = [...currentStroke];
       setCurrentStroke([]);
@@ -289,25 +303,24 @@ export default function FragmentationForm4() {
     }
   }
 
-  /**
-   * Erase handler: removes strokes if tap is near any stroke points or inside any merged closed area.
-   */
   function handleEraseAtPoint(x: number, y: number) {
     setStrokes(prev => {
       const toRemove = new Set<number>();
-      // Erase if tap is near any point in a stroke
       prev.forEach((stroke, idx) => {
         if (stroke.points.some(pt => distance(pt.x, pt.y, x, y) < ERASE_THRESHOLD)) {
           toRemove.add(idx);
         }
       });
-      // Merge connected strokes and erase if tap is inside a nearly closed merged polygon
       const groups = mergeConnectedStrokes(prev);
       groups.forEach(group => {
         if (
           group.polygon.length > 0 &&
-          // Use CONNECT_THRESHOLD here to allow a small gap
-          distance(group.polygon[0].x, group.polygon[0].y, group.polygon[group.polygon.length - 1].x, group.polygon[group.polygon.length - 1].y) < CONNECT_THRESHOLD
+          distance(
+            group.polygon[0].x,
+            group.polygon[0].y,
+            group.polygon[group.polygon.length - 1].x,
+            group.polygon[group.polygon.length - 1].y
+          ) < CONNECT_THRESHOLD
         ) {
           if (pointInPolygon(x, y, group.polygon)) {
             group.indices.forEach(idx => toRemove.add(idx));
@@ -317,10 +330,10 @@ export default function FragmentationForm4() {
       return prev.filter((_, idx) => !toRemove.has(idx));
     });
 
-    // Also erase shapes and lines as before
     setShapes(prev =>
       prev.filter(sh => !(x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height))
     );
+
     setLines(prev =>
       prev.filter(ln => {
         const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
@@ -329,28 +342,16 @@ export default function FragmentationForm4() {
     );
   }
 
-  // ===================================================================
-  // ==================== PAINT FEATURE (FILL) ==========================
-  /**
-   * When in paint mode, first check for a filled ShapeBox.
-   * Then check individual closed strokes.
-   * Finally, merge connected strokes and fill them if the merged polygon is nearly closed.
-   */
   function handlePaintAtPoint(x: number, y: number): boolean {
-    // Check shapes first
     for (const sh of shapes) {
       if (x >= sh.x && x <= sh.x + sh.width && y >= sh.y && y <= sh.y + sh.height) {
         setShapes(prev =>
-          prev.map(shape =>
-            shape.id === sh.id ? { ...shape, fill: selectedColor } : shape
-          )
+          prev.map(shape => (shape.id === sh.id ? { ...shape, fill: selectedColor } : shape))
         );
         setActiveShapeId(sh.id);
         return true;
       }
     }
-
-    // Check individual closed strokes
     for (let i = 0; i < strokes.length; i++) {
       const stroke = strokes[i];
       if (stroke.isClosed) {
@@ -369,16 +370,16 @@ export default function FragmentationForm4() {
         }
       }
     }
-
-    console.log("merge")
-
-    // Check merged groups from connected strokes
     const groups = mergeConnectedStrokes(strokes);
     for (const group of groups) {
       if (
         group.polygon.length > 0 &&
-        // Use CONNECT_THRESHOLD to decide if the merged group is nearly closed
-        distance(group.polygon[0].x, group.polygon[0].y, group.polygon[group.polygon.length - 1].x, group.polygon[group.polygon.length - 1].y) < CONNECT_THRESHOLD
+        distance(
+          group.polygon[0].x,
+          group.polygon[0].y,
+          group.polygon[group.polygon.length - 1].x,
+          group.polygon[group.polygon.length - 1].y
+        ) < CONNECT_THRESHOLD
       ) {
         if (pointInPolygon(x, y, group.polygon)) {
           setStrokes(prev =>
@@ -392,13 +393,9 @@ export default function FragmentationForm4() {
         }
       }
     }
-
     return false;
   }
 
-  // ===================================================================
-  // ==================== SHAPE CREATION & DRAGGING =====================
-  // ===================================================================
   function createShape(evt: GestureResponderEvent) {
     if (!shapeType) return;
     const { locationX, locationY } = evt.nativeEvent;
@@ -426,26 +423,213 @@ export default function FragmentationForm4() {
   }
 
   // ===================================================================
-  // ================ SHARED OVERLAY POINTER HANDLERS ==================
+  // CROP FUNCTIONALITY & OVERLAY
+  // ===================================================================
+  function renderCropDimming() {
+    if (!cropRect) return null;
+    return (
+      <>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: cropRect.y, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+        <View style={{ position: 'absolute', top: cropRect.y, left: 0, width: cropRect.x, height: cropRect.height, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+        <View style={{ position: 'absolute', top: cropRect.y, left: cropRect.x + cropRect.width, right: 0, height: cropRect.height, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+        <View style={{ position: 'absolute', top: cropRect.y + cropRect.height, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+      </>
+    );
+  }
+
+  function renderCropOverlay() {
+      console.log("masuk")
+    if (activeTool !== 'crop' || !cropRect) return null;
+
+    console.log("masuk 1")
+    // Corners relative to the crop overlay.
+    const corners = {
+      topLeft: { x: 0, y: 0 },
+      topRight: { x: cropRect.width, y: 0 },
+      bottomLeft: { x: 0, y: cropRect.height },
+      bottomRight: { x: cropRect.width, y: cropRect.height },
+    };
+
+    // Use global page coordinates for consistent delta calculation.
+    function onCropGrant(evt: GestureResponderEvent) {
+      const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
+      // Check if touch is near a corner handle using local coordinates.
+      for (const [key, pos] of Object.entries(corners)) {
+        if (distance(locationX, locationY, pos.x, pos.y) < CORNER_THRESHOLD) {
+            console.log("masuk corner")
+          setActiveCropHandle(key as 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight');
+          setCropStartPage({ x: pageX, y: pageY });
+          setInitialCropRect(cropRect);
+          return;
+        }
+      }
+      // If touch is inside the overlay, start move.
+      if (
+        locationX >= 0 &&
+        locationX <= cropRect.width &&
+        locationY >= 0 &&
+        locationY <= cropRect.height
+      ) {
+        setActiveCropHandle('move');
+        setCropStartPage({ x: pageX, y: pageY });
+        setInitialCropRect(cropRect);
+      }
+    }
+
+    function onCropMove(evt: GestureResponderEvent) {
+        console.log("h1")
+      if (!cropStartPage || !initialCropRect) return;
+      console.log("h12")
+      const { pageX, pageY } = evt.nativeEvent;
+      const dx = (pageX - cropStartPage.x) * RESIZE_SENSITIVITY;
+      const dy = (pageY - cropStartPage.y) * RESIZE_SENSITIVITY;
+
+      if (activeCropHandle === 'move') {
+        let newX = initialCropRect.x + dx;
+        let newY = initialCropRect.y + dy;
+        newX = Math.max(0, Math.min(newX, imageLayout.width - initialCropRect.width));
+        newY = Math.max(0, Math.min(newY, imageLayout.height - initialCropRect.height));
+        setCropRect({
+          x: newX,
+          y: newY,
+          width: initialCropRect.width,
+          height: initialCropRect.height,
+        });
+      } else if (activeCropHandle === 'topLeft') {
+        let newX = initialCropRect.x + dx;
+        let newY = initialCropRect.y + dy;
+        let newW = initialCropRect.width - dx;
+        let newH = initialCropRect.height - dy;
+        if (newW < MIN_CROP_SIZE) {
+          newW = MIN_CROP_SIZE;
+          newX = initialCropRect.x + (initialCropRect.width - MIN_CROP_SIZE);
+        }
+        if (newH < MIN_CROP_SIZE) {
+          newH = MIN_CROP_SIZE;
+          newY = initialCropRect.y + (initialCropRect.height - MIN_CROP_SIZE);
+        }
+        setCropRect({ x: newX, y: newY, width: newW, height: newH });
+      } else if (activeCropHandle === 'topRight') {
+        let newY = initialCropRect.y + dy;
+        let newW = initialCropRect.width + dx;
+        let newH = initialCropRect.height - dy;
+        if (newW < MIN_CROP_SIZE) newW = MIN_CROP_SIZE;
+        if (newH < MIN_CROP_SIZE) {
+          newH = MIN_CROP_SIZE;
+          newY = initialCropRect.y + (initialCropRect.height - MIN_CROP_SIZE);
+        }
+        setCropRect({
+          x: initialCropRect.x,
+          y: newY,
+          width: newW,
+          height: newH,
+        });
+      } else if (activeCropHandle === 'bottomLeft') {
+        let newX = initialCropRect.x + dx;
+        let newW = initialCropRect.width - dx;
+        let newH = initialCropRect.height + dy;
+        if (newW < MIN_CROP_SIZE) {
+          newW = MIN_CROP_SIZE;
+          newX = initialCropRect.x + (initialCropRect.width - MIN_CROP_SIZE);
+        }
+        if (newH < MIN_CROP_SIZE) newH = MIN_CROP_SIZE;
+        setCropRect({
+          x: newX,
+          y: initialCropRect.y,
+          width: newW,
+          height: newH,
+        });
+      } else if (activeCropHandle === 'bottomRight') {
+        let newW = initialCropRect.width + dx;
+        let newH = initialCropRect.height + dy;
+        if (newW < MIN_CROP_SIZE) newW = MIN_CROP_SIZE;
+        if (newH < MIN_CROP_SIZE) newH = MIN_CROP_SIZE;
+        setCropRect({
+          x: initialCropRect.x,
+          y: initialCropRect.y,
+          width: newW,
+          height: newH,
+        });
+      }
+    }
+
+    function onCropRelease() {
+      setActiveCropHandle(null);
+      setCropStartPage(null);
+      setInitialCropRect(cropRect);
+    }
+
+    return (
+      <View
+        style={[
+          styles.cropOverlay,
+          {
+            left: cropRect.x,
+            top: cropRect.y,
+            width: cropRect.width,
+            height: cropRect.height,
+          },
+        ]}
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={onCropGrant}
+        onResponderMove={onCropMove}
+        onResponderRelease={onCropRelease}
+      >
+        {Object.entries(corners).map(([key, cornerPos]) => {
+          const cornerLeft = cornerPos.x - CROP_HANDLE_SIZE / 2;
+          const cornerTop = cornerPos.y - CROP_HANDLE_SIZE / 2;
+          return (
+            <View
+              key={key}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: cornerLeft,
+                top: cornerTop,
+                width: CROP_HANDLE_SIZE,
+                height: CROP_HANDLE_SIZE,
+                borderRadius: CROP_HANDLE_SIZE / 2,
+                backgroundColor: 'white',
+                borderWidth: 2,
+                borderColor: 'black',
+                zIndex: 9999,
+              }}
+            />
+          );
+        })}
+      </View>
+    );
+  }
+
+  function renderCropDoneButton() {
+    if (activeTool !== 'crop') return null;
+    return (
+      <TouchableOpacity style={styles.cropDoneButton} onPress={onDoneCrop}>
+        <Text style={{ color: 'white' }}>Done</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function onDoneCrop() {
+    setIsCropped(true);
+    setActiveTool(null);
+  }
+
+  // ===================================================================
+  // SHARED OVERLAY HANDLERS (non-crop)
   // ===================================================================
   function handleOverlayStart(evt: GestureResponderEvent) {
-    console.log('masuk12');
     const { locationX, locationY } = evt.nativeEvent;
-
     if (activeTool === 'erase') {
       handleEraseAtPoint(locationX, locationY);
       return;
     }
-
     if (activeTool === 'paint') {
-      console.log("masuk1");
-      const painted = handlePaintAtPoint(locationX, locationY);
-      if (painted) return;
+      if (handlePaintAtPoint(locationX, locationY)) return;
     }
-    console.log("masuk 2");
+    if (activeTool === 'crop') return; // crop overlay handles its own touches
 
     let found = false;
-    // Check shapes first
     for (const sh of shapes) {
       const minX = sh.x - HANDLE_SIZE;
       const maxX = sh.x + sh.width + HANDLE_SIZE;
@@ -474,8 +658,6 @@ export default function FragmentationForm4() {
         break;
       }
     }
-
-    // Check lines if no shape found
     if (!found) {
       for (const ln of lines) {
         const { minX, maxX, minY, maxY } = lineBoundingBox(ln);
@@ -505,8 +687,6 @@ export default function FragmentationForm4() {
         }
       }
     }
-
-    // If nothing was found, handle based on active tool
     if (!found) {
       if (activeTool === 'shape' && shapeType) {
         createShape(evt);
@@ -560,7 +740,11 @@ export default function FragmentationForm4() {
             if (newH < 10) newH = 10;
             return { ...sh, x: newX, y: newY, width: newW, height: newH };
           } else {
-            return { ...sh, x: locationX - sh.width / 2, y: locationY - sh.height / 2 };
+            return {
+              ...sh,
+              x: locationX - sh.width / 2,
+              y: locationY - sh.height / 2,
+            };
           }
         })
       );
@@ -640,7 +824,7 @@ export default function FragmentationForm4() {
   }
 
   // ===================================================================
-  // ==================== RENDERING HELPERS =============================
+  // RENDERING HELPERS
   // ===================================================================
   function renderStrokes() {
     return strokes.map((stroke, i) => {
@@ -707,13 +891,7 @@ export default function FragmentationForm4() {
       } else if (sh.type === 'circle') {
         const r = Math.min(sh.width, sh.height) / 2;
         shapeElem = (
-          <Circle
-            key={sh.id}
-            cx={sh.x + sh.width / 2}
-            cy={sh.y + sh.height / 2}
-            r={r}
-            {...commonProps}
-          />
+          <Circle key={sh.id} cx={sh.x + sh.width / 2} cy={sh.y + sh.height / 2} r={r} {...commonProps} />
         );
       } else {
         const x1 = sh.x + sh.width / 2, y1 = sh.y;
@@ -731,13 +909,7 @@ export default function FragmentationForm4() {
               <Circle cx={sh.x} cy={sh.y} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
               <Circle cx={sh.x + sh.width} cy={sh.y} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
               <Circle cx={sh.x} cy={sh.y + sh.height} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
-              <Circle
-                cx={sh.x + sh.width}
-                cy={sh.y + sh.height}
-                r={HANDLE_SIZE / 2}
-                fill="gray"
-                pointerEvents="none"
-              />
+              <Circle cx={sh.x + sh.width} cy={sh.y + sh.height} r={HANDLE_SIZE / 2} fill="gray" pointerEvents="none" />
             </>
           )}
         </React.Fragment>
@@ -771,7 +943,7 @@ export default function FragmentationForm4() {
   }
 
   // ===================================================================
-  // ===================== COMPONENT RENDER =============================
+  // MAIN RENDER
   // ===================================================================
   return (
     <SafeAreaView style={styles.container}>
@@ -803,7 +975,24 @@ export default function FragmentationForm4() {
           >
             <SquareIcon width={20} height={20} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
+          <TouchableOpacity
+            style={[styles.iconButton, isActiveToolFunc('crop') && styles.activeIcon]}
+            onPress={() => {
+              if (activeTool === 'crop') {
+                setActiveTool(null);
+              } else {
+                setActiveTool('crop');
+                if (!cropRect && imageLayout.width && imageLayout.height) {
+                  setCropRect({
+                    x: imageLayout.width * 0.1,
+                    y: imageLayout.height * 0.1,
+                    width: imageLayout.width * 0.8,
+                    height: imageLayout.height * 0.8,
+                  });
+                }
+              }
+            }}
+          >
             <Crop stroke="#666" width={20} height={20} />
           </TouchableOpacity>
           <TouchableOpacity
@@ -848,14 +1037,36 @@ export default function FragmentationForm4() {
         </View>
 
         {/* Main content area */}
-        <View style={styles.imageArea} onLayout={handleContainerLayout}>
-          <View style={styles.fixedContainer}>
-            <View style={{ flex: 1, transform: [{ scale }] }}>
-              <Image
-                source={require('../../public/assets/batu.png')}
-                style={styles.image}
-                resizeMode="contain"
-              />
+        <View style={styles.imageArea}>
+          <View style={styles.fixedContainer} onLayout={handleContainerLayout}>
+            {isCropped && cropRect ? (
+              <View style={{ width: cropRect.width, height: cropRect.height, overflow: 'hidden' }}>
+                <Image
+                  source={require('../../public/assets/batu.png')}
+                  style={{
+                    position: 'absolute',
+                    left: -cropRect.x,
+                    top: -cropRect.y,
+                    width: imageLayout.width,
+                    height: imageLayout.height,
+                  }}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <Image
+                  source={require('../../public/assets/batu.png')}
+                  style={styles.image}
+                  resizeMode="contain"
+                />
+                {activeTool === 'crop' && renderCropOverlay()}
+                {activeTool === 'crop' && renderCropDimming()}
+              </View>
+            )}
+            {activeTool === 'crop' && renderCropDoneButton()}
+
+            {activeTool !== 'crop' && (
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents="auto"
@@ -871,7 +1082,7 @@ export default function FragmentationForm4() {
                   {renderCurrentStroke()}
                 </Svg>
               </View>
-            </View>
+            )}
           </View>
         </View>
 
@@ -1018,4 +1229,20 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   colorCircle: { width: 40, height: 40, borderRadius: 20, marginHorizontal: 8 },
+  cropOverlay: {
+    position: 'absolute',
+    zIndex: 999,
+    borderWidth: 2,
+    borderColor: 'white',
+    backgroundColor: 'transparent',
+  },
+  cropDoneButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'green',
+    padding: 8,
+    borderRadius: 5,
+    zIndex: 999,
+  },
 });
