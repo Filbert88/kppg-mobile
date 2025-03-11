@@ -125,6 +125,12 @@ export default function FragmentationForm4() {
   const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
   const [lineThickness, setLineThickness] = useState<number>(2);
 
+  /**
+   * We use this to remember **which** tool the user intended
+   * to activate after picking a color.
+   */
+  const [pendingTool, setPendingTool] = useState<Tool | null>(null);
+
   // --- FREEHAND / LINE DRAWING ---
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
@@ -781,18 +787,23 @@ export default function FragmentationForm4() {
       <View style={styles.pageContainer}>
         {/* Toolbar */}
         <View style={styles.toolbar}>
+          {/* Zoom In/Out */}
           <TouchableOpacity style={styles.iconButton} onPress={zoomIn}>
             <ZoomIn stroke="#666" width={20} height={20} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={zoomOut}>
             <ZoomOut stroke="#666" width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Erase */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('erase') && styles.activeIcon]}
             onPress={() => setActiveTool(activeTool === 'erase' ? null : 'erase')}
           >
             <EraseIcon width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Shape */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('shape') && styles.activeIcon]}
             onPress={() => {
@@ -806,15 +817,30 @@ export default function FragmentationForm4() {
           >
             <SquareIcon width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Crop - placeholder */}
           <TouchableOpacity style={styles.iconButton} onPress={() => {}}>
             <Crop stroke="#666" width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Paint -> Always show color picker BEFORE paint */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('paint') && styles.activeIcon]}
-            onPress={() => setActiveTool(activeTool === 'paint' ? null : 'paint')}
+            onPress={() => {
+              if (activeTool === 'paint') {
+                // Turn off paint mode
+                setActiveTool(null);
+              } else {
+                // Open color picker first
+                setPendingTool('paint');
+                setShowColorPicker(true);
+              }
+            }}
           >
             <PaintIcon width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Line */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('line') && styles.activeIcon]}
             onPress={() => {
@@ -828,13 +854,16 @@ export default function FragmentationForm4() {
           >
             <LineIcon width={20} height={20} />
           </TouchableOpacity>
+
+          {/* Draw -> Also show color picker BEFORE draw */}
           <TouchableOpacity
             style={[styles.iconButton, isActiveToolFunc('draw') && styles.activeIcon]}
             onPress={() => {
               if (activeTool === 'draw') {
                 setActiveTool(null);
               } else {
-                setActiveTool('draw');
+                // Open color picker first
+                setPendingTool('draw');
                 setShowColorPicker(true);
               }
             }}
@@ -890,16 +919,31 @@ export default function FragmentationForm4() {
                 <TouchableOpacity
                   key={c}
                   onPress={() => {
+                    // User picked a color
                     setSelectedColor(c);
                     setShowColorPicker(false);
-                    setActiveTool('draw'); // default back to draw
+
+                    // If we had a pending tool, activate it now
+                    if (pendingTool) {
+                      console.log(pendingTool)
+                      setActiveTool(pendingTool);
+                      setPendingTool(null);
+                    }
                   }}
                 >
                   <View style={[styles.colorCircle, { backgroundColor: c }]} />
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity onPress={() => setShowColorPicker(false)} style={{ marginTop: 16 }}>
+
+            <TouchableOpacity
+              onPress={() => {
+                // User canceled color picking
+                setShowColorPicker(false);
+                setPendingTool(null);
+              }}
+              style={{ marginTop: 16 }}
+            >
               <Text style={{ color: 'blue' }}>Batal</Text>
             </TouchableOpacity>
           </View>
