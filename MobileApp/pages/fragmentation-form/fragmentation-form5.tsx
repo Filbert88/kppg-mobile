@@ -1054,7 +1054,7 @@ export default function FragmentationForm4() {
                 />
               </View>
             ) : (
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1 ,transform: [{ scale }]}}>
                 <Image
                   source={require('../../public/assets/batu.png')}
                   style={styles.image}
