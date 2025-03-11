@@ -128,7 +128,6 @@ function mergeConnectedStrokes(strokes: Stroke[]): { indices: number[]; polygon:
     if (visited[i]) continue;
     let groupIndices = [i];
     visited[i] = true;
-
     let polyline = strokes[i].points.slice();
     let merged = true;
     while (merged) {
@@ -438,37 +437,38 @@ export default function FragmentationForm4() {
   }
 
   function renderCropOverlay() {
-      console.log("masuk")
     if (activeTool !== 'crop' || !cropRect) return null;
-
-    console.log("masuk 1")
-    // Corners relative to the crop overlay.
+    // Extend the overlay’s touchable area by half the handle size
+    const extendedStyle = {
+      left: cropRect.x - CROP_HANDLE_SIZE / 2,
+      top: cropRect.y - CROP_HANDLE_SIZE / 2,
+      width: cropRect.width + CROP_HANDLE_SIZE,
+      height: cropRect.height + CROP_HANDLE_SIZE,
+    };
+    // Corners in local coordinates (relative to the extended area)
     const corners = {
-      topLeft: { x: 0, y: 0 },
-      topRight: { x: cropRect.width, y: 0 },
-      bottomLeft: { x: 0, y: cropRect.height },
-      bottomRight: { x: cropRect.width, y: cropRect.height },
+      topLeft: { x: CROP_HANDLE_SIZE / 2, y: CROP_HANDLE_SIZE / 2 },
+      topRight: { x: CROP_HANDLE_SIZE / 2 + cropRect.width, y: CROP_HANDLE_SIZE / 2 },
+      bottomLeft: { x: CROP_HANDLE_SIZE / 2, y: CROP_HANDLE_SIZE / 2 + cropRect.height },
+      bottomRight: { x: CROP_HANDLE_SIZE / 2 + cropRect.width, y: CROP_HANDLE_SIZE / 2 + cropRect.height },
     };
 
-    // Use global page coordinates for consistent delta calculation.
     function onCropGrant(evt: GestureResponderEvent) {
       const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
-      // Check if touch is near a corner handle using local coordinates.
       for (const [key, pos] of Object.entries(corners)) {
         if (distance(locationX, locationY, pos.x, pos.y) < CORNER_THRESHOLD) {
-            console.log("masuk corner")
           setActiveCropHandle(key as 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight');
           setCropStartPage({ x: pageX, y: pageY });
           setInitialCropRect(cropRect);
           return;
         }
       }
-      // If touch is inside the overlay, start move.
+      // If inside the crop box area (extended area), start move.
       if (
-        locationX >= 0 &&
-        locationX <= cropRect.width &&
-        locationY >= 0 &&
-        locationY <= cropRect.height
+        locationX >= CROP_HANDLE_SIZE / 2 &&
+        locationX <= cropRect.width + CROP_HANDLE_SIZE / 2 &&
+        locationY >= CROP_HANDLE_SIZE / 2 &&
+        locationY <= cropRect.height + CROP_HANDLE_SIZE / 2
       ) {
         setActiveCropHandle('move');
         setCropStartPage({ x: pageX, y: pageY });
@@ -477,9 +477,7 @@ export default function FragmentationForm4() {
     }
 
     function onCropMove(evt: GestureResponderEvent) {
-        console.log("h1")
       if (!cropStartPage || !initialCropRect) return;
-      console.log("h12")
       const { pageX, pageY } = evt.nativeEvent;
       const dx = (pageX - cropStartPage.x) * RESIZE_SENSITIVITY;
       const dy = (pageY - cropStartPage.y) * RESIZE_SENSITIVITY;
@@ -563,11 +561,13 @@ export default function FragmentationForm4() {
       <View
         style={[
           styles.cropOverlay,
+          // Remove the border around the main overlay by setting borderWidth to 0
+          { borderWidth: 0 },
           {
-            left: cropRect.x,
-            top: cropRect.y,
-            width: cropRect.width,
-            height: cropRect.height,
+            left: extendedStyle.left,
+            top: extendedStyle.top,
+            width: extendedStyle.width,
+            height: extendedStyle.height,
           },
         ]}
         onStartShouldSetResponder={() => true}
@@ -575,9 +575,9 @@ export default function FragmentationForm4() {
         onResponderMove={onCropMove}
         onResponderRelease={onCropRelease}
       >
-        {Object.entries(corners).map(([key, cornerPos]) => {
-          const cornerLeft = cornerPos.x - CROP_HANDLE_SIZE / 2;
-          const cornerTop = cornerPos.y - CROP_HANDLE_SIZE / 2;
+        {Object.entries(corners).map(([key, pos]) => {
+          const cornerLeft = pos.x - CROP_HANDLE_SIZE / 2;
+          const cornerTop = pos.y - CROP_HANDLE_SIZE / 2;
           return (
             <View
               key={key}
@@ -1232,9 +1232,11 @@ const styles = StyleSheet.create({
   cropOverlay: {
     position: 'absolute',
     zIndex: 999,
-    borderWidth: 2,
-    borderColor: 'white',
+    // Remove the border by default (or set borderWidth to 0)
+    borderWidth: 0,
+    borderColor: 'transparent',
     backgroundColor: 'transparent',
+    overflow: 'visible',
   },
   cropDoneButton: {
     position: 'absolute',
