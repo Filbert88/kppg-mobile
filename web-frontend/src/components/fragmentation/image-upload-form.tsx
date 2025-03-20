@@ -39,7 +39,7 @@ export default function ImageUploadForm({ formData, updateFormData, onNext }: Im
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 mt-4 relative">
+    <div className="flex-1 flex flex-col p-6 mt-4">
       <div className="flex-1 space-y-6">
         <div className="flex justify-center space-x-2 py-2 border-b border-gray-300">
           <button className="p-2 hover:bg-gray-100 rounded-md">
@@ -100,7 +100,7 @@ export default function ImageUploadForm({ formData, updateFormData, onNext }: Im
         </div>
       </div>
 
-      <div className="absolute -bottom-8 right-4">
+      <div className="absolute -bottom-8 right-0">
         <Button
           onClick={onNext}
           className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"

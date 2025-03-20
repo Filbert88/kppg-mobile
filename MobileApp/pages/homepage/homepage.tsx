@@ -28,7 +28,7 @@ export default function Homepage() {
       className="flex-1 bg-gray-200"
       style={{paddingTop: StatusBar.currentHeight}}>
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
-      
+
       {/* Header Container with Padding */}
       <View
         className="flex-row justify-end items-center bg-gray-200 px-4"
@@ -73,7 +73,7 @@ export default function Homepage() {
         <TouchableOpacity
           style={{width: buttonWidth}}
           className="bg-green-500 py-3 rounded-md mb-6 items-center"
-          onPress={() => console.log('Bantuan pressed')}>
+          onPress={() => navigation.navigate('Help')}>
           <Text className="text-white font-medium text-lg">Bantuan</Text>
         </TouchableOpacity>
       </View>

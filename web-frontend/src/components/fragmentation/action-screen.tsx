@@ -15,14 +15,14 @@ export default function ActionScreen({
     <div className="flex-1 flex flex-col items-center justify-center space-y-6 p-6 h-full min-h-[600px] w-full">
       <Button
         onClick={onTambahClick}
-        className="w-full max-w-xs bg-emerald-200 hover:bg-emerald-300 text-black font-medium py-3 rounded-md text-lg"
+        className="w-full max-w-xs bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-md text-lg"
       >
         Tambah
       </Button>
 
       <Button
         onClick={onRiwayatClick}
-        className="w-full max-w-xs bg-emerald-200 hover:bg-emerald-300 text-black font-medium py-3 rounded-md text-lg"
+        className="w-full max-w-xs bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-md text-lg"
       >
         Riwayat
       </Button>

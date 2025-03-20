@@ -18,6 +18,7 @@ import FragmentationForm3 from './pages/fragmentation-form/fragmentation-form3';
 import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
+import Help from './pages/Help/help';
 import {DepthAverageProvider} from './context/DepthAverageContext';
 import NetInfo from '@react-native-community/netinfo';
 import {syncLocalDataWithBackend} from './database/services/syncService';
@@ -70,6 +71,12 @@ export default function App() {
             {(
               props: NativeStackScreenProps<RootStackParamList, 'AddOrHistory'>,
             ) => <ScreenWrapper component={AddOrHistory} {...props} />}
+          </Stack.Screen>
+
+          <Stack.Screen name="Help">
+            {(props: NativeStackScreenProps<RootStackParamList, 'Help'>) => (
+              <ScreenWrapper component={Help} {...props} />
+            )}
           </Stack.Screen>
 
           <Stack.Screen name="DepthAverageUpload">
