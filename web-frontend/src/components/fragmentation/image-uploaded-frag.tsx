@@ -27,7 +27,7 @@ export default function ImageUploadedFrag({
   const selectedImage = formData.images[formData.images.length - 1] || null;
 
   return (
-    <div className="flex-1 flex flex-col p-6 mt-4 relative">
+    <div className="flex-1 flex flex-col p-6 mt-4">
       <div className="flex-1 space-y-6">
         <div className="flex justify-center space-x-2 py-2 border-b border-gray-300">
           <button className="p-2 hover:bg-gray-100 rounded-md">
