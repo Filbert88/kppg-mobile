@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button"
 
 interface AverageScreenProps {
   average: string
-  onNext: () => void
+  onSave: () => void
 }
 
-export default function AverageScreen({ average, onNext }: AverageScreenProps) {
+export default function AverageScreen({ average, onSave }: AverageScreenProps) {
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full mt-10">
       <div className="flex-1">
@@ -21,7 +21,7 @@ export default function AverageScreen({ average, onNext }: AverageScreenProps) {
 
       <div className="flex justify-end mt-4">
         <Button
-          onClick={onNext}
+          onClick={onSave}
           className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
         >
           Simpan
@@ -30,4 +30,3 @@ export default function AverageScreen({ average, onNext }: AverageScreenProps) {
     </div>
   )
 }
-

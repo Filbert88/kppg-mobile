@@ -1,29 +1,21 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-
 interface SummaryScreenProps {
   formData: {
-    numberOfHoles: string
-    location: string
-    date: string
-    image: string | null
-    depths: {
-      hole1: string
-      hole2: string
-      hole3: string
-      hole4: string
-      hole5: string
-    }
-    average: string
-  }
-  onSave: () => void
+    numberOfHoles: number;
+    location: string;
+    date: string;
+    image: string | null;
+    depths: string[];
+    average: string;
+  };
+  onSave: () => void;
 }
 
 export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) {
-  const renderDepthAverage = (id: number) => {
+  const renderDepthAverage = (id: number, depth: string) => {
     return (
-      <div className="bg-white rounded-lg p-4 mb-4 ">
+      <div className="bg-white rounded-lg p-4 mb-4" key={id}>
         <h3 className="font-medium mb-2">Depth Average {id}</h3>
         <div className="flex">
           <div className="w-1/3">
@@ -47,30 +39,30 @@ export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) 
               <span className="font-medium">Tanggal:</span> {formData.date || "........"}
             </p>
             <p>
+              <span className="font-medium">Depth:</span> {depth || "........"}
+            </p>
+            <p>
               <span className="font-medium">Average:</span> {formData.average || "........"}
             </p>
           </div>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full mt-10">
       <div className="flex-1">
-        {renderDepthAverage(1)}
-        {renderDepthAverage(2)}
+        {formData.depths.map((depth, index) => renderDepthAverage(index + 1, depth))}
       </div>
-
       <div className="flex justify-end mt-4">
-        <Button
+        <button
           onClick={onSave}
           className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
         >
           Simpan
-        </Button>
+        </button>
       </div>
     </div>
-  )
+  );
 }
-

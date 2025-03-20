@@ -7,10 +7,7 @@ interface ActionScreenProps {
   onRiwayatClick: () => void;
 }
 
-export default function ActionScreen({
-  onTambahClick,
-  onRiwayatClick,
-}: ActionScreenProps) {
+export default function ActionScreenDA({ onTambahClick, onRiwayatClick }: ActionScreenProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center space-y-6 p-6 h-full min-h-[600px] w-full">
       <Button

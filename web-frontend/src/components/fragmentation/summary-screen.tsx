@@ -1,19 +1,28 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SummaryScreenProps {
-  formData: any
-  onSave: () => void
+  formData: any;
+  onSave: () => void;
+  hideSave?: boolean;
 }
 
-export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) {
+export default function SummaryScreen({
+  formData,
+}: SummaryScreenProps) {
   return (
     <div className="flex-1 flex flex-col p-6 w-full mt-8">
       <div className="flex-1">
         <div className="bg-white rounded-lg p-6">
-          <h2 className="text-lg font-bold mb-4">Fragmentasi Batuan 1</h2>
+          <h2 className="text-lg font-bold mb-4">Fragmentasi Batuan</h2>
 
           <div className="flex mb-4">
             <div className="w-1/3">
@@ -25,13 +34,16 @@ export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) 
             </div>
             <div className="w-2/3">
               <p>
-                <span className="font-medium">Lokasi:</span> {formData.location || "......"}
+                <span className="font-medium">Lokasi:</span>{" "}
+                {formData.location || "......"}
               </p>
               <p>
-                <span className="font-medium">Tanggal:</span> {formData.date || "......"}
+                <span className="font-medium">Tanggal:</span>{" "}
+                {formData.date || "......"}
               </p>
               <p>
-                <span className="font-medium">Skala:</span> {formData.scale || "......"}
+                <span className="font-medium">Skala:</span>{" "}
+                {formData.scale || "......"}
               </p>
             </div>
           </div>
@@ -39,7 +51,11 @@ export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) 
           <div className="mb-4">
             <h3 className="font-medium mb-2">Grafik</h3>
             <div className="border border-gray-200 p-2">
-              <img src="/placeholder.svg?height=150&width=150" alt="Graph" className="w-full h-32 object-contain" />
+              <img
+                src="/placeholder.svg?height=150&width=150"
+                alt="Graph"
+                className="w-full h-32 object-contain"
+              />
             </div>
           </div>
 
@@ -64,15 +80,6 @@ export default function SummaryScreen({ formData, onSave }: SummaryScreenProps) 
           </div>
         </div>
       </div>
-
-      <div className="absolute -bottom-8 right-4">
-        <Button
-          onClick={onSave}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
-        >
-          Simpan
-        </Button>
-      </div>
     </div>
-  )
+  );
 }

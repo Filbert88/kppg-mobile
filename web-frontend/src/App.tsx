@@ -9,6 +9,7 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState<
     "home" | "fragmentation" | "depthAverage"
   >("home");
+
   return (
     <main className="flex flex-col min-h-screen min-w-screen bg-[#D9D9D9]">
       <div className="flex flex-col w-full h-full">
@@ -22,9 +23,14 @@ export default function App() {
             onDepthAverageClick={() => setActiveScreen("depthAverage")}
           />
         )}
-        {activeScreen === "fragmentation" && <MultiStepForm />}
-        {activeScreen === "depthAverage" && <DepthAverageForm />}
+        {activeScreen === "fragmentation" && (
+          <MultiStepForm setActiveScreen={setActiveScreen} />
+        )}
+        {activeScreen === "depthAverage" && (
+          <DepthAverageForm setActiveScreen={setActiveScreen} />
+        )}
       </div>
     </main>
   );
 }
+
