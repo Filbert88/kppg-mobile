@@ -55,7 +55,7 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
       <div className="absolute -bottom-8 right-4">
         <Button
           onClick={onNext}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-none"
+          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
         >
           Next
         </Button>
