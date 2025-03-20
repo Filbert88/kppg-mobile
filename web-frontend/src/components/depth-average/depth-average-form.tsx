@@ -6,19 +6,14 @@ import HoleInfoScreen from "./hole-info-screen";
 import DepthMeasurementScreen from "./depth-measurement-screen";
 import AverageScreen from "./average-screen";
 import SummaryScreen from "./summary-screen";
+import ActionScreenDA from "./action-da";
 
 type DepthAverageFormData = {
-  numberOfHoles: string;
+  numberOfHoles: number;
   location: string;
   date: string;
   image: string | null;
-  depths: {
-    hole1: string;
-    hole2: string;
-    hole3: string;
-    hole4: string;
-    hole5: string;
-  };
+  depths: string[];
   average: string;
 };
 
@@ -29,19 +24,13 @@ export default function DepthAverageForm({
     React.SetStateAction<"home" | "fragmentation" | "depthAverage">
   >;
 }) {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for ActionScreenDA
   const [formData, setFormData] = useState<DepthAverageFormData>({
-    numberOfHoles: "",
+    numberOfHoles: 0,
     location: "",
     date: "",
     image: null,
-    depths: {
-      hole1: "",
-      hole2: "",
-      hole3: "",
-      hole4: "",
-      hole5: "",
-    },
+    depths: [],
     average: "22.5 cm",
   });
 
@@ -49,43 +38,68 @@ export default function DepthAverageForm({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const updateDepth = (hole: keyof typeof formData.depths, value: string) => {
+  const updateNumberOfHoles = (value: string) => {
+    const numHoles = parseInt(value) || 0;
     setFormData((prev) => ({
       ...prev,
-      depths: {
-        ...prev.depths,
-        [hole]: value,
-      },
+      numberOfHoles: numHoles,
+      depths: Array(numHoles).fill(""),
     }));
   };
 
+  // Update a specific depth by index
+  const updateDepth = (index: number, value: string) => {
+    setFormData((prev) => {
+      const newDepths = [...prev.depths];
+      newDepths[index] = value;
+      return { ...prev, depths: newDepths };
+    });
+  };
+
   const handleNext = () => {
-    setCurrentStep((prev) => prev + 1);
-    // If current step is 3, calculate the average
+    // If leaving depth measurement step, calculate average
     if (currentStep === 3) {
-      const depths = Object.values(formData.depths).filter((d) => d !== "");
+      const depths = formData.depths.filter((d) => d !== "");
       if (depths.length > 0) {
         const sum = depths.reduce(
           (acc, curr) => acc + Number.parseFloat(curr || "0"),
           0
         );
         const avg = sum / depths.length;
-
         setFormData((prev) => ({
           ...prev,
           average: `${avg.toFixed(1)} cm`,
         }));
       }
     }
+    setCurrentStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
-    setActiveScreen("home"); // Reset the screen to "home"
+    if (currentStep === 0) {
+      setActiveScreen("home");
+    } else {
+      setCurrentStep((prev) => prev - 1);
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log("Depth Average data saved:", formData);
-    setCurrentStep(0); // Return to home screen
+    try {
+      // const res = await fetch("/api/depth-average", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(formData),
+      // });
+      // if (res.ok) {
+      //   setActiveScreen("home");
+      // } else {
+      //   console.error("Error saving data");
+      // }
+      setActiveScreen("home");
+    } catch (error) {
+      console.error("Error saving data:", error);
+    }
   };
 
   const renderBackButton = () => {
@@ -101,6 +115,13 @@ export default function DepthAverageForm({
 
   const renderStep = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <ActionScreenDA
+            onTambahClick={() => setCurrentStep(1)}
+            onRiwayatClick={() => setCurrentStep(5)}
+          />
+        );
       case 1:
         return (
           <ImageUploadScreen
@@ -112,12 +133,10 @@ export default function DepthAverageForm({
       case 2:
         return (
           <HoleInfoScreen
-            numberOfHoles={formData.numberOfHoles}
+            numberOfHoles={formData.numberOfHoles.toString()}
             location={formData.location}
             date={formData.date}
-            onUpdateNumberOfHoles={(value) =>
-              updateFormData("numberOfHoles", value)
-            }
+            onUpdateNumberOfHoles={updateNumberOfHoles}
             onUpdateLocation={(value) => updateFormData("location", value)}
             onUpdateDate={(value) => updateFormData("date", value)}
             onNext={handleNext}
@@ -132,7 +151,7 @@ export default function DepthAverageForm({
           />
         );
       case 4:
-        return <AverageScreen average={formData.average} onNext={handleNext} />;
+        return <AverageScreen average={formData.average} onSave={handleSave} />;
       case 5:
         return <SummaryScreen formData={formData} onSave={handleSave} />;
       default:
@@ -142,7 +161,7 @@ export default function DepthAverageForm({
 
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-5xl relative h-full">
-      {currentStep > 0 && renderBackButton()}
+      {renderBackButton()}
       {renderStep()}
     </div>
   );
