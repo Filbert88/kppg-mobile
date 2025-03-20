@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import StartScreen from "./start-screen";
-import HomeScreen from "../home-screen";
 import ImageUploadScreen from "./image-upload-screen";
 import HoleInfoScreen from "./hole-info-screen";
 import DepthMeasurementScreen from "./depth-measurement-screen";
@@ -24,7 +22,13 @@ type DepthAverageFormData = {
   average: string;
 };
 
-export default function DepthAverageForm() {
+export default function DepthAverageForm({
+  setActiveScreen,
+}: {
+  setActiveScreen: React.Dispatch<
+    React.SetStateAction<"home" | "fragmentation" | "depthAverage">
+  >;
+}) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<DepthAverageFormData>({
     numberOfHoles: "",
@@ -56,11 +60,8 @@ export default function DepthAverageForm() {
   };
 
   const handleNext = () => {
-    console.log("tes")
-    setCurrentStep((prev) => prev + 1); // Ensure state updates first
-    
-    console.log("Current Step Before:", currentStep);
-    
+    setCurrentStep((prev) => prev + 1);
+    // If current step is 3, calculate the average
     if (currentStep === 3) {
       const depths = Object.values(formData.depths).filter((d) => d !== "");
       if (depths.length > 0) {
@@ -69,25 +70,21 @@ export default function DepthAverageForm() {
           0
         );
         const avg = sum / depths.length;
-  
+
         setFormData((prev) => ({
           ...prev,
           average: `${avg.toFixed(1)} cm`,
         }));
       }
     }
-  
-    console.log("Current Step After:", currentStep + 1);
   };
-  
 
   const handleBack = () => {
-    setCurrentStep((prev) => prev - 1);
+    setActiveScreen("home"); // Reset the screen to "home"
   };
 
   const handleSave = () => {
     console.log("Depth Average data saved:", formData);
-    // Here you would typically send the data to your backend
     setCurrentStep(0); // Return to home screen
   };
 
@@ -104,7 +101,6 @@ export default function DepthAverageForm() {
 
   const renderStep = () => {
     switch (currentStep) {
-   
       case 1:
         return (
           <ImageUploadScreen

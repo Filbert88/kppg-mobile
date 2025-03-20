@@ -22,7 +22,7 @@ type FormData = {
   images: string[];
 };
 
-export default function MultiStepForm() {
+export default function MultiStepForm({ setActiveScreen }: { setActiveScreen: React.Dispatch<React.SetStateAction<"home" | "fragmentation" | "depthAverage">> }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     scale: "",
@@ -46,7 +46,7 @@ export default function MultiStepForm() {
   };
 
   const handleBack = () => {
-    setCurrentStep((prev) => prev - 1);
+    setActiveScreen("home"); // This sets the screen back to home when you hit back
   };
 
   const handleSave = () => {
