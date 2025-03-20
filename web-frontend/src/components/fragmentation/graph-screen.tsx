@@ -1,15 +1,16 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
+import { FragmentationFormData } from "./multi-step-form";
 
 interface GraphScreenProps {
-  formData: any
-  onNext: () => void
+  formData: FragmentationFormData;
+  onSave: () => void; // Replaces onNext
 }
 
-export default function GraphScreen({ formData, onNext }: GraphScreenProps) {
+export default function GraphScreen({ formData, onSave }: GraphScreenProps) {
   return (
-    <div className="flex-1 flex flex-col p-6 w-full h-full mt-8 pb-24">
+    <div className="flex-1 flex flex-col p-6 w-full h-full mt-8 pb-24 relative">
       <div className="flex-1 space-y-6">
         <div className="bg-emerald-200 text-center py-2 px-4 rounded-full inline-block">
           <span className="font-medium">Grafik</span>
@@ -19,7 +20,11 @@ export default function GraphScreen({ formData, onNext }: GraphScreenProps) {
           <div className="aspect-square w-full relative">
             {/* Placeholder for graph */}
             <div className="absolute inset-0 grid place-items-center">
-              <img src="/placeholder.svg?height=300&width=300" alt="Graph" className="w-full h-full object-contain" />
+              <img
+                src="/placeholder.svg?height=300&width=300"
+                alt="Graph"
+                className="w-full h-full object-contain"
+              />
             </div>
           </div>
         </div>
@@ -47,13 +52,12 @@ export default function GraphScreen({ formData, onNext }: GraphScreenProps) {
 
       <div className="absolute bottom-8 right-4">
         <Button
-          onClick={onNext}
+          onClick={onSave}
           className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
         >
           Simpan
         </Button>
       </div>
     </div>
-  )
+  );
 }
-

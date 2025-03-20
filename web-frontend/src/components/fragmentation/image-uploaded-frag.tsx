@@ -1,42 +1,30 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Search, ZoomIn, ZoomOut, Move, RotateCw, Scissors, Pen, Link2 } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import {
+  Search,
+  ZoomIn,
+  ZoomOut,
+  Move,
+  RotateCw,
+  Scissors,
+  Pen,
+  Link2,
+} from "lucide-react";
+import { FragmentationFormData } from "./multi-step-form";
 
-interface ImageUploadFormProps {
-  formData: {
-    images: string[]
-    // ... any other fields
-  }
-  updateFormData: (field: string, value: any) => void
-  onNext: () => void
+interface ImageUploadedFragProps {
+  formData: FragmentationFormData;
+  updateFormData: (field: string, value: any) => void;
+  onNext: () => void;
 }
 
-export default function ImageUploadForm({ formData, updateFormData, onNext }: ImageUploadFormProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!selectedImage && formData.images.length > 0) {
-      setSelectedImage(formData.images[formData.images.length - 1])
-    }
-  }, [selectedImage, formData.images])
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const imageUrl = (event.target?.result as string) || ""
-        setSelectedImage(imageUrl)
-
-        // Add to images array in formData
-        const updatedImages = [...formData.images, imageUrl]
-        updateFormData("images", updatedImages)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+export default function ImageUploadedFrag({
+  formData,
+  updateFormData,
+  onNext,
+}: ImageUploadedFragProps) {
+  const selectedImage = formData.images[formData.images.length - 1] || null;
 
   return (
     <div className="flex-1 flex flex-col p-6 mt-4 relative">
@@ -68,7 +56,6 @@ export default function ImageUploadForm({ formData, updateFormData, onNext }: Im
           </button>
         </div>
 
-        {/* Image Preview */}
         <div className="flex border border-gray-300 rounded-md aspect-square overflow-hidden bg-white max-w-md justify-center">
           {selectedImage ? (
             <img
@@ -85,19 +72,6 @@ export default function ImageUploadForm({ formData, updateFormData, onNext }: Im
             </div>
           )}
         </div>
-
-        <div className="flex justify-center">
-          <label className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-full flex items-center cursor-pointer">
-            <span className="mr-2">+</span>
-            <span>Tambah Gambar</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
-          </label>
-        </div>
       </div>
 
       <div className="absolute -bottom-8 right-4">
@@ -109,5 +83,5 @@ export default function ImageUploadForm({ formData, updateFormData, onNext }: Im
         </Button>
       </div>
     </div>
-  )
+  );
 }
