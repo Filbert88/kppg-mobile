@@ -1,32 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Project\\kppg-mobile\\backend\\aspnet\\aspnet.csproj": {}
+    "C:\\EVELYN\\SEMESTER 6\\kppg-mobile\\backend\\aspnet\\aspnet.csproj": {}
   },
   "projects": {
-    "D:\\Project\\kppg-mobile\\backend\\aspnet\\aspnet.csproj": {
+    "C:\\EVELYN\\SEMESTER 6\\kppg-mobile\\backend\\aspnet\\aspnet.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Project\\kppg-mobile\\backend\\aspnet\\aspnet.csproj",
+        "projectUniqueName": "C:\\EVELYN\\SEMESTER 6\\kppg-mobile\\backend\\aspnet\\aspnet.csproj",
         "projectName": "aspnet",
-        "projectPath": "D:\\Project\\kppg-mobile\\backend\\aspnet\\aspnet.csproj",
-        "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "D:\\Project\\kppg-mobile\\backend\\aspnet\\obj\\",
+        "projectPath": "C:\\EVELYN\\SEMESTER 6\\kppg-mobile\\backend\\aspnet\\aspnet.csproj",
+        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
+        "outputPath": "C:\\EVELYN\\SEMESTER 6\\kppg-mobile\\backend\\aspnet\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
