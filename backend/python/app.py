@@ -4,6 +4,7 @@ import uuid
 from flask import Flask, request, jsonify, send_file
 from ocr import OCR
 # from frag import fragmentation
+from kuzram import kuz_ram_model
 
 app = Flask(__name__)
 
@@ -62,6 +63,23 @@ def ocr_endpoint():
 #     os.remove(input_filename)
 
 #     return send_file(output_filename, mimetype='image/png')
+
+@app.route('/kuzram', methods=['POST'])
+def kuzram_endpoint():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided"}), 400
+    try:
+        A = float(data["A"])
+        K = float(data["K"])
+        Q = float(data["Q"])
+        E = float(data["E"])
+        n = float(data["n"])
+    except (KeyError, ValueError) as e:
+        return jsonify({"error": "Invalid or missing parameters"}), 400
+
+    result = kuz_ram_model(A, K, Q, E, n)
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
