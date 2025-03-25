@@ -1,3 +1,7 @@
 *.pth
 venv
 __pycache__
+*jpeg
+*png 
+*jpeg
+*webp

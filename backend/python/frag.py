@@ -8,3 +8,4 @@ def fragmentation(input_path, output_path):
     pipeline = SegmentAnythingPipeline()
     pipeline.process_image(input_path, output_path)
 
+fragmentation("./input/img3.jpeg", "./output/res_3.jpeg")
