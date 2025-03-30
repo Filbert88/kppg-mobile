@@ -1,6 +1,6 @@
 import {Point, Stroke, ShapeBox} from '../types/drawing';
 import {CONSTANTS} from '../constants/drawing';
-
+const CONNECT_THRESHOLD = 20;
 export function strokeToPath(points: Point[]): string {
   if (!points.length) return '';
   const [first, ...rest] = points;
@@ -84,15 +84,11 @@ export function mergeConnectedStrokes(
   const groups: {indices: number[]; polygon: Point[]}[] = [];
   const visited = new Array(strokes.length).fill(false);
 
-  // Define connection threshold
-  const CONNECT_THRESHOLD = 15; // Distance threshold to consider strokes connected
-  const CLOSE_THRESHOLD = 15; // Distance threshold to consider a polygon closed
-
   for (let i = 0; i < strokes.length; i++) {
     if (visited[i]) continue;
     let groupIndices = [i];
     visited[i] = true;
-    let polyline = [...strokes[i].points];
+    let polyline = strokes[i].points.slice();
     let merged = true;
 
     while (merged) {
@@ -100,7 +96,6 @@ export function mergeConnectedStrokes(
       for (let j = 0; j < strokes.length; j++) {
         if (visited[j]) continue;
         const candidate = strokes[j].points;
-
         if (candidate.length === 0) continue;
 
         const startPoly = polyline[0];
@@ -108,13 +103,11 @@ export function mergeConnectedStrokes(
         const candidateStart = candidate[0];
         const candidateEnd = candidate[candidate.length - 1];
 
-        // Check all possible connections between endpoints
         if (
           distance(endPoly.x, endPoly.y, candidateStart.x, candidateStart.y) <
           CONNECT_THRESHOLD
         ) {
-          // End of polyline connects to start of candidate
-          polyline = [...polyline, ...candidate.slice(1)];
+          polyline = polyline.concat(candidate.slice(1));
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -122,8 +115,9 @@ export function mergeConnectedStrokes(
           distance(endPoly.x, endPoly.y, candidateEnd.x, candidateEnd.y) <
           CONNECT_THRESHOLD
         ) {
-          // End of polyline connects to end of candidate
-          polyline = [...polyline, ...candidate.slice(0, -1).reverse()];
+          polyline = polyline.concat(
+            candidate.slice(0, candidate.length - 1).reverse(),
+          );
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -131,8 +125,10 @@ export function mergeConnectedStrokes(
           distance(startPoly.x, startPoly.y, candidateEnd.x, candidateEnd.y) <
           CONNECT_THRESHOLD
         ) {
-          // Start of polyline connects to end of candidate
-          polyline = [...candidate.slice(0, -1), ...polyline];
+          polyline = candidate
+            .slice(0, candidate.length - 1)
+            .reverse()
+            .concat(polyline);
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -144,8 +140,8 @@ export function mergeConnectedStrokes(
             candidateStart.y,
           ) < CONNECT_THRESHOLD
         ) {
-          // Start of polyline connects to start of candidate
-          polyline = [...candidate.slice().reverse(), ...polyline.slice(1)];
+          const reversedCandidate = candidate.slice().reverse();
+          polyline = reversedCandidate.slice(1).concat(polyline);
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -153,22 +149,23 @@ export function mergeConnectedStrokes(
       }
     }
 
-    // Check if the polygon is closed
-    const start = polyline[0];
-    const end = polyline[polyline.length - 1];
-    const isClosed = distance(start.x, start.y, end.x, end.y) < CLOSE_THRESHOLD;
-
-    // Only add closed polygons
-    if (isClosed && polyline.length > 2) {
-      groups.push({
-        indices: groupIndices,
-        polygon: [...polyline, start], // Close the polygon by adding the start point again
-      });
+    // Snapping: Jika titik pertama dan terakhir sudah dekat, samakan agar polygon dianggap tertutup
+    if (
+      distance(
+        polyline[0].x,
+        polyline[0].y,
+        polyline[polyline.length - 1].x,
+        polyline[polyline.length - 1].y,
+      ) < CONNECT_THRESHOLD
+    ) {
+      polyline[polyline.length - 1] = polyline[0];
     }
-  }
 
+    groups.push({indices: groupIndices, polygon: polyline});
+  }
   return groups;
 }
+
 
 export function getShapeCorners(shape: {
   x: number;
@@ -304,3 +301,35 @@ export function hexToRgb(hex: string): number[] {
   return [r, g, b];
 }
 
+export function isPolygonClosedByPerimeter(polygon: Point[]): boolean {
+  if (polygon.length < 3) return false;
+
+  // Calculate the total perimeter
+  let perimeter = 0;
+  for (let i = 0; i < polygon.length - 1; i++) {
+    perimeter += distance(
+      polygon[i].x,
+      polygon[i].y,
+      polygon[i + 1].x,
+      polygon[i + 1].y,
+    );
+  }
+  // Also add distance between last and first to close the loop
+  perimeter += distance(
+    polygon[polygon.length - 1].x,
+    polygon[polygon.length - 1].y,
+    polygon[0].x,
+    polygon[0].y,
+  );
+
+  // Decide on some fraction of the perimeter as the closure threshold
+  const closureFraction = 0.05; // e.g., 5% of perimeter
+  const closureThreshold = perimeter * closureFraction;
+
+  // Distance between first and last points
+  const firstPoint = polygon[0];
+  const lastPoint = polygon[polygon.length - 1];
+  const dist = distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y);
+
+  return dist < closureThreshold;
+}
