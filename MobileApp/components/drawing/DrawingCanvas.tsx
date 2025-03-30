@@ -2,9 +2,6 @@ import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   GestureResponderEvent,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
   Image,
   ImageLoadEventData,
   Dimensions,
@@ -15,9 +12,7 @@ import Svg, {
   Rect,
   Polygon,
   Line as SvgLine,
-  G,
 } from 'react-native-svg';
-
 import {Point, Stroke, ShapeBox, LineShape, Tool} from '../../types/drawing';
 import {COLORS, CONSTANTS} from '../../constants/drawing';
 import {
@@ -38,8 +33,6 @@ export interface CropRect {
   height: number;
 }
 
-const CONNECT_THRESHOLD = 1000;
-
 interface DrawingCanvasProps {
   strokes: Stroke[];
   currentStroke: Point[];
@@ -56,7 +49,7 @@ interface DrawingCanvasProps {
   finalCropRect?: CropRect;
   backgroundImage?: string;
   onLayout: (event: any) => void;
-  onImageLoad?: (dimensions: {width: number; height: number}) => void;
+  onImageLoad?: (dim: {width: number; height: number}) => void;
   onStrokeStart: (point: Point) => void;
   onStrokeMove: (point: Point) => void;
   onStrokeEnd: () => void;
@@ -85,8 +78,8 @@ interface DrawingCanvasProps {
   onCropEnd: () => void;
   onCropComplete: () => void;
   onErase?: (point: Point) => void;
-  setShapes:(shapes: ShapeBox[]) => void;
-  setStrokes: (strokes: Stroke[]) => void;
+  setShapes: (shapes: ShapeBox[] | ((prev: ShapeBox[]) => ShapeBox[])) => void;
+  setStrokes: (strokes: Stroke[] | ((prev: Stroke[]) => Stroke[])) => void;
   style?: any;
 }
 
@@ -125,147 +118,129 @@ export default function DrawingCanvas({
   setStrokes,
   style,
 }: DrawingCanvasProps) {
-  const [canvasSize, setCanvasSize] = useState({width: 0, height: 0});
-  const [imageSize, setImageSize] = useState({width: 0, height: 0});
+  const svgRef = useRef<Svg>(null);
+  const [imageSize, setImageSize] = useState<{width: number; height: number}>({
+    width: 0,
+    height: 0,
+  });
+  // Track dragging state for shapes/lines
   const [dragStart, setDragStart] = useState<Point | null>(null);
   const [resizeCorner, setResizeCorner] = useState<string | null>(null);
   const [resizingLineEnd, setResizingLineEnd] = useState<
     'start' | 'end' | null
   >(null);
 
-  const svgRef = useRef<any>(null);
-  // Add new state for fill operation
-  const [fillTarget, setFillTarget] = useState<{
-    type: 'shape' | 'area';
-    id?: string;
-    point?: Point;
-  } | null>(null);
-
-  // Calculate canvas dimensions based on screen size
+  // Initialize canvas size based on screen width (handles dynamic image aspect ratio)
   useEffect(() => {
     const screenWidth = Dimensions.get('window').width;
-    const padding = 32; // 16px padding on each side
+    const padding = 32;
     const maxWidth = Math.min(screenWidth - padding, 600);
+    // Set canvas width and height to maxWidth until image loads and onImageLoad adjusts height
     setCanvasSize({width: maxWidth, height: maxWidth});
   }, []);
+  const [canvasSize, setCanvasSize] = useState<{width: number; height: number}>(
+    {
+      width: 0,
+      height: 0,
+    },
+  );
 
-  // Transform point coordinates based on scale and crop
-  // Transform point with proper scaling
-    const transformPoint = (evt: GestureResponderEvent): Point => {
-      const {locationX: rawX, locationY: rawY} = evt.nativeEvent;
+  // Helper to transform touch event coordinates into canvas coordinates (accounts for scale and cropping offset)
+  const transformPoint = (evt: GestureResponderEvent): Point => {
+    const {locationX: rawX, locationY: rawY} = evt.nativeEvent;
+    if (isCropped && finalCropRect) {
+      // If image was cropped, translate touch to original image coords
+      return {
+        x: finalCropRect.x + rawX / scale,
+        y: finalCropRect.y + rawY / scale,
+      };
+    } else {
+      // Without cropping, just account for current scale
+      return {
+        x: rawX / scale,
+        y: rawY / scale,
+      };
+    }
+  };
 
-      if (isCropped && finalCropRect) {
-        return {
-          x: finalCropRect.x + rawX / scale,
-          y: finalCropRect.y + rawY / scale,
-        };
-      } else {
-        return {
-          x: rawX / scale,
-          y: rawY / scale,
-        };
-      }
-    };
-
- const handleFill = (point: Point) => {
-   if (activeTool !== 'paint') return;
-
-
-
-   // Cek jika klik berada di dalam shape
-   const targetShape = shapes.find(shape => isPointInShape(point, shape));
-   if (targetShape) {
-     const updatedShapes = shapes.map((shape: ShapeBox) =>
-       shape.id === targetShape.id ? {...shape, fill: selectedColor} : shape,
-     );
-     setShapes(updatedShapes);
-     return;
-   }
-
-   // Cek jika klik berada di dalam stroke yang sudah tertutup
-   const targetStroke = strokes.find(
-     stroke =>
-       stroke.isClosed && pointInPolygon(point.x, point.y, stroke.points),
-   );
-   if (targetStroke) {
-     setStrokes(
-       strokes.map((stroke: Stroke) =>
-         stroke.id === targetStroke.id
-           ? {...stroke, fillColor: selectedColor}
-           : stroke,
-       ),
-     );
-     return;
-   }
-
-   const groups = mergeConnectedStrokes(strokes);
-   console.log(groups);
-   for (const group of groups) {
-     if (group.polygon.length > 0) {
-       // Hitung bounding box poligon
-       const xs = group.polygon.map(p => p.x);
-       const ys = group.polygon.map(p => p.y);
-       const minX = Math.min(...xs);
-       const maxX = Math.max(...xs);
-       const minY = Math.min(...ys);
-       const maxY = Math.max(...ys);
-       const boxSize = Math.min(maxX - minX, maxY - minY);
-
-       // Misalnya, gunakan threshold dinamis: minimal CONNECT_THRESHOLD atau 10% dari boxSize
-       const dynamicThreshold = Math.max(CONNECT_THRESHOLD, boxSize * 0.1);
-
-       const firstPoint = group.polygon[0];
-       const lastPoint = group.polygon[group.polygon.length - 1];
-       const closureDistance = distance(
-         firstPoint.x,
-         firstPoint.y,
-         lastPoint.x,
-         lastPoint.y,
-       );
-       console.log(
-         'closureDistance:',
-         closureDistance,
-         'dynamicThreshold:',
-         dynamicThreshold,
-       );
-
-       // Hanya jika poligon dianggap tertutup dan titik berada di dalamnya
-       if (
-         closureDistance < dynamicThreshold &&
-         pointInPolygon(point.x, point.y, group.polygon)
-       ) {
-         const newStrokes: Stroke[] = strokes.map((s, idx) =>
-           group.indices.includes(idx)
-             ? {...s, fillColor: selectedColor, isClosed: true}
-             : s,
-         );
-         setStrokes(newStrokes);
-         return;
-       }
-     }
-   }
- };
-
-  const handleTouchStart = (evt: GestureResponderEvent) => {
-
-    const point = transformPoint(evt);
-      console.log('ini point', point);
-     if (activeTool === 'paint') {
-      console.log("hi")
-       handleFill(point);
-       return;
-     }
-
-    if (activeTool === 'erase' && onErase) {
-      onErase(point);
+  // Fill handler (paint bucket)
+  const handleFill = (point: Point) => {
+    if (activeTool !== 'paint') return;
+    // If tapping inside a shape, fill that shape
+    const targetShape = shapes.find(shape => isPointInShape(point, shape));
+    if (targetShape) {
+      const updatedShapes = shapes.map(shape =>
+        shape.id === targetShape.id ? {...shape, fill: selectedColor} : shape,
+      );
+      setShapes(updatedShapes);
       return;
     }
+    // If tapping inside a closed stroke path, fill that stroke
+    const targetStroke = strokes.find(
+      stroke =>
+        stroke.isClosed && pointInPolygon(point.x, point.y, stroke.points),
+    );
+    if (targetStroke) {
+      setStrokes(
+        strokes.map(stroke =>
+          stroke.id === targetStroke.id
+            ? {...stroke, fillColor: selectedColor}
+            : stroke,
+        ),
+      );
+      return;
+    }
+    // Otherwise, check if point is inside any region formed by connected strokes
+    const groups = mergeConnectedStrokes(strokes);
+    for (const group of groups) {
+      if (group.polygon.length > 0) {
+        // Compute if this group forms a closed polygon
+        const firstPoint = group.polygon[0];
+        const lastPoint = group.polygon[group.polygon.length - 1];
+        const closureDistance = distance(
+          firstPoint.x,
+          firstPoint.y,
+          lastPoint.x,
+          lastPoint.y,
+        );
+        const dynamicThreshold = Math.max(
+          CONSTANTS.CLOSE_THRESHOLD,
+          0.1 * Math.min(group.polygon.length, group.polygon.length),
+        );
+        if (
+          closureDistance < dynamicThreshold &&
+          pointInPolygon(point.x, point.y, group.polygon)
+        ) {
+          // Fill all strokes in this group
+          const newStrokes: Stroke[] = strokes.map((s, idx) =>
+            group.indices.includes(idx)
+              ? {...s, fillColor: selectedColor, isClosed: true}
+              : s,
+          );
+          setStrokes(newStrokes);
+          return;
+        }
+      }
+    }
+  };
 
+  // Touch event handlers for the canvas
+  const handleTouchStart = (evt: GestureResponderEvent) => {
+    const point = transformPoint(evt);
+    if (activeTool === 'paint') {
+      handleFill(point);
+      return;
+    }
+    if (activeTool === 'erase' && onErase) {
+      onErase(point);
+      // Start continuous erasing
+      setDragStart(point);
+      return;
+    }
     if (activeTool === 'crop' && cropRect) {
-      const handleSize = CONSTANTS.CROP_HANDLE_SIZE;
+      const handleSize = CONSTANTS.CROP_HANDLE_HIT_SIZE;
       const {x, y, width, height} = cropRect;
-
-      // Check corners first
+      // Determine if touch is on a crop handle (corners)
       if (distance(point.x, point.y, x, y) < handleSize) {
         onCropStart('topLeft', point);
         return;
@@ -282,8 +257,7 @@ export default function DrawingCanvas({
         onCropStart('bottomRight', point);
         return;
       }
-
-      // Check if inside crop area
+      // If inside the crop rectangle, allow moving the crop area
       if (
         point.x >= x &&
         point.x <= x + width &&
@@ -293,26 +267,25 @@ export default function DrawingCanvas({
         onCropStart('move', point);
         return;
       }
-      return;
+      return; // touches outside crop rect are ignored in crop mode
     }
-
     if (activeTool === 'draw') {
       onStrokeStart(point);
       return;
     }
-
-    // Handle shape selection and manipulation
+    // Handle selection of shapes or lines (when no specific tool like draw/erase is active)
     for (const shape of shapes) {
       const corners = getShapeCorners(shape);
+      // Check if touch is on a shape's corner handle
       for (const [corner, pos] of Object.entries(corners)) {
         if (distance(point.x, point.y, pos.x, pos.y) < CONSTANTS.HANDLE_SIZE) {
           onShapeSelect(shape.id);
-          setResizeCorner(corner);
+          setResizeCorner(corner); // start resizing this shape
           setDragStart(point);
           return;
         }
       }
-
+      // Check if touch is inside shape bounds (to move the shape)
       if (
         point.x >= shape.x &&
         point.x <= shape.x + shape.width &&
@@ -324,9 +297,9 @@ export default function DrawingCanvas({
         return;
       }
     }
-
-    // Handle line selection and manipulation
+    // Handle selection of lines
     for (const line of lines) {
+      // Check if touch near line start or end point
       if (nearPoint(point.x, point.y, line.x1, line.y1)) {
         onLineSelect(line.id);
         setResizingLineEnd('start');
@@ -339,7 +312,7 @@ export default function DrawingCanvas({
         setDragStart(point);
         return;
       }
-
+      // Check if touch is near the line segment itself (within 10px bounding box buffer)
       const box = lineBoundingBox(line);
       if (
         point.x >= box.minX - 10 &&
@@ -352,30 +325,30 @@ export default function DrawingCanvas({
         return;
       }
     }
-
+    // If we reach here, user touch didn't hit any shape/line – deselect all
     onShapeSelect(null);
     onLineSelect(null);
   };
 
   const handleTouchMove = (evt: GestureResponderEvent) => {
     const point = transformPoint(evt);
-    console.log("move", point)
     if (activeTool === 'crop' && cropRect) {
-      // Apply proper scaling for crop movement
-
       onCropMove(point);
       return;
     }
-
     if (activeTool === 'draw') {
       onStrokeMove(point);
       return;
     }
-
+    if (activeTool === 'erase' && onErase) {
+      onErase(point);
+      // Continue erasing as finger moves
+      setDragStart(point);
+      return;
+    }
     if (dragStart) {
       const dx = point.x - dragStart.x;
       const dy = point.y - dragStart.y;
-
       if (activeShapeId) {
         if (resizeCorner) {
           onShapeResize(activeShapeId, resizeCorner, point.x, point.y);
@@ -389,19 +362,18 @@ export default function DrawingCanvas({
           onLineMove(activeLineId, dx, dy);
         }
       }
-
+      // Update drag start for continued movement
       setDragStart(point);
     }
   };
 
   const handleTouchEnd = () => {
     if (activeTool === 'crop') {
-      console.log("scale",scale)
       onCropEnd();
     } else if (activeTool === 'draw') {
       onStrokeEnd();
     }
-
+    // Reset drag state
     setDragStart(null);
     setResizeCorner(null);
     setResizingLineEnd(null);
@@ -410,44 +382,23 @@ export default function DrawingCanvas({
   const handleImageLoad = (event: {nativeEvent: ImageLoadEventData}) => {
     const {width, height} = event.nativeEvent.source;
     setImageSize({width, height});
-
-    // Calculate aspect ratio and adjust canvas height
+    // Adjust canvas height to preserve image aspect ratio
     const aspectRatio = height / width;
     setCanvasSize(prev => ({
       ...prev,
       height: prev.width * aspectRatio,
     }));
-
-    // if (onImageLoad) {
-    //   onImageLoad({width, height});
-    // }
+    onImageLoad && onImageLoad({width, height});
   };
 
-  // Calculate transform for content based on crop or scale
-  const getContentTransform = () => {
-    if (finalCropRect && canvasSize.width > 0) {
-      const scaleX = canvasSize.width / finalCropRect.width;
-      const scaleY = canvasSize.height / finalCropRect.height;
-      const finalScale = Math.min(scaleX, scaleY);
-
-      return [
-        {scale: finalScale},
-        {translateX: -finalCropRect.x * finalScale},
-        {translateY: -finalCropRect.y * finalScale},
-      ];
-    }
-    return [{scale}];
-  };
-
+  // Render the cropping overlay (dimmed outside area + bright crop rectangle + handles)
   const renderCropOverlay = () => {
     if (!cropRect) return null;
-
-    const handleSize = CONSTANTS.CROP_HANDLE_SIZE / 2;
+    const handleRadius = CONSTANTS.CROP_HANDLE_SIZE / 2;
     const {x, y, width, height} = cropRect;
-    console.log("crop ovelay", cropRect)
-
     return (
       <>
+        {/* Dimmed outside area */}
         <Rect
           x={0}
           y={0}
@@ -455,70 +406,91 @@ export default function DrawingCanvas({
           height={canvasSize.height}
           fill="rgba(0,0,0,0.5)"
         />
+        {/* Clear crop rectangle area */}
         <Rect
           x={x}
           y={y}
           width={width}
           height={height}
           fill="transparent"
-          stroke="white"
+          stroke="#fff"
           strokeWidth={2}
         />
-        <Circle cx={x} cy={y} r={handleSize} fill="white" />
-        <Circle cx={x + width} cy={y} r={handleSize} fill="white" />
-        <Circle cx={x} cy={y + height} r={handleSize} fill="white" />
-        <Circle cx={x + width} cy={y + height} r={handleSize} fill="white" />
+        {/* Corner handles */}
+        <Circle cx={x} cy={y} r={handleRadius} fill="#fff" />
+        <Circle cx={x + width} cy={y} r={handleRadius} fill="#fff" />
+        <Circle cx={x} cy={y + height} r={handleRadius} fill="#fff" />
+        <Circle cx={x + width} cy={y + height} r={handleRadius} fill="#fff" />
       </>
     );
   };
-  console.log("final", finalCropRect)
+
+  // Determine the content scaling/translation if cropped
+  const contentTransform = () => {
+    if (finalCropRect) {
+      // If cropped, scale the content so that the cropped area fits the canvas
+      const scaleX = canvasSize.width / finalCropRect.width;
+      const scaleY = canvasSize.height / finalCropRect.height;
+      const finalScale = Math.min(scaleX, scaleY);
+      return [
+        {scale: finalScale},
+        {translateX: -finalCropRect.x * finalScale},
+        {translateY: -finalCropRect.y * finalScale},
+      ];
+    }
+    // If not cropped, just apply uniform scale for zoom
+    return [{scale}];
+  };
+
   return (
     <View
       style={[
-        styles.container,
-        style,
         {
           width: canvasSize.width,
           height: canvasSize.height,
         },
+        style,
       ]}
       onLayout={onLayout}
       onStartShouldSetResponder={() => true}
       onResponderGrant={handleTouchStart}
       onResponderMove={handleTouchMove}
       onResponderRelease={handleTouchEnd}>
+      {/* If cropped, use a clipped view of just the cropped area */}
       {isCropped && finalCropRect ? (
-        // Cropped view
         <View
           style={{
-            width: finalCropRect.width ,
-            height: finalCropRect.height ,
+            width: finalCropRect.width,
+            height: finalCropRect.height,
             overflow: 'hidden',
           }}>
+          {/* Background image positioned for cropped area */}
           {backgroundImage && (
             <Image
-              source={require('../../public/assets/batu.png')}
+              source={
+                require('../../public/assets/batu.png')
+              }
               style={{
                 position: 'absolute',
-                left: -finalCropRect.x ,
-                top: -finalCropRect.y ,
-                width: imageSize.width ,
+                left: -finalCropRect.x,
+                top: -finalCropRect.y,
+                width: imageSize.width,
                 height: imageSize.height,
               }}
               resizeMode="contain"
             />
           )}
-
+          {/* SVG for strokes/shapes/lines positioned for cropped area */}
           <Svg
             ref={svgRef}
             style={{
               position: 'absolute',
-              left: -finalCropRect.x ,
-              top: -finalCropRect.y ,
-              width: canvasSize.width ,
-              height: canvasSize.height ,
+              left: -finalCropRect.x,
+              top: -finalCropRect.y,
+              width: canvasSize.width,
+              height: canvasSize.height,
             }}>
-            {/* Render strokes */}
+            {/* Render all strokes (filled or unfilled) */}
             {strokes.map((stroke, i) => (
               <Path
                 key={`stroke-${i}`}
@@ -530,7 +502,6 @@ export default function DrawingCanvas({
                 strokeLinejoin="round"
               />
             ))}
-
             {/* Render shapes */}
             {shapes.map(shape => {
               const isActive = shape.id === activeShapeId;
@@ -543,7 +514,7 @@ export default function DrawingCanvas({
                       width={shape.width}
                       height={shape.height}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke} // constant stroke color for shapes
                       strokeWidth={lineThickness}
                     />
                   )}
@@ -553,7 +524,7 @@ export default function DrawingCanvas({
                       cy={shape.y + shape.height / 2}
                       r={Math.min(shape.width, shape.height) / 2}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke}
                       strokeWidth={lineThickness}
                     />
                   )}
@@ -565,10 +536,11 @@ export default function DrawingCanvas({
                         shape.y + shape.height
                       }`}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke}
                       strokeWidth={lineThickness}
                     />
                   )}
+                  {/* Render shape corner handles if this shape is active/selected */}
                   {isActive && (
                     <>
                       <Circle
@@ -600,7 +572,6 @@ export default function DrawingCanvas({
                 </React.Fragment>
               );
             })}
-
             {/* Render lines */}
             {lines.map(line => {
               const isActive = line.id === activeLineId;
@@ -614,6 +585,7 @@ export default function DrawingCanvas({
                     stroke={line.color}
                     strokeWidth={lineThickness}
                   />
+                  {/* If active, draw endpoint handles */}
                   {isActive && (
                     <>
                       <Circle
@@ -633,8 +605,7 @@ export default function DrawingCanvas({
                 </React.Fragment>
               );
             })}
-
-            {/* Render current stroke */}
+            {/* Render the stroke currently being drawn (if any) */}
             {currentStroke.length > 0 && (
               <Path
                 d={strokeToPath(currentStroke)}
@@ -648,42 +619,37 @@ export default function DrawingCanvas({
           </Svg>
         </View>
       ) : (
-        // Normal view (not cropped)
+        // Normal full-view (not cropped)
         <View
-          style={[
-            styles.contentContainer,
-            {
-              width: canvasSize.width,
-              height: canvasSize.height,
-              transform: [{scale}],
-            },
-          ]}>
+          style={{
+            width: canvasSize.width,
+            height: canvasSize.height,
+            transform: [{scale}], // apply zoom scale
+          }}>
+          {/* Background image underneath SVG drawing */}
           {backgroundImage && (
             <Image
-              source={require('../../public/assets/batu.png')}
-              style={[
-                styles.backgroundImage,
-                {
-                  width: canvasSize.width,
-                  height: canvasSize.height,
-                  
-                },
-              ]}
+              source={
+                 require('../../public/assets/batu.png')
+              }
+              style={{
+                width: canvasSize.width,
+                height: canvasSize.height,
+              }}
               resizeMode="contain"
               onLoad={handleImageLoad}
             />
           )}
-
+          {/* SVG overlay for drawings */}
           <Svg
             ref={svgRef}
-            style={[
-              styles.svg,
-              {
-                width: canvasSize.width,
-                height: canvasSize.height,
-              },
-            ]}>
-            {/* Render strokes */}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: canvasSize.width,
+              height: canvasSize.height,
+            }}>
             {strokes.map((stroke, i) => (
               <Path
                 key={`stroke-${i}`}
@@ -695,8 +661,6 @@ export default function DrawingCanvas({
                 strokeLinejoin="round"
               />
             ))}
-
-            {/* Render shapes */}
             {shapes.map(shape => {
               const isActive = shape.id === activeShapeId;
               return (
@@ -708,7 +672,7 @@ export default function DrawingCanvas({
                       width={shape.width}
                       height={shape.height}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke}
                       strokeWidth={lineThickness}
                     />
                   )}
@@ -718,7 +682,7 @@ export default function DrawingCanvas({
                       cy={shape.y + shape.height / 2}
                       r={Math.min(shape.width, shape.height) / 2}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke}
                       strokeWidth={lineThickness}
                     />
                   )}
@@ -730,7 +694,7 @@ export default function DrawingCanvas({
                         shape.y + shape.height
                       }`}
                       fill={shape.fill || 'transparent'}
-                      stroke={selectedColor}
+                      stroke={COLORS.shapeStroke}
                       strokeWidth={lineThickness}
                     />
                   )}
@@ -765,8 +729,6 @@ export default function DrawingCanvas({
                 </React.Fragment>
               );
             })}
-
-            {/* Render lines */}
             {lines.map(line => {
               const isActive = line.id === activeLineId;
               return (
@@ -798,8 +760,6 @@ export default function DrawingCanvas({
                 </React.Fragment>
               );
             })}
-
-            {/* Render current stroke */}
             {currentStroke.length > 0 && (
               <Path
                 d={strokeToPath(currentStroke)}
@@ -810,82 +770,11 @@ export default function DrawingCanvas({
                 strokeLinejoin="round"
               />
             )}
+            {/* Render crop overlay on top if crop tool is active */}
+            {activeTool === 'crop' && renderCropOverlay()}
           </Svg>
         </View>
-      )}
-
-      {/* Crop overlay */}
-      {activeTool === 'crop' && cropRect && (
-        <>
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <Svg style={StyleSheet.absoluteFill}>{renderCropOverlay()}</Svg>
-          </View>
-
-          <View style={styles.cropButtonsContainer}>
-            <TouchableOpacity
-              style={styles.cropButton}
-              onPress={onCropComplete}>
-              <Text style={styles.cropButtonText}>Done</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.cropButton, styles.cancelButton]}
-              onPress={() => {
-                onCropEnd();
-                onShapeSelect(null);
-              }}>
-              <Text style={styles.cropButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f1f1f1',
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  contentContainer: {
-    overflow: 'hidden',
-  },
-  transformContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  svg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  cropButtonsContainer: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    flexDirection: 'row',
-  },
-  cropButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  cancelButton: {
-    backgroundColor: COLORS.error,
-  },
-  cropButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-});

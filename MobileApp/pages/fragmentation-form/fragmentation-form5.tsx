@@ -29,7 +29,7 @@ import {
   mergeConnectedStrokes,
 } from '../../utils/drawingUtils';
 
-export default function FragmentationForm4() {
+export default function FragmentationForm5() {
   // Canvas dimensions
   const [canvasSize, setCanvasSize] = useState(() => {
     const screenWidth = Dimensions.get('window').width;
@@ -38,21 +38,20 @@ export default function FragmentationForm4() {
     return {width: maxWidth, height: maxWidth};
   });
 
-  // Active tool and zoom
+  // Active tool and zoom scale
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [scale, setScale] = useState<number>(1);
 
-  // Drawing style
+  // Drawing style state
   const [selectedColor, setSelectedColor] = useState<string>(COLORS.primary);
   const [lineThickness, setLineThickness] = useState<number>(2);
 
-  // Modals
-  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
-  const [showLineThicknessPicker, setShowLineThicknessPicker] =
-    useState<boolean>(false);
-  const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
+  // Modal visibility for pickers
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showLineThicknessPicker, setShowLineThicknessPicker] = useState(false);
+  const [showShapePicker, setShowShapePicker] = useState(false);
 
-  // Drawing data
+  // Drawn elements state
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
   const [shapes, setShapes] = useState<ShapeBox[]>([]);
@@ -60,7 +59,7 @@ export default function FragmentationForm4() {
   const [activeShapeId, setActiveShapeId] = useState<string | null>(null);
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
-  // Crop states
+  // Crop state
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [finalCropRect, setFinalCropRect] = useState<CropRect | undefined>(
     undefined,
@@ -72,14 +71,14 @@ export default function FragmentationForm4() {
   const [cropStartPoint, setCropStartPoint] = useState<Point | null>(null);
   const [initialCropRect, setInitialCropRect] = useState<CropRect | null>(null);
 
-  // Sample background image - replace with your actual image
+  // Sample background image (replace with actual image URI or require)
   const backgroundImage = 'https://example.com/sample-image.jpg';
 
   useEffect(() => {
-    // Initialize default crop rect when crop tool is activated
+    // When crop tool is selected, initialize the crop rectangle if not set
     if (activeTool === 'crop' && !cropRect) {
-      // If already cropped, set the initial crop rect to the current cropped area
       if (isCropped && finalCropRect) {
+        // If already cropped once, start new crop relative to the cropped area
         setCropRect({
           x: 0,
           y: 0,
@@ -87,7 +86,7 @@ export default function FragmentationForm4() {
           height: finalCropRect.height,
         });
       } else {
-        // Otherwise, use default crop area
+        // Initial default crop rect (80% of canvas)
         const defaultCrop: CropRect = {
           x: canvasSize.width * 0.1,
           y: canvasSize.height * 0.1,
@@ -104,6 +103,7 @@ export default function FragmentationForm4() {
 
   const handleToolPress = (toolId: string) => {
     if (toolId === activeTool) {
+      // Tapping the active tool toggles it off, except for crop which finalizes on second tap
       if (toolId === 'crop' && cropRect) {
         handleCropComplete();
       } else {
@@ -111,9 +111,9 @@ export default function FragmentationForm4() {
       }
       return;
     }
-
+    // Activate the selected tool
     setActiveTool(toolId as Tool);
-
+    // Open any sub-tool pickers if needed
     if (toolId === 'shape') {
       setShowShapePicker(true);
     } else if (toolId === 'line') {
@@ -123,64 +123,54 @@ export default function FragmentationForm4() {
     }
   };
 
+  // Stroke (freehand) drawing handlers
   const handleStrokeStart = (point: Point) => {
     setCurrentStroke([point]);
   };
-
   const handleStrokeMove = (point: Point) => {
     setCurrentStroke(prev => [...prev, point]);
   };
-
   const handleStrokeEnd = () => {
     if (currentStroke.length > 1) {
       const newStroke: Stroke = {
-        id: `stroke-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Add unique ID
+        id: `stroke-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         points: currentStroke,
         color: selectedColor,
         width: lineThickness,
         isClosed: false,
       };
-
-      // Check if stroke is closed
+      // Mark stroke as closed if start and end are near
       const firstPoint = currentStroke[0];
       const lastPoint = currentStroke[currentStroke.length - 1];
       if (
         distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y) <
-          CONSTANTS.CLOSE_THRESHOLD ||
-        distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y) < 15
+        CONSTANTS.CLOSE_THRESHOLD
       ) {
         newStroke.isClosed = true;
       }
-
       setStrokes(prev => [...prev, newStroke]);
       setCurrentStroke([]);
     }
   };
 
+  // Selection handlers for shapes and lines
   const handleShapeSelect = (id: string | null) => {
     setActiveShapeId(id);
     setActiveLineId(null);
   };
-
   const handleLineSelect = (id: string | null) => {
     setActiveLineId(id);
     setActiveShapeId(null);
   };
 
+  // Shape manipulation handlers
   const handleShapeMove = (id: string, dx: number, dy: number) => {
     setShapes(prev =>
       prev.map(shape =>
-        shape.id === id
-          ? {
-              ...shape,
-              x: shape.x + dx,
-              y: shape.y + dy,
-            }
-          : shape,
+        shape.id === id ? {...shape, x: shape.x + dx, y: shape.y + dy} : shape,
       ),
     );
   };
-
   const handleShapeResize = (
     id: string,
     corner: string,
@@ -190,7 +180,6 @@ export default function FragmentationForm4() {
     setShapes(prev =>
       prev.map(shape => {
         if (shape.id !== id) return shape;
-
         let newShape = {...shape};
         switch (corner) {
           case 'topLeft':
@@ -214,26 +203,27 @@ export default function FragmentationForm4() {
             newShape.height = y - shape.y;
             break;
         }
-
-        // Ensure minimum size
-        if (newShape.width < CONSTANTS.MIN_CROP_SIZE) {
-          newShape.width = CONSTANTS.MIN_CROP_SIZE;
+        // Enforce minimum shape size
+        if (newShape.width < CONSTANTS.MIN_SHAPE_SIZE) {
+          newShape.width = CONSTANTS.MIN_SHAPE_SIZE;
           if (corner.includes('Left')) {
-            newShape.x = shape.x + shape.width - CONSTANTS.MIN_CROP_SIZE;
+            // Adjust X if resizing from left
+            newShape.x = shape.x + shape.width - CONSTANTS.MIN_SHAPE_SIZE;
           }
         }
-        if (newShape.height < CONSTANTS.MIN_CROP_SIZE) {
-          newShape.height = CONSTANTS.MIN_CROP_SIZE;
+        if (newShape.height < CONSTANTS.MIN_SHAPE_SIZE) {
+          newShape.height = CONSTANTS.MIN_SHAPE_SIZE;
           if (corner.includes('Top')) {
-            newShape.y = shape.y + shape.height - CONSTANTS.MIN_CROP_SIZE;
+            // Adjust Y if resizing from top
+            newShape.y = shape.y + shape.height - CONSTANTS.MIN_SHAPE_SIZE;
           }
         }
-
         return newShape;
       }),
     );
   };
 
+  // Line manipulation handlers
   const handleLineMove = (id: string, dx: number, dy: number) => {
     setLines(prev =>
       prev.map(line =>
@@ -249,7 +239,6 @@ export default function FragmentationForm4() {
       ),
     );
   };
-
   const handleLineEndpointMove = (
     id: string,
     end: 'start' | 'end',
@@ -259,15 +248,15 @@ export default function FragmentationForm4() {
     setLines(prev =>
       prev.map(line =>
         line.id === id
-          ? {
-              ...line,
-              ...(end === 'start' ? {x1: x, y1: y} : {x2: x, y2: y}),
-            }
+          ? end === 'start'
+            ? {...line, x1: x, y1: y}
+            : {...line, x2: x, y2: y}
           : line,
       ),
     );
   };
 
+  // Crop tool handlers
   const handleCropStart = (
     handle:
       | 'move'
@@ -282,104 +271,81 @@ export default function FragmentationForm4() {
     setCropStartPoint(point);
     setInitialCropRect(cropRect);
   };
-
   const handleCropMove = (point: Point) => {
-    if (!cropStartPoint || !initialCropRect || !activeCropHandle) return;
-
+    if (!cropStartPoint || !initialCropRect || !activeCropHandle || !cropRect)
+      return;
     const dx = point.x - cropStartPoint.x;
     const dy = point.y - cropStartPoint.y;
     let newRect = {...initialCropRect};
-
+    const maxX = initialCropRect.x + initialCropRect.width;
+    const maxY = initialCropRect.y + initialCropRect.height;
     switch (activeCropHandle) {
       case 'move':
+        // Move crop rect, clamping within canvas
         newRect.x = Math.max(
           0,
-          Math.min(newRect.x + dx, canvasSize.width - newRect.width),
+          Math.min(
+            initialCropRect.x + dx,
+            canvasSize.width - initialCropRect.width,
+          ),
         );
         newRect.y = Math.max(
           0,
-          Math.min(newRect.y + dy, canvasSize.height - newRect.height),
+          Math.min(
+            initialCropRect.y + dy,
+            canvasSize.height - initialCropRect.height,
+          ),
         );
         break;
       case 'topLeft':
-        {
-          const maxX = initialCropRect.x + initialCropRect.width;
-          const maxY = initialCropRect.y + initialCropRect.height;
-          newRect.x = Math.max(0, Math.min(initialCropRect.x + dx, maxX));
-          newRect.y = Math.max(0, Math.min(initialCropRect.y + dy, maxY));
-          newRect.width = initialCropRect.x + initialCropRect.width - newRect.x;
-          newRect.height =
-            initialCropRect.y + initialCropRect.height - newRect.y;
-        }
+        newRect.x = Math.max(0, initialCropRect.x + dx);
+        newRect.y = Math.max(0, initialCropRect.y + dy);
+        newRect.width = maxX - newRect.x;
+        newRect.height = maxY - newRect.y;
         break;
       case 'topRight':
-        {
-          const maxWidth = canvasSize.width - initialCropRect.x;
-          const maxY = initialCropRect.y + initialCropRect.height;
-          newRect.width = Math.max(
-            0,
-            Math.min(initialCropRect.width + dx, maxWidth),
-          );
-          newRect.y = Math.max(0, Math.min(initialCropRect.y + dy, maxY));
-          newRect.height =
-            initialCropRect.y + initialCropRect.height - newRect.y;
-        }
+        newRect.y = Math.max(0, initialCropRect.y + dy);
+        newRect.width = Math.min(
+          canvasSize.width - initialCropRect.x,
+          initialCropRect.width + dx,
+        );
+        newRect.height = maxY - newRect.y;
         break;
       case 'bottomLeft':
-        {
-          const maxX = initialCropRect.x + initialCropRect.width;
-          const maxHeight = canvasSize.height - initialCropRect.y;
-          newRect.x = Math.max(0, Math.min(initialCropRect.x + dx, maxX));
-          newRect.width = initialCropRect.x + initialCropRect.width - newRect.x;
-          newRect.height = Math.max(
-            0,
-            Math.min(initialCropRect.height + dy, maxHeight),
-          );
-        }
+        newRect.x = Math.max(0, initialCropRect.x + dx);
+        newRect.width = maxX - newRect.x;
+        newRect.height = Math.min(
+          canvasSize.height - initialCropRect.y,
+          initialCropRect.height + dy,
+        );
         break;
       case 'bottomRight':
-        {
-          const maxWidth = canvasSize.width - initialCropRect.x;
-          const maxHeight = canvasSize.height - initialCropRect.y;
-          newRect.width = Math.max(
-            0,
-            Math.min(initialCropRect.width + dx, maxWidth),
-          );
-          newRect.height = Math.max(
-            0,
-            Math.min(initialCropRect.height + dy, maxHeight),
-          );
-        }
+        newRect.width = Math.min(
+          canvasSize.width - initialCropRect.x,
+          initialCropRect.width + dx,
+        );
+        newRect.height = Math.min(
+          canvasSize.height - initialCropRect.y,
+          initialCropRect.height + dy,
+        );
         break;
     }
-
-    // Ensure width and height are not negative
-    if (newRect.width < 0) {
-      newRect.x = newRect.x + newRect.width;
-      newRect.width = Math.abs(newRect.width);
-    }
-
-    if (newRect.height < 0) {
-      newRect.y = newRect.y + newRect.height;
-      newRect.height = Math.abs(newRect.height);
-    }
-    console.log("hi", cropRect)
-
+    // Ensure minimum crop size
+    if (newRect.width < CONSTANTS.MIN_CROP_SIZE)
+      newRect.width = CONSTANTS.MIN_CROP_SIZE;
+    if (newRect.height < CONSTANTS.MIN_CROP_SIZE)
+      newRect.height = CONSTANTS.MIN_CROP_SIZE;
     setCropRect(newRect);
   };
-
   const handleCropEnd = () => {
-    console.log("end", cropRect)
     setActiveCropHandle(null);
     setCropStartPoint(null);
     setInitialCropRect(null);
   };
-
   const handleCropComplete = () => {
     if (!cropRect) return;
-
     if (isCropped && finalCropRect) {
-      // For subsequent crops, adjust coordinates relative to the previous crop
+      // If image already cropped before, adjust the new crop rect relative to original image
       const newCropRect: CropRect = {
         x: finalCropRect.x + cropRect.x,
         y: finalCropRect.y + cropRect.y,
@@ -388,51 +354,42 @@ export default function FragmentationForm4() {
       };
       setFinalCropRect(newCropRect);
     } else {
-      // First crop
+      // First-time crop
       setFinalCropRect(cropRect);
       setIsCropped(true);
     }
-
-    // Reset crop state
+    // Reset current crop selection
     setCropRect(null);
     setActiveTool(null);
   };
 
+  // Eraser handler
   const handleErase = (point: Point) => {
     const threshold = 20;
-
-    // Remove strokes
+    // Remove any stroke where the touch is near one of its points
     setStrokes(prev =>
-      prev.filter(stroke => {
-        // Check if any point in the stroke is near the eraser
-        if (
-          stroke.points.some(
+      prev.filter(
+        stroke =>
+          !stroke.points.some(
             pt => distance(pt.x, pt.y, point.x, point.y) < threshold,
-          )
-        ) {
-          return false;
-        }
-        return true;
-      }),
+          ),
+      ),
     );
-
-    // Remove shapes
+    // Remove any shape that contains the touch point
     setShapes(prev => prev.filter(shape => !isPointInShape(point, shape)));
-
-    // Remove lines
+    // Remove any line where touch is near either endpoint
     setLines(prev =>
-      prev.filter(line => {
-        if (
-          nearPoint(point.x, point.y, line.x1, line.y1) ||
-          nearPoint(point.x, point.y, line.x2, line.y2)
-        ) {
-          return false;
-        }
-        return true;
-      }),
+      prev.filter(
+        line =>
+          !(
+            nearPoint(point.x, point.y, line.x1, line.y1) ||
+            nearPoint(point.x, point.y, line.x2, line.y2)
+          ),
+      ),
     );
   };
 
+  // Add new shape or line
   const handleAddShape = (type: ShapeType) => {
     const newShape: ShapeBox = {
       id: `shape-${Date.now()}`,
@@ -447,11 +404,9 @@ export default function FragmentationForm4() {
     setActiveShapeId(newShape.id);
     setShowShapePicker(false);
   };
-
   const handleAddLine = () => {
     const centerX = canvasSize.width / 2;
     const centerY = canvasSize.height / 2;
-
     const newLine: LineShape = {
       id: `line-${Date.now()}`,
       x1: centerX - 100,
@@ -460,15 +415,15 @@ export default function FragmentationForm4() {
       y2: centerY,
       color: selectedColor,
     };
-
     setLines(prev => [...prev, newLine]);
     setActiveLineId(newLine.id);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.toolbarContainer}>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <View className="flex-1 px-4">
+        {/* Toolbar with tools and zoom controls */}
+        <View className="py-4">
           <Toolbar
             activeTool={activeTool}
             onToolPress={handleToolPress}
@@ -477,6 +432,7 @@ export default function FragmentationForm4() {
           />
         </View>
 
+        {/* Drawing Canvas component */}
         <DrawingCanvas
           strokes={strokes}
           currentStroke={currentStroke}
@@ -494,6 +450,7 @@ export default function FragmentationForm4() {
           backgroundImage={backgroundImage}
           onLayout={() => {}}
           onImageLoad={dimensions => {
+            // Adjust canvas height to image aspect ratio
             const aspectRatio = dimensions.height / dimensions.width;
             setCanvasSize(prev => ({
               ...prev,
@@ -519,12 +476,18 @@ export default function FragmentationForm4() {
           style={{alignSelf: 'center'}}
         />
 
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.nextButton} onPress={() => {}}>
-            <Text style={styles.buttonText}>Next</Text>
+        {/* Next/Submit button (placeholder) */}
+        <View className="py-4">
+          <TouchableOpacity
+            className="bg-emerald-500 rounded-xl py-4"
+            onPress={() => {}}>
+            <Text className="text-white text-center font-semibold text-lg">
+              Next
+            </Text>
           </TouchableOpacity>
         </View>
 
+        {/* Modal pickers for color, thickness, shape */}
         {showColorPicker && (
           <ColorPicker
             selectedColor={selectedColor}
@@ -535,7 +498,6 @@ export default function FragmentationForm4() {
             onClose={() => setShowColorPicker(false)}
           />
         )}
-
         {showLineThicknessPicker && (
           <LineThicknessPicker
             selectedThickness={lineThickness}
@@ -543,17 +505,19 @@ export default function FragmentationForm4() {
               setLineThickness(thickness);
               setShowLineThicknessPicker(false);
               if (activeTool === 'line') {
+                // After picking line thickness, add a new line
                 handleAddLine();
               }
             }}
             onClose={() => setShowLineThicknessPicker(false)}
           />
         )}
-
         {showShapePicker && (
           <ShapePicker
             selectedShape={null}
-            onShapeSelect={shape => handleAddShape(shape as ShapeType)}
+            onShapeSelect={shape => {
+              handleAddShape(shape as ShapeType);
+            }}
             onClose={() => setShowShapePicker(false)}
           />
         )}
@@ -561,31 +525,3 @@ export default function FragmentationForm4() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  toolbarContainer: {
-    paddingVertical: 16,
-  },
-  bottomBar: {
-    paddingVertical: 16,
-  },
-  nextButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-  },
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 18,
-  },
-});
