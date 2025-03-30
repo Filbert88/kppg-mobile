@@ -27,6 +27,8 @@ import {
   getShapeCorners,
   lineBoundingBox,
   isPointInShape,
+  pointInPolygon,
+  mergeConnectedStrokes,
 } from '../../utils/drawingUtils';
 
 export interface CropRect {
@@ -81,6 +83,8 @@ interface DrawingCanvasProps {
   onCropEnd: () => void;
   onCropComplete: () => void;
   onErase?: (point: Point) => void;
+  setShapes:(shapes: ShapeBox[]) => void;
+  setStrokes: (strokes: Stroke[]) => void;
   style?: any;
 }
 
@@ -115,6 +119,8 @@ export default function DrawingCanvas({
   onCropEnd,
   onCropComplete,
   onErase,
+  setShapes,
+  setStrokes,
   style,
 }: DrawingCanvasProps) {
   const [canvasSize, setCanvasSize] = useState({width: 0, height: 0});
@@ -126,6 +132,12 @@ export default function DrawingCanvas({
   >(null);
 
   const svgRef = useRef<any>(null);
+  // Add new state for fill operation
+  const [fillTarget, setFillTarget] = useState<{
+    type: 'shape' | 'area';
+    id?: string;
+    point?: Point;
+  } | null>(null);
 
   // Calculate canvas dimensions based on screen size
   useEffect(() => {
@@ -136,28 +148,90 @@ export default function DrawingCanvas({
   }, []);
 
   // Transform point coordinates based on scale and crop
+  // Transform point with proper scaling
   const transformPoint = (evt: GestureResponderEvent): Point => {
     const {locationX: rawX, locationY: rawY} = evt.nativeEvent;
-    let x = rawX;
-    let y = rawY;
 
-    // If we have a final crop, adjust coordinates
-    if (finalCropRect && canvasSize.width > 0) {
-      const scaleX = canvasSize.width / finalCropRect.width;
-      const scaleY = canvasSize.height / finalCropRect.height;
-      x = x / scaleX + finalCropRect.x;
-      y = y / scaleY + finalCropRect.y;
+    if (isCropped && finalCropRect) {
+      // If cropped, adjust coordinates relative to the crop area
+      return {
+        x: finalCropRect.x ,
+        y: finalCropRect.y ,
+      };
     } else {
-      // Just apply zoom scale
-      x = x / scale;
-      y = y / scale;
+      // If not cropped, just apply scale
+      return {
+        x: rawX,
+        y: rawY,
+      };
     }
-
-    return {x, y};
   };
 
+  // Handle fill operation
+    const handleFill = (point: Point) => {
+      if (activeTool !== 'paint') return;
+
+      // Check if clicking inside a shape
+      const targetShape = shapes.find(shape => isPointInShape(point, shape));
+      if (targetShape) {
+        const updatedShapes = shapes.map((shape: ShapeBox) =>
+          shape.id === targetShape.id ? {...shape, fill: selectedColor} : shape,
+        );
+        setShapes(updatedShapes);
+        return;
+      }
+
+      // Check if clicking inside a closed stroke path
+      const targetStroke = strokes.find(stroke => {
+        console.log('tes')
+        if (!stroke.isClosed) return false;
+        return pointInPolygon(point.x, point.y, stroke.points);
+      });
+
+      if (targetStroke) {
+        console.log("tes2")
+        const newStrokes: Stroke[] = strokes.map((stroke: Stroke) =>
+          stroke.id === targetStroke.id
+            ? {...stroke, fillColor: selectedColor}
+            : stroke,
+        );
+        setStrokes(newStrokes);
+        return;
+      }
+
+      console.log("tes4")
+      // Check for areas formed by multiple connected strokes
+      const connectedGroups = mergeConnectedStrokes(strokes);
+      console.log(connectedGroups)
+      for (const group of connectedGroups) {
+        console.log("bro")
+        if (pointInPolygon(point.x, point.y, group.polygon)) {
+          // Fill all strokes in this group
+          console.log("tes3")
+          const newStrokes = [...strokes];
+          group.indices.forEach(index => {
+            if (index < newStrokes.length) {
+              newStrokes[index] = {
+                ...newStrokes[index],
+                fillColor: selectedColor,
+              };
+            }
+          });
+          setStrokes(newStrokes);
+          return;
+        }
+      }
+    };
+
   const handleTouchStart = (evt: GestureResponderEvent) => {
+
     const point = transformPoint(evt);
+      console.log('ini point', point);
+     if (activeTool === 'paint') {
+      console.log("hi")
+       handleFill(point);
+       return;
+     }
 
     if (activeTool === 'erase' && onErase) {
       onErase(point);
@@ -262,8 +336,10 @@ export default function DrawingCanvas({
 
   const handleTouchMove = (evt: GestureResponderEvent) => {
     const point = transformPoint(evt);
-
+    console.log("move", point)
     if (activeTool === 'crop' && cropRect) {
+      // Apply proper scaling for crop movement
+
       onCropMove(point);
       return;
     }
@@ -297,6 +373,7 @@ export default function DrawingCanvas({
 
   const handleTouchEnd = () => {
     if (activeTool === 'crop') {
+      console.log("scale",scale)
       onCropEnd();
     } else if (activeTool === 'draw') {
       onStrokeEnd();
@@ -318,9 +395,9 @@ export default function DrawingCanvas({
       height: prev.width * aspectRatio,
     }));
 
-    if (onImageLoad) {
-      onImageLoad({width, height});
-    }
+    // if (onImageLoad) {
+    //   onImageLoad({width, height});
+    // }
   };
 
   // Calculate transform for content based on crop or scale
@@ -328,10 +405,12 @@ export default function DrawingCanvas({
     if (finalCropRect && canvasSize.width > 0) {
       const scaleX = canvasSize.width / finalCropRect.width;
       const scaleY = canvasSize.height / finalCropRect.height;
+      const finalScale = Math.min(scaleX, scaleY);
+
       return [
-        {scale: Math.min(scaleX, scaleY)},
-        {translateX: -finalCropRect.x * scaleX},
-        {translateY: -finalCropRect.y * scaleY},
+        {scale: finalScale},
+        {translateX: -finalCropRect.x * finalScale},
+        {translateY: -finalCropRect.y * finalScale},
       ];
     }
     return [{scale}];
@@ -342,6 +421,7 @@ export default function DrawingCanvas({
 
     const handleSize = CONSTANTS.CROP_HANDLE_SIZE / 2;
     const {x, y, width, height} = cropRect;
+    console.log("crop ovelay", cropRect)
 
     return (
       <>
@@ -368,7 +448,7 @@ export default function DrawingCanvas({
       </>
     );
   };
-
+  console.log("final", finalCropRect)
   return (
     <View
       style={[
@@ -384,43 +464,37 @@ export default function DrawingCanvas({
       onResponderGrant={handleTouchStart}
       onResponderMove={handleTouchMove}
       onResponderRelease={handleTouchEnd}>
-      <View
-        style={[
-          styles.contentContainer,
-          {
-            width: canvasSize.width,
-            height: canvasSize.height,
-          },
-        ]}>
+      {isCropped && finalCropRect ? (
+        // Cropped view
         <View
-          style={[
-            styles.transformContainer,
-            {transform: getContentTransform()},
-          ]}>
+          style={{
+            width: finalCropRect.width * scale,
+            height: finalCropRect.height * scale,
+            overflow: 'hidden',
+          }}>
           {backgroundImage && (
             <Image
               source={require('../../public/assets/batu.png')}
-              style={[
-                styles.backgroundImage,
-                {
-                  width: canvasSize.width,
-                  height: canvasSize.height,
-                },
-              ]}
+              style={{
+                position: 'absolute',
+                left: -finalCropRect.x * scale,
+                top: -finalCropRect.y * scale,
+                width: imageSize.width * scale,
+                height: imageSize.height * scale,
+              }}
               resizeMode="contain"
-              onLoad={handleImageLoad}
             />
           )}
 
           <Svg
             ref={svgRef}
-            style={[
-              styles.svg,
-              {
-                width: canvasSize.width,
-                height: canvasSize.height,
-              },
-            ]}>
+            style={{
+              position: 'absolute',
+              left: -finalCropRect.x * scale,
+              top: -finalCropRect.y * scale,
+              width: canvasSize.width * scale,
+              height: canvasSize.height * scale,
+            }}>
             {/* Render strokes */}
             {strokes.map((stroke, i) => (
               <Path
@@ -428,7 +502,7 @@ export default function DrawingCanvas({
                 d={strokeToPath(stroke.points)}
                 stroke={stroke.color}
                 strokeWidth={stroke.width}
-                fill={stroke.isClosed ? stroke.fillColor || 'none' : 'none'}
+                fill={stroke.fillColor || 'none'}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -550,7 +624,171 @@ export default function DrawingCanvas({
             )}
           </Svg>
         </View>
-      </View>
+      ) : (
+        // Normal view (not cropped)
+        <View
+          style={[
+            styles.contentContainer,
+            {
+              width: canvasSize.width,
+              height: canvasSize.height,
+              transform: [{scale}],
+            },
+          ]}>
+          {backgroundImage && (
+            <Image
+              source={require('../../public/assets/batu.png')}
+              style={[
+                styles.backgroundImage,
+                {
+                  width: canvasSize.width,
+                  height: canvasSize.height,
+                },
+              ]}
+              resizeMode="contain"
+              onLoad={handleImageLoad}
+            />
+          )}
+
+          <Svg
+            ref={svgRef}
+            style={[
+              styles.svg,
+              {
+                width: canvasSize.width,
+                height: canvasSize.height,
+              },
+            ]}>
+            {/* Render strokes */}
+            {strokes.map((stroke, i) => (
+              <Path
+                key={`stroke-${i}`}
+                d={strokeToPath(stroke.points)}
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                fill={stroke.fillColor || 'none'}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+
+            {/* Render shapes */}
+            {shapes.map(shape => {
+              const isActive = shape.id === activeShapeId;
+              return (
+                <React.Fragment key={shape.id}>
+                  {shape.type === 'rect' && (
+                    <Rect
+                      x={shape.x}
+                      y={shape.y}
+                      width={shape.width}
+                      height={shape.height}
+                      fill={shape.fill || 'transparent'}
+                      stroke={selectedColor}
+                      strokeWidth={lineThickness}
+                    />
+                  )}
+                  {shape.type === 'circle' && (
+                    <Circle
+                      cx={shape.x + shape.width / 2}
+                      cy={shape.y + shape.height / 2}
+                      r={Math.min(shape.width, shape.height) / 2}
+                      fill={shape.fill || 'transparent'}
+                      stroke={selectedColor}
+                      strokeWidth={lineThickness}
+                    />
+                  )}
+                  {shape.type === 'triangle' && (
+                    <Polygon
+                      points={`${shape.x + shape.width / 2},${shape.y} ${
+                        shape.x
+                      },${shape.y + shape.height} ${shape.x + shape.width},${
+                        shape.y + shape.height
+                      }`}
+                      fill={shape.fill || 'transparent'}
+                      stroke={selectedColor}
+                      strokeWidth={lineThickness}
+                    />
+                  )}
+                  {isActive && (
+                    <>
+                      <Circle
+                        cx={shape.x}
+                        cy={shape.y}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                      <Circle
+                        cx={shape.x + shape.width}
+                        cy={shape.y}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                      <Circle
+                        cx={shape.x}
+                        cy={shape.y + shape.height}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                      <Circle
+                        cx={shape.x + shape.width}
+                        cy={shape.y + shape.height}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                    </>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {/* Render lines */}
+            {lines.map(line => {
+              const isActive = line.id === activeLineId;
+              return (
+                <React.Fragment key={line.id}>
+                  <SvgLine
+                    x1={line.x1}
+                    y1={line.y1}
+                    x2={line.x2}
+                    y2={line.y2}
+                    stroke={line.color}
+                    strokeWidth={lineThickness}
+                  />
+                  {isActive && (
+                    <>
+                      <Circle
+                        cx={line.x1}
+                        cy={line.y1}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                      <Circle
+                        cx={line.x2}
+                        cy={line.y2}
+                        r={CONSTANTS.HANDLE_SIZE / 2}
+                        fill="gray"
+                      />
+                    </>
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {/* Render current stroke */}
+            {currentStroke.length > 0 && (
+              <Path
+                d={strokeToPath(currentStroke)}
+                stroke={selectedColor}
+                strokeWidth={lineThickness}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+          </Svg>
+        </View>
+      )}
 
       {/* Crop overlay */}
       {activeTool === 'crop' && cropRect && (

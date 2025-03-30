@@ -123,6 +123,7 @@ export default function FragmentationForm4() {
   const handleStrokeEnd = () => {
     if (currentStroke.length > 1) {
       const newStroke: Stroke = {
+        id: `stroke-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Add unique ID
         points: currentStroke,
         color: selectedColor,
         width: lineThickness,
@@ -132,7 +133,11 @@ export default function FragmentationForm4() {
       // Check if stroke is closed
       const firstPoint = currentStroke[0];
       const lastPoint = currentStroke[currentStroke.length - 1];
-      if (distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y) < 15) {
+      if (
+        distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y) <
+          CONSTANTS.CLOSE_THRESHOLD ||
+        distance(firstPoint.x, firstPoint.y, lastPoint.x, lastPoint.y) < 15
+      ) {
         newStroke.isClosed = true;
       }
 
@@ -287,12 +292,8 @@ export default function FragmentationForm4() {
         break;
       case 'topLeft':
         {
-          const maxX =
-            initialCropRect.x + initialCropRect.width - CONSTANTS.MIN_CROP_SIZE;
-          const maxY =
-            initialCropRect.y +
-            initialCropRect.height -
-            CONSTANTS.MIN_CROP_SIZE;
+          const maxX = initialCropRect.x + initialCropRect.width;
+          const maxY = initialCropRect.y + initialCropRect.height;
           newRect.x = Math.max(0, Math.min(initialCropRect.x + dx, maxX));
           newRect.y = Math.max(0, Math.min(initialCropRect.y + dy, maxY));
           newRect.width = initialCropRect.x + initialCropRect.width - newRect.x;
@@ -303,12 +304,9 @@ export default function FragmentationForm4() {
       case 'topRight':
         {
           const maxWidth = canvasSize.width - initialCropRect.x;
-          const maxY =
-            initialCropRect.y +
-            initialCropRect.height -
-            CONSTANTS.MIN_CROP_SIZE;
+          const maxY = initialCropRect.y + initialCropRect.height;
           newRect.width = Math.max(
-            CONSTANTS.MIN_CROP_SIZE,
+            0,
             Math.min(initialCropRect.width + dx, maxWidth),
           );
           newRect.y = Math.max(0, Math.min(initialCropRect.y + dy, maxY));
@@ -318,13 +316,12 @@ export default function FragmentationForm4() {
         break;
       case 'bottomLeft':
         {
-          const maxX =
-            initialCropRect.x + initialCropRect.width - CONSTANTS.MIN_CROP_SIZE;
+          const maxX = initialCropRect.x + initialCropRect.width;
           const maxHeight = canvasSize.height - initialCropRect.y;
           newRect.x = Math.max(0, Math.min(initialCropRect.x + dx, maxX));
           newRect.width = initialCropRect.x + initialCropRect.width - newRect.x;
           newRect.height = Math.max(
-            CONSTANTS.MIN_CROP_SIZE,
+            0,
             Math.min(initialCropRect.height + dy, maxHeight),
           );
         }
@@ -334,21 +331,34 @@ export default function FragmentationForm4() {
           const maxWidth = canvasSize.width - initialCropRect.x;
           const maxHeight = canvasSize.height - initialCropRect.y;
           newRect.width = Math.max(
-            CONSTANTS.MIN_CROP_SIZE,
+            0,
             Math.min(initialCropRect.width + dx, maxWidth),
           );
           newRect.height = Math.max(
-            CONSTANTS.MIN_CROP_SIZE,
+            0,
             Math.min(initialCropRect.height + dy, maxHeight),
           );
         }
         break;
     }
 
+    // Ensure width and height are not negative
+    if (newRect.width < 0) {
+      newRect.x = newRect.x + newRect.width;
+      newRect.width = Math.abs(newRect.width);
+    }
+
+    if (newRect.height < 0) {
+      newRect.y = newRect.y + newRect.height;
+      newRect.height = Math.abs(newRect.height);
+    }
+    console.log("hi", cropRect)
+
     setCropRect(newRect);
   };
 
   const handleCropEnd = () => {
+    console.log("end", cropRect)
     setActiveCropHandle(null);
     setCropStartPoint(null);
     setInitialCropRect(null);
@@ -358,43 +368,9 @@ export default function FragmentationForm4() {
     if (!cropRect) return;
 
     // Store the final crop rectangle
+    console.log("complete", cropRect)
     setFinalCropRect(cropRect);
     setIsCropped(true);
-
-    // Adjust all drawing elements to the new coordinate system
-    const offsetX = -cropRect.x;
-    const offsetY = -cropRect.y;
-
-    // Adjust strokes
-    setStrokes(prev =>
-      prev.map(stroke => ({
-        ...stroke,
-        points: stroke.points.map(point => ({
-          x: point.x + offsetX,
-          y: point.y + offsetY,
-        })),
-      })),
-    );
-
-    // Adjust shapes
-    setShapes(prev =>
-      prev.map(shape => ({
-        ...shape,
-        x: shape.x + offsetX,
-        y: shape.y + offsetY,
-      })),
-    );
-
-    // Adjust lines
-    setLines(prev =>
-      prev.map(line => ({
-        ...line,
-        x1: line.x1 + offsetX,
-        y1: line.y1 + offsetY,
-        x2: line.x2 + offsetX,
-        y2: line.y2 + offsetY,
-      })),
-    );
 
     // Reset crop state
     setCropRect(null);
@@ -517,6 +493,8 @@ export default function FragmentationForm4() {
           onCropEnd={handleCropEnd}
           onCropComplete={handleCropComplete}
           onErase={handleErase}
+          setShapes={setShapes}
+          setStrokes={setStrokes}
           style={{alignSelf: 'center'}}
         />
 

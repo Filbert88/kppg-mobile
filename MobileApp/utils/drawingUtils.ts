@@ -30,51 +30,52 @@ export function nearPoint(
 }
 
 export function pointInPolygon(
-  testX: number,
-  testY: number,
+  x: number,
+  y: number,
   polygon: Point[],
 ): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const {x: xi, y: yi} = polygon[i];
-    const {x: xj, y: yj} = polygon[j];
+    const xi = polygon[i].x,
+      yi = polygon[i].y;
+    const xj = polygon[j].x,
+      yj = polygon[j].y;
+
     const intersect =
-      yi > testY !== yj > testY &&
-      testX < ((xj - xi) * (testY - yi)) / (yj - yi) + xi;
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
 }
-
 export function isPointInShape(point: Point, shape: ShapeBox): boolean {
-  const {x, y, width, height, type} = shape;
+  switch (shape.type) {
+    case 'rect':
+      return (
+        point.x >= shape.x &&
+        point.x <= shape.x + shape.width &&
+        point.y >= shape.y &&
+        point.y <= shape.y + shape.height
+      );
 
-  if (type === 'rect') {
-    return (
-      point.x >= x &&
-      point.x <= x + width &&
-      point.y >= y &&
-      point.y <= y + height
-    );
+    case 'circle': {
+      const centerX = shape.x + shape.width / 2;
+      const centerY = shape.y + shape.height / 2;
+      const radius = Math.min(shape.width, shape.height) / 2;
+      return distance(point.x, point.y, centerX, centerY) <= radius;
+    }
+
+    case 'triangle': {
+      const points = [
+        {x: shape.x + shape.width / 2, y: shape.y},
+        {x: shape.x, y: shape.y + shape.height},
+        {x: shape.x + shape.width, y: shape.y + shape.height},
+      ];
+      return pointInPolygon(point.x, point.y, points);
+    }
+
+    default:
+      return false;
   }
-
-  if (type === 'circle') {
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    const radius = Math.min(width, height) / 2;
-    return distance(point.x, point.y, centerX, centerY) <= radius;
-  }
-
-  if (type === 'triangle') {
-    const points = [
-      {x: x + width / 2, y},
-      {x, y: y + height},
-      {x: x + width, y: y + height},
-    ];
-    return pointInPolygon(point.x, point.y, points);
-  }
-
-  return false;
 }
 
 export function mergeConnectedStrokes(
@@ -83,11 +84,15 @@ export function mergeConnectedStrokes(
   const groups: {indices: number[]; polygon: Point[]}[] = [];
   const visited = new Array(strokes.length).fill(false);
 
+  // Define connection threshold
+  const CONNECT_THRESHOLD = 15; // Distance threshold to consider strokes connected
+  const CLOSE_THRESHOLD = 15; // Distance threshold to consider a polygon closed
+
   for (let i = 0; i < strokes.length; i++) {
     if (visited[i]) continue;
     let groupIndices = [i];
     visited[i] = true;
-    let polyline = strokes[i].points.slice();
+    let polyline = [...strokes[i].points];
     let merged = true;
 
     while (merged) {
@@ -95,32 +100,39 @@ export function mergeConnectedStrokes(
       for (let j = 0; j < strokes.length; j++) {
         if (visited[j]) continue;
         const candidate = strokes[j].points;
+
+        if (candidate.length === 0) continue;
+
         const startPoly = polyline[0];
         const endPoly = polyline[polyline.length - 1];
         const candidateStart = candidate[0];
         const candidateEnd = candidate[candidate.length - 1];
 
+        // Check all possible connections between endpoints
         if (
           distance(endPoly.x, endPoly.y, candidateStart.x, candidateStart.y) <
-          CONSTANTS.CONNECT_THRESHOLD
+          CONNECT_THRESHOLD
         ) {
-          polyline = polyline.concat(candidate.slice(1));
+          // End of polyline connects to start of candidate
+          polyline = [...polyline, ...candidate.slice(1)];
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
         } else if (
           distance(endPoly.x, endPoly.y, candidateEnd.x, candidateEnd.y) <
-          CONSTANTS.CONNECT_THRESHOLD
+          CONNECT_THRESHOLD
         ) {
-          polyline = polyline.concat(candidate.slice(0, -1).reverse());
+          // End of polyline connects to end of candidate
+          polyline = [...polyline, ...candidate.slice(0, -1).reverse()];
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
         } else if (
           distance(startPoly.x, startPoly.y, candidateEnd.x, candidateEnd.y) <
-          CONSTANTS.CONNECT_THRESHOLD
+          CONNECT_THRESHOLD
         ) {
-          polyline = candidate.slice(0, -1).reverse().concat(polyline);
+          // Start of polyline connects to end of candidate
+          polyline = [...candidate.slice(0, -1), ...polyline];
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -130,9 +142,10 @@ export function mergeConnectedStrokes(
             startPoly.y,
             candidateStart.x,
             candidateStart.y,
-          ) < CONSTANTS.CONNECT_THRESHOLD
+          ) < CONNECT_THRESHOLD
         ) {
-          polyline = candidate.slice().reverse().concat(polyline.slice(1));
+          // Start of polyline connects to start of candidate
+          polyline = [...candidate.slice().reverse(), ...polyline.slice(1)];
           visited[j] = true;
           groupIndices.push(j);
           merged = true;
@@ -143,14 +156,17 @@ export function mergeConnectedStrokes(
     // Check if the polygon is closed
     const start = polyline[0];
     const end = polyline[polyline.length - 1];
-    const isClosed =
-      distance(start.x, start.y, end.x, end.y) < CONSTANTS.CLOSE_THRESHOLD;
+    const isClosed = distance(start.x, start.y, end.x, end.y) < CLOSE_THRESHOLD;
 
-    groups.push({
-      indices: groupIndices,
-      polygon: isClosed ? [...polyline, start] : polyline,
-    });
+    // Only add closed polygons
+    if (isClosed && polyline.length > 2) {
+      groups.push({
+        indices: groupIndices,
+        polygon: [...polyline, start], // Close the polygon by adding the start point again
+      });
+    }
   }
+
   return groups;
 }
 
@@ -287,3 +303,4 @@ export function hexToRgb(hex: string): number[] {
 
   return [r, g, b];
 }
+
