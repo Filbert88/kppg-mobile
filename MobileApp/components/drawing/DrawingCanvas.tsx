@@ -38,6 +38,8 @@ export interface CropRect {
   height: number;
 }
 
+const CONNECT_THRESHOLD = 1000;
+
 interface DrawingCanvasProps {
   strokes: Stroke[];
   currentStroke: Point[];
@@ -149,79 +151,100 @@ export default function DrawingCanvas({
 
   // Transform point coordinates based on scale and crop
   // Transform point with proper scaling
-  const transformPoint = (evt: GestureResponderEvent): Point => {
-    const {locationX: rawX, locationY: rawY} = evt.nativeEvent;
+    const transformPoint = (evt: GestureResponderEvent): Point => {
+      const {locationX: rawX, locationY: rawY} = evt.nativeEvent;
 
-    if (isCropped && finalCropRect) {
-      // If cropped, adjust coordinates relative to the crop area
-      return {
-        x: finalCropRect.x ,
-        y: finalCropRect.y ,
-      };
-    } else {
-      // If not cropped, just apply scale
-      return {
-        x: rawX,
-        y: rawY,
-      };
-    }
-  };
-
-  // Handle fill operation
-    const handleFill = (point: Point) => {
-      if (activeTool !== 'paint') return;
-
-      // Check if clicking inside a shape
-      const targetShape = shapes.find(shape => isPointInShape(point, shape));
-      if (targetShape) {
-        const updatedShapes = shapes.map((shape: ShapeBox) =>
-          shape.id === targetShape.id ? {...shape, fill: selectedColor} : shape,
-        );
-        setShapes(updatedShapes);
-        return;
-      }
-
-      // Check if clicking inside a closed stroke path
-      const targetStroke = strokes.find(stroke => {
-        console.log('tes')
-        if (!stroke.isClosed) return false;
-        return pointInPolygon(point.x, point.y, stroke.points);
-      });
-
-      if (targetStroke) {
-        console.log("tes2")
-        const newStrokes: Stroke[] = strokes.map((stroke: Stroke) =>
-          stroke.id === targetStroke.id
-            ? {...stroke, fillColor: selectedColor}
-            : stroke,
-        );
-        setStrokes(newStrokes);
-        return;
-      }
-
-      console.log("tes4")
-      // Check for areas formed by multiple connected strokes
-      const connectedGroups = mergeConnectedStrokes(strokes);
-      console.log(connectedGroups)
-      for (const group of connectedGroups) {
-        console.log("bro")
-        if (pointInPolygon(point.x, point.y, group.polygon)) {
-          // Fill all strokes in this group
-          console.log("tes3")
-          const newStrokes = [...strokes];
-          group.indices.forEach(index => {
-            if (index < newStrokes.length) {
-              newStrokes[index] = {
-                ...newStrokes[index],
-                fillColor: selectedColor,
-              };
-            }
-          });
-          setStrokes(newStrokes);
-          return;
-        }
+      if (isCropped && finalCropRect) {
+        return {
+          x: finalCropRect.x + rawX / scale,
+          y: finalCropRect.y + rawY / scale,
+        };
+      } else {
+        return {
+          x: rawX / scale,
+          y: rawY / scale,
+        };
       }
     };
+
+ const handleFill = (point: Point) => {
+   if (activeTool !== 'paint') return;
+
+
+
+   // Cek jika klik berada di dalam shape
+   const targetShape = shapes.find(shape => isPointInShape(point, shape));
+   if (targetShape) {
+     const updatedShapes = shapes.map((shape: ShapeBox) =>
+       shape.id === targetShape.id ? {...shape, fill: selectedColor} : shape,
+     );
+     setShapes(updatedShapes);
+     return;
+   }
+
+   // Cek jika klik berada di dalam stroke yang sudah tertutup
+   const targetStroke = strokes.find(
+     stroke =>
+       stroke.isClosed && pointInPolygon(point.x, point.y, stroke.points),
+   );
+   if (targetStroke) {
+     setStrokes(
+       strokes.map((stroke: Stroke) =>
+         stroke.id === targetStroke.id
+           ? {...stroke, fillColor: selectedColor}
+           : stroke,
+       ),
+     );
+     return;
+   }
+
+   const groups = mergeConnectedStrokes(strokes);
+   console.log(groups);
+   for (const group of groups) {
+     if (group.polygon.length > 0) {
+       // Hitung bounding box poligon
+       const xs = group.polygon.map(p => p.x);
+       const ys = group.polygon.map(p => p.y);
+       const minX = Math.min(...xs);
+       const maxX = Math.max(...xs);
+       const minY = Math.min(...ys);
+       const maxY = Math.max(...ys);
+       const boxSize = Math.min(maxX - minX, maxY - minY);
+
+       // Misalnya, gunakan threshold dinamis: minimal CONNECT_THRESHOLD atau 10% dari boxSize
+       const dynamicThreshold = Math.max(CONNECT_THRESHOLD, boxSize * 0.1);
+
+       const firstPoint = group.polygon[0];
+       const lastPoint = group.polygon[group.polygon.length - 1];
+       const closureDistance = distance(
+         firstPoint.x,
+         firstPoint.y,
+         lastPoint.x,
+         lastPoint.y,
+       );
+       console.log(
+         'closureDistance:',
+         closureDistance,
+         'dynamicThreshold:',
+         dynamicThreshold,
+       );
+
+       // Hanya jika poligon dianggap tertutup dan titik berada di dalamnya
+       if (
+         closureDistance < dynamicThreshold &&
+         pointInPolygon(point.x, point.y, group.polygon)
+       ) {
+         const newStrokes: Stroke[] = strokes.map((s, idx) =>
+           group.indices.includes(idx)
+             ? {...s, fillColor: selectedColor, isClosed: true}
+             : s,
+         );
+         setStrokes(newStrokes);
+         return;
+       }
+     }
+   }
+ };
 
   const handleTouchStart = (evt: GestureResponderEvent) => {
 
@@ -468,8 +491,8 @@ export default function DrawingCanvas({
         // Cropped view
         <View
           style={{
-            width: finalCropRect.width * scale,
-            height: finalCropRect.height * scale,
+            width: finalCropRect.width ,
+            height: finalCropRect.height ,
             overflow: 'hidden',
           }}>
           {backgroundImage && (
@@ -477,10 +500,10 @@ export default function DrawingCanvas({
               source={require('../../public/assets/batu.png')}
               style={{
                 position: 'absolute',
-                left: -finalCropRect.x * scale,
-                top: -finalCropRect.y * scale,
-                width: imageSize.width * scale,
-                height: imageSize.height * scale,
+                left: -finalCropRect.x ,
+                top: -finalCropRect.y ,
+                width: imageSize.width ,
+                height: imageSize.height,
               }}
               resizeMode="contain"
             />
@@ -490,10 +513,10 @@ export default function DrawingCanvas({
             ref={svgRef}
             style={{
               position: 'absolute',
-              left: -finalCropRect.x * scale,
-              top: -finalCropRect.y * scale,
-              width: canvasSize.width * scale,
-              height: canvasSize.height * scale,
+              left: -finalCropRect.x ,
+              top: -finalCropRect.y ,
+              width: canvasSize.width ,
+              height: canvasSize.height ,
             }}>
             {/* Render strokes */}
             {strokes.map((stroke, i) => (
@@ -643,6 +666,7 @@ export default function DrawingCanvas({
                 {
                   width: canvasSize.width,
                   height: canvasSize.height,
+                  
                 },
               ]}
               resizeMode="contain"

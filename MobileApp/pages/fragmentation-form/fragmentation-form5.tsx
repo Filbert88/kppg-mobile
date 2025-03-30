@@ -78,15 +78,26 @@ export default function FragmentationForm4() {
   useEffect(() => {
     // Initialize default crop rect when crop tool is activated
     if (activeTool === 'crop' && !cropRect) {
-      const defaultCrop: CropRect = {
-        x: canvasSize.width * 0.1,
-        y: canvasSize.height * 0.1,
-        width: canvasSize.width * 0.8,
-        height: canvasSize.height * 0.8,
-      };
-      setCropRect(defaultCrop);
+      // If already cropped, set the initial crop rect to the current cropped area
+      if (isCropped && finalCropRect) {
+        setCropRect({
+          x: 0,
+          y: 0,
+          width: finalCropRect.width,
+          height: finalCropRect.height,
+        });
+      } else {
+        // Otherwise, use default crop area
+        const defaultCrop: CropRect = {
+          x: canvasSize.width * 0.1,
+          y: canvasSize.height * 0.1,
+          width: canvasSize.width * 0.8,
+          height: canvasSize.height * 0.8,
+        };
+        setCropRect(defaultCrop);
+      }
     }
-  }, [activeTool, canvasSize]);
+  }, [activeTool, canvasSize, isCropped, finalCropRect]);
 
   const handleZoomIn = () => setScale(prev => Math.min(prev + 0.2, 3));
   const handleZoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
@@ -367,10 +378,20 @@ export default function FragmentationForm4() {
   const handleCropComplete = () => {
     if (!cropRect) return;
 
-    // Store the final crop rectangle
-    console.log("complete", cropRect)
-    setFinalCropRect(cropRect);
-    setIsCropped(true);
+    if (isCropped && finalCropRect) {
+      // For subsequent crops, adjust coordinates relative to the previous crop
+      const newCropRect: CropRect = {
+        x: finalCropRect.x + cropRect.x,
+        y: finalCropRect.y + cropRect.y,
+        width: cropRect.width,
+        height: cropRect.height,
+      };
+      setFinalCropRect(newCropRect);
+    } else {
+      // First crop
+      setFinalCropRect(cropRect);
+      setIsCropped(true);
+    }
 
     // Reset crop state
     setCropRect(null);
