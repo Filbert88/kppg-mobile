@@ -25,41 +25,25 @@ export default function ImageUploadedFrag({
   onNext,
 }: ImageUploadedFragProps) {
   const selectedImage = formData.images[formData.images.length - 1] || null;
+  const isFormValid = !!selectedImage;
 
   return (
     <div className="flex-1 flex flex-col p-6 mt-4">
       <div className="flex-1 space-y-6">
         <div className="flex justify-center space-x-2 py-2 border-b border-gray-300">
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Search className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <ZoomIn className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <ZoomOut className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Move className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <RotateCw className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Scissors className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Pen className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-md">
-            <Link2 className="w-5 h-5" />
-          </button>
+          {[Search, ZoomIn, ZoomOut, Move, RotateCw, Scissors, Pen, Link2].map(
+            (Icon, i) => (
+              <button key={i} className="p-2 hover:bg-gray-100 rounded-md">
+                <Icon className="w-5 h-5" />
+              </button>
+            )
+          )}
         </div>
 
         <div className="flex border border-gray-300 rounded-md aspect-square overflow-hidden bg-white max-w-md justify-center">
           {selectedImage ? (
             <img
-              src={selectedImage || "/placeholder.svg"}
+              src={selectedImage}
               alt="Uploaded"
               className="w-full h-full object-cover"
             />
@@ -74,10 +58,15 @@ export default function ImageUploadedFrag({
         </div>
       </div>
 
-      <div className="absolute -bottom-8 right-4">
+      <div className="mt-6 flex justify-end">
         <Button
           onClick={onNext}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
+          disabled={!isFormValid}
+          className={`${
+            isFormValid
+              ? "bg-green-800 hover:bg-green-900"
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white font-medium py-2 px-6 rounded-lg`}
         >
           Next
         </Button>

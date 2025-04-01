@@ -45,9 +45,19 @@ export default function BasicInfoForm({
     }
   };
 
+  // Check that each required field is not empty.
+  // Adjust the conditions as needed.
+  const isFormValid =
+    formData.scale.trim() !== "" &&
+    formData.option.trim() !== "" &&
+    formData.size.trim() !== "" &&
+    formData.location.trim() !== "" &&
+    formData.date.trim() !== "" &&
+    formData.images.length > 0;
+
   return (
-    <div className="flex-1 flex flex-col p-6 mt-10 w-full relative">
-      <div className="flex-1 space-y-6">
+    <div className="flex flex-col p-6 mt-10 w-full h-screen overflow-y-auto">
+      <div className="space-y-6">
         <div className="border border-gray-300 rounded-md p-6 bg-white">
           {selectedImage ? (
             <img
@@ -161,11 +171,15 @@ export default function BasicInfoForm({
           </div>
         </div>
       </div>
-
-      <div className="absolute -bottom-8 right-4">
+      <div className="mt-6 flex justify-end">
         <Button
           onClick={onNext}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
+          disabled={!isFormValid}
+          className={`${
+            isFormValid
+              ? "bg-green-800 hover:bg-green-900"
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white font-medium py-2 px-6 rounded-lg`}
         >
           Next
         </Button>
