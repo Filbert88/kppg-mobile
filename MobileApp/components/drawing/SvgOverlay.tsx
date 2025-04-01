@@ -7,6 +7,7 @@ import {Tool} from '../../pages/fragmentation-form/EditingApp';
 // shape and line interfaces
 export interface Shape {
   id: string;
+  shapeType: 'rect' | 'circle';
   x: number;
   y: number;
   width: number;
@@ -446,6 +447,7 @@ export default function SvgOverlay({
 
             const newShape: Shape = {
               id: generateId(),
+              shapeType: selectedShapeType === 'circle' ? 'circle' : 'rect',
               x,
               y,
               width: w,
@@ -506,6 +508,7 @@ export default function SvgOverlay({
       selectedColor,
       lineThickness,
       lastPointErase,
+      selectedShapeType
     ],
   );
 
@@ -517,17 +520,40 @@ export default function SvgOverlay({
       {...panResponder.panHandlers}>
       <Svg width={width} height={height}>
         {/* shape being created */}
-        {creatingShape && (
-          <Rect
-            x={Math.min(creatingShape.start.x, creatingShape.end.x)}
-            y={Math.min(creatingShape.start.y, creatingShape.end.y)}
-            width={Math.abs(creatingShape.start.x - creatingShape.end.x)}
-            height={Math.abs(creatingShape.start.y - creatingShape.end.y)}
-            stroke={selectedColor}
-            strokeWidth={lineThickness}
-            fill="transparent"
-          />
-        )}
+        {creatingShape &&
+          (selectedShapeType === 'circle' ? (
+            // ephemeral circle
+            (() => {
+              const x1 = creatingShape.start.x;
+              const y1 = creatingShape.start.y;
+              const x2 = creatingShape.end.x;
+              const y2 = creatingShape.end.y;
+              const cx = (x1 + x2) * 0.5;
+              const cy = (y1 + y2) * 0.5;
+              const r = 0.5 * Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1));
+              return (
+                <Circle
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  stroke={selectedColor}
+                  strokeWidth={lineThickness}
+                  fill="transparent"
+                />
+              );
+            })()
+          ) : (
+            // ephemeral rect
+            <Rect
+              x={Math.min(creatingShape.start.x, creatingShape.end.x)}
+              y={Math.min(creatingShape.start.y, creatingShape.end.y)}
+              width={Math.abs(creatingShape.start.x - creatingShape.end.x)}
+              height={Math.abs(creatingShape.start.y - creatingShape.end.y)}
+              stroke={selectedColor}
+              strokeWidth={lineThickness}
+              fill="transparent"
+            />
+          ))}
         {/* line being created */}
         {creatingLine && (
           <Line
@@ -541,18 +567,40 @@ export default function SvgOverlay({
         )}
 
         {/* final shapes */}
-        {shapes.map(s => (
-          <Rect
-            key={s.id}
-            x={s.x}
-            y={s.y}
-            width={s.width}
-            height={s.height}
-            fill={s.fillColor}
-            stroke={s.strokeColor}
-            strokeWidth={s.strokeWidth}
-          />
-        ))}
+        {shapes.map(s => {
+          if (s.shapeType === 'rect') {
+            return (
+              <Rect
+                key={s.id}
+                x={s.x}
+                y={s.y}
+                width={s.width}
+                height={s.height}
+                fill={s.fillColor}
+                stroke={s.strokeColor}
+                strokeWidth={s.strokeWidth}
+              />
+            );
+          } else if (s.shapeType === 'circle') {
+            // interpret bounding box as circle
+            // center = (x + width/2, y + height/2)
+            // radius = half of the smaller dimension
+            const cx = s.x + s.width * 0.5;
+            const cy = s.y + s.height * 0.5;
+            const r = 0.5 * Math.min(s.width, s.height);
+            return (
+              <Circle
+                key={s.id}
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill={s.fillColor}
+                stroke={s.strokeColor}
+                strokeWidth={s.strokeWidth}
+              />
+            );
+          }
+        })}
 
         {/* final lines */}
         {lines.map(l => (
