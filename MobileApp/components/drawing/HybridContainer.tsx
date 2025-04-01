@@ -3,15 +3,15 @@ import React, {useState, useRef} from 'react';
 import {View, StyleSheet} from 'react-native';
 import PixelCanvas, {PixelCanvasRef} from './PixelCanvas';
 import SvgOverlay, {Shape, LineType} from './SvgOverlay';
-import { Tool } from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
 
 // The same "tool" type you used before
-
 
 interface HybridContainerProps {
   // We get these from ImageCanvasContainer
   width: number;
   height: number;
+  eraserThickness: number;
   setActiveTool: (tool: Tool) => void;
   activeTool: Tool; // 'draw', 'fill', etc.
   selectedColor: string;
@@ -21,6 +21,7 @@ interface HybridContainerProps {
 export default function HybridContainer({
   width,
   height,
+  eraserThickness,
   setActiveTool,
   activeTool,
   selectedColor,
@@ -40,6 +41,13 @@ export default function HybridContainer({
   // Called by the SVG overlay if user is in fill mode and taps outside shapes.
   const handleCanvasFill = (x: number, y: number) => {
     pixelCanvasRef.current?.doFloodFill(x, y, selectedColor);
+  };
+
+  const handlePixelErase = (
+    p1: {x: number; y: number},
+    p2: {x: number; y: number},
+  ) => {
+    pixelCanvasRef.current?.eraseBetweenPoints(p1, p2, eraserThickness);
   };
 
   return (
@@ -67,6 +75,7 @@ export default function HybridContainer({
         selectedColor={selectedColor}
         lineThickness={lineThickness}
         onCanvasFill={handleCanvasFill}
+        onPixelErase={handlePixelErase}
         pointerEvents={overlayPointerEvents}
       />
     </View>

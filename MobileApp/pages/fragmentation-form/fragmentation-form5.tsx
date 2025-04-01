@@ -11,6 +11,7 @@ import ImageCanvasContainer from '../../components/drawing/ImageCanvasContainer'
 import ColorPicker from '../../components/drawing/ColorPicker';
 import LineThicknessPicker from '../../components/drawing/LineThicknessPicker';
 import ShapePicker from '../../components/drawing/ShapePicker';
+import EraseThicknessPicker from '../../components/drawing/EraseThicknessPicker';
 
 export type Tool = 'draw' | 'line' | 'shape' | 'fill' | 'crop' | 'erase' | null;
 
@@ -18,11 +19,13 @@ const App = () => {
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [selectedColor, setSelectedColor] = useState<string>('#FF0000');
   const [lineThickness, setLineThickness] = useState<number>(4);
+  const [eraseThickness, setEraseThickness] = useState<number>(8);
 
   // Show/hide pickers as modals
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showLinePicker, setShowLinePicker] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
+  const [showErasePicker, setShowErasePicker] = useState(false);
 
   // Show/hide the Cropper
   const [showCropper, setShowCropper] = useState(false);
@@ -49,7 +52,7 @@ const App = () => {
     } else {
       setActiveTool(tool);
 
-      if (tool === 'draw' || tool === 'fill' || tool === 'erase') {
+      if (tool === 'draw' || tool === 'fill') {
         setShowColorPicker(true);
       }
       if (tool === 'line') {
@@ -57,6 +60,10 @@ const App = () => {
       }
       if (tool === 'shape') {
         setShowShapePicker(true);
+      }
+      // For erase => show erase thickness
+      if (tool === 'erase') {
+        setShowErasePicker(true);
       }
       if (tool === 'crop') {
         if (drawingViewRef.current) {
@@ -97,6 +104,7 @@ const App = () => {
               setActiveTool={setActiveTool}
               selectedColor={selectedColor}
               lineThickness={lineThickness}
+              eraserThickness={eraseThickness}
               onCanvasSizeChange={size => setCanvasSize(size)}
               backgroundImage={backgroundImage}
             />
@@ -173,6 +181,20 @@ const App = () => {
               // handle shape creation
             }}
             onClose={() => setShowShapePicker(false)}
+          />
+        </Modal>
+      )}
+
+      {/* ERASE THICKNESS PICKER MODAL */}
+      {showErasePicker && (
+        <Modal transparent animationType="slide">
+          <EraseThicknessPicker
+            selectedThickness={eraseThickness}
+            onSelect={thick => {
+              setEraseThickness(thick);
+              setShowErasePicker(false);
+            }}
+            onClose={() => setShowErasePicker(false)}
           />
         </Modal>
       )}

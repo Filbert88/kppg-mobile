@@ -9,6 +9,7 @@ interface ImageCanvasContainerProps {
   setActiveTool : (tool: Tool) => void;
   selectedColor: string;
   lineThickness: number;
+  eraserThickness: number;
   onCanvasSizeChange: (size: {width: number; height: number}) => void;
   backgroundImage: string;
 }
@@ -20,6 +21,7 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
   setActiveTool,
   selectedColor,
   lineThickness,
+  eraserThickness,
   onCanvasSizeChange,
   backgroundImage,
 }) => {
@@ -99,6 +101,7 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
         <HybridContainer
           width={canvasSize.width}
           height={canvasSize.height}
+          eraserThickness={eraserThickness}
           setActiveTool={setActiveTool}
           activeTool={activeTool as any} // or cast your type
           selectedColor={selectedColor}

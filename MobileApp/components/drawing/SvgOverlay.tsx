@@ -1,15 +1,10 @@
 // SvgOverlay.tsx
 import React, {useState, useMemo} from 'react';
-import {
-  View,
-  PanResponder,
-  GestureResponderEvent,
-  PanResponderGestureState,
-  StyleSheet,
-} from 'react-native';
+import {View, PanResponder, StyleSheet} from 'react-native';
 import Svg, {Rect, Line, Circle} from 'react-native-svg';
-import { Tool } from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
 
+// shape and line interfaces
 export interface Shape {
   id: string;
   x: number;
@@ -31,8 +26,6 @@ export interface LineType {
   strokeWidth: number;
 }
 
-
-
 interface Point {
   x: number;
   y: number;
@@ -52,33 +45,54 @@ interface SvgOverlayProps {
   selectedColor: string;
   lineThickness: number;
 
-  /** Called if user is in fill tool, but taps outside shapes => fill pixel layer */
+  // If user taps fill mode outside shapes => fill pixel
   onCanvasFill: (x: number, y: number) => void;
 
-  // Let parent control pointer events
+  // If user drags/taps in erase mode empty area => erase pixel
+  onPixelErase?: (p1: Point, p2: Point) => void;
+
   pointerEvents?: 'auto' | 'none';
 }
 
-// Helper
+// -------------- HELPER FUNCTIONS --------------
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+/**
+ * Return "inside" if well inside shape bounding box,
+ * "border" if near shape edges, "outside" if not in bounding box
+ */
 function isPointInShape(px: number, py: number, s: Shape) {
   return px >= s.x && px <= s.x + s.width && py >= s.y && py <= s.y + s.height;
 }
-function shapeCorners(s: Shape) {
-  return {
-    topLeft: {x: s.x, y: s.y},
-    topRight: {x: s.x + s.width, y: s.y},
-    bottomLeft: {x: s.x, y: s.y + s.height},
-    bottomRight: {x: s.x + s.width, y: s.y + s.height},
-  };
+function hitTestShape(
+  px: number,
+  py: number,
+  s: Shape,
+): 'border' | 'inside' | 'outside' {
+  // bounding box check
+  const inBox =
+    px >= s.x && px <= s.x + s.width && py >= s.y && py <= s.y + s.height;
+  if (!inBox) return 'outside';
+
+  // if near edges => "border"
+  const threshold = s.strokeWidth * 1.5;
+  const distTop = Math.abs(py - s.y);
+  const distLeft = Math.abs(px - s.x);
+  const distRight = Math.abs(px - (s.x + s.width));
+  const distBottom = Math.abs(py - (s.y + s.height));
+
+  if (
+    distTop < threshold ||
+    distLeft < threshold ||
+    distRight < threshold ||
+    distBottom < threshold
+  ) {
+    return 'border';
+  }
+  return 'inside';
 }
-function distance(p1: Point, p2: Point) {
-  return Math.hypot(p1.x - p2.x, p1.y - p2.y);
-}
-function isNear(p1: Point, p2: Point, threshold = 10) {
-  return distance(p1, p2) < threshold;
-}
+
+/** distance from point to line, used to see if near line (<10px, say) */
 function distanceToLine(pt: Point, line: LineType) {
   const {x, y} = pt;
   const {x1, y1, x2, y2} = line;
@@ -86,7 +100,6 @@ function distanceToLine(pt: Point, line: LineType) {
   const B = y - y1;
   const C = x2 - x1;
   const D = y2 - y1;
-
   const dot = A * C + B * D;
   const len_sq = C * C + D * D;
   let param = -1;
@@ -102,17 +115,39 @@ function distanceToLine(pt: Point, line: LineType) {
     xx = x1 + param * C;
     yy = y1 + param * D;
   }
-  return Math.hypot(x - xx, y - yy);
+  const dx = x - xx;
+  const dy = y - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/** distance between two points */
+function distance(p1: Point, p2: Point) {
+  return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+}
+/** check if within threshold=10 px */
+function isNear(p1: Point, p2: Point, threshold = 10) {
+  return distance(p1, p2) < threshold;
+}
+
+function shapeCorners(s: Shape) {
+  return {
+    topLeft: {x: s.x, y: s.y},
+    topRight: {x: s.x + s.width, y: s.y},
+    bottomLeft: {x: s.x, y: s.y + s.height},
+    bottomRight: {x: s.x + s.width, y: s.y + s.height},
+  };
 }
 
 type SelectedElement =
   | {type: 'shape'; id: string}
   | {type: 'line'; id: string}
   | null;
+
 type DragMode = 'move' | 'resize' | null;
 type CornerKey = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 type Endpoint = 'start' | 'end';
 
+// -------------- MAIN COMPONENT --------------
 export default function SvgOverlay({
   width,
   height,
@@ -125,6 +160,7 @@ export default function SvgOverlay({
   selectedColor,
   lineThickness,
   onCanvasFill,
+  onPixelErase,
   pointerEvents = 'auto',
 }: SvgOverlayProps) {
   // For shape/line creation
@@ -137,7 +173,7 @@ export default function SvgOverlay({
     end: Point;
   } | null>(null);
 
-  // Selection
+  // For selection
   const [selectedElement, setSelectedElement] = useState<SelectedElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
 
@@ -150,6 +186,8 @@ export default function SvgOverlay({
   const [initialShape, setInitialShape] = useState<Shape | null>(null);
   const [initialLine, setInitialLine] = useState<LineType | null>(null);
 
+  const [lastPointErase, setLastPointErase] = useState<Point | null>(null);
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -160,14 +198,53 @@ export default function SvgOverlay({
           const {locationX, locationY} = evt.nativeEvent;
           const p: Point = {x: locationX, y: locationY};
 
-          // 1) Fill tool
-          if (activeTool === 'fill') {
-            // Check if tapped a shape
-            const shapeHit = shapes.find(s =>
-              isPointInShape(locationX, locationY, s),
-            );
+          // ---------- 1) ERASE TOOL ----------
+          if (activeTool === 'erase') {
+            // A) check shapes
+            const shapeHit = shapes.find(s => {
+              const result = hitTestShape(locationX, locationY, s);
+              return result !== 'outside';
+            });
             if (shapeHit) {
-              // fill shape
+              // see if "border" or "inside"
+              const result = hitTestShape(locationX, locationY, shapeHit);
+              if (result === 'border') {
+                // remove shape
+                setShapes(prev => prev.filter(sh => sh.id !== shapeHit.id));
+              } else {
+                // inside => fill=transparent
+                setShapes(prev =>
+                  prev.map(sh =>
+                    sh.id === shapeHit.id
+                      ? {...sh, fillColor: 'transparent'}
+                      : sh,
+                  ),
+                );
+              }
+              return;
+            }
+            // B) check lines
+            const lineHit = lines.find(l => distanceToLine(p, l) < 10);
+            if (lineHit) {
+              setLines(prev => prev.filter(ll => ll.id !== lineHit.id));
+              return;
+            }
+            // C) else => do pixel erase
+            if (onPixelErase) {
+              setLastPointErase(p);
+            }
+            return;
+          }
+
+          // ---------- 2) FILL TOOL ----------
+          if (activeTool === 'fill') {
+            // check shape
+            const shapeHit = shapes.find(s => {
+              const res = hitTestShape(locationX, locationY, s);
+              return res !== 'outside';
+            });
+            if (shapeHit) {
+              // fill shape with selectedColor
               setShapes(prev =>
                 prev.map(sh =>
                   sh.id === shapeHit.id
@@ -176,43 +253,42 @@ export default function SvgOverlay({
                 ),
               );
             } else {
-              // fill pixel layer behind
+              // fill pixel
               onCanvasFill(locationX, locationY);
             }
             return;
           }
 
-          // 2) If "shape" => start new shape
+          // ---------- 3) SHAPE CREATION ----------
           if (activeTool === 'shape') {
             setCreatingShape({start: p, end: p});
             return;
           }
 
-          // 3) If "line" => start new line
+          // ---------- 4) LINE CREATION ----------
           if (activeTool === 'line') {
             setCreatingLine({start: p, end: p});
             return;
           }
 
-          // 4) If activeTool===null => selection mode
+          // ---------- 5) SELECTION (activeTool===null) ----------
           if (activeTool === null) {
-            // A) Check shapes
-            const shape = shapes.find(s =>
-              isPointInShape(locationX, locationY, s),
-            );
-            if (shape) {
-              // check corners
-              const corners = shapeCorners(shape);
+            // A) check shape
+            const shapeSel = shapes.find(s => {
+              return isPointInShape(locationX, locationY, s);
+            });
+            if (shapeSel) {
+              const corners = shapeCorners(shapeSel);
               let foundCorner: CornerKey | null = null;
               for (const key in corners) {
-                if (isNear(p, corners[key as keyof typeof corners])) {
+                if (isNear(p, corners[key as keyof typeof corners], 10)) {
                   foundCorner = key as CornerKey;
                   break;
                 }
               }
-              setSelectedElement({type: 'shape', id: shape.id});
+              setSelectedElement({type: 'shape', id: shapeSel.id});
               setInitialTouch(p);
-              setInitialShape(shape);
+              setInitialShape(shapeSel);
               if (foundCorner) {
                 setDragMode('resize');
                 setResizeCorner(foundCorner);
@@ -222,15 +298,16 @@ export default function SvgOverlay({
               }
               return;
             }
-            // B) Check lines
-            const lineHit = lines.find(l => distanceToLine(p, l) < 10);
-            if (lineHit) {
-              // near endpoints?
-              const nearStart = isNear(p, {x: lineHit.x1, y: lineHit.y1});
-              const nearEnd = isNear(p, {x: lineHit.x2, y: lineHit.y2});
-              setSelectedElement({type: 'line', id: lineHit.id});
+
+            // B) check line
+            const lineSel = lines.find(l => distanceToLine(p, l) < 10);
+            if (lineSel) {
+              // near endpoints
+              const nearStart = isNear(p, {x: lineSel.x1, y: lineSel.y1}, 10);
+              const nearEnd = isNear(p, {x: lineSel.x2, y: lineSel.y2}, 10);
+              setSelectedElement({type: 'line', id: lineSel.id});
               setInitialTouch(p);
-              setInitialLine(lineHit);
+              setInitialLine(lineSel);
 
               if (nearStart) {
                 setDragMode('resize');
@@ -245,7 +322,7 @@ export default function SvgOverlay({
               return;
             }
 
-            // If tapped nothing
+            // tapped nothing
             setSelectedElement(null);
             setDragMode(null);
             setResizeCorner(null);
@@ -253,22 +330,29 @@ export default function SvgOverlay({
           }
         },
 
-        onPanResponderMove: (evt, gestureState: PanResponderGestureState) => {
+        onPanResponderMove: (evt, gestureState) => {
           const {locationX, locationY} = evt.nativeEvent;
           const p: Point = {x: locationX, y: locationY};
 
-          // If creating shape
+          // if erase is active & we have lastPointErase => do pixel erase
+          if (activeTool === 'erase' && lastPointErase && onPixelErase) {
+            onPixelErase(lastPointErase, p);
+            setLastPointErase(p);
+            return;
+          }
+
+          // shape creation
           if (activeTool === 'shape' && creatingShape) {
             setCreatingShape({start: creatingShape.start, end: p});
             return;
           }
-          // If creating line
+          // line creation
           if (activeTool === 'line' && creatingLine) {
             setCreatingLine({start: creatingLine.start, end: p});
             return;
           }
 
-          // selection
+          // if selection
           if (activeTool === null && selectedElement && dragMode) {
             const dx = locationX - (initialTouch?.x ?? 0);
             const dy = locationY - (initialTouch?.y ?? 0);
@@ -316,7 +400,6 @@ export default function SvgOverlay({
               }
             } else if (selectedElement.type === 'line' && initialLine) {
               if (dragMode === 'move') {
-                // move entire line
                 setLines(prev =>
                   prev.map(l =>
                     l.id === selectedElement.id
@@ -371,7 +454,7 @@ export default function SvgOverlay({
             };
             setShapes(prev => [...prev, newShape]);
             setCreatingShape(null);
-            setActiveTool(null)
+            setActiveTool(null);
           }
           // finalize line creation
           if (activeTool === 'line' && creatingLine) {
@@ -387,7 +470,12 @@ export default function SvgOverlay({
             };
             setLines(prev => [...prev, newLine]);
             setCreatingLine(null);
-            setActiveTool(null)
+            setActiveTool(null);
+          }
+
+          // finalize erase
+          if (activeTool === 'erase') {
+            setLastPointErase(null);
           }
 
           // end selection
@@ -406,8 +494,6 @@ export default function SvgOverlay({
       lines,
       creatingShape,
       creatingLine,
-      selectedColor,
-      lineThickness,
       selectedElement,
       dragMode,
       resizeCorner,
@@ -415,6 +501,9 @@ export default function SvgOverlay({
       initialTouch,
       initialShape,
       initialLine,
+      selectedColor,
+      lineThickness,
+      lastPointErase,
     ],
   );
 

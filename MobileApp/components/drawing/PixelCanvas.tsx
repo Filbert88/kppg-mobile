@@ -1,3 +1,5 @@
+// PixelCanvas.tsx
+
 import React, {
   useRef,
   useState,
@@ -14,68 +16,91 @@ import {
   AlphaType,
   Skia,
 } from '@shopify/react-native-skia';
-
 import FloodFill from 'q-floodfill';
 
 export interface PixelCanvasRef {
   doFloodFill: (x: number, y: number, fillColor: string) => void;
   reDrawAllStrokes: () => void;
+  eraseBetweenPoints: (
+    p1: {x: number; y: number},
+    p2: {x: number; y: number},
+    thickness: number,
+  ) => void;
 }
 
 interface PixelCanvasProps {
   width: number;
   height: number;
-  activeTool: string | null; // "draw", "fill", etc.
+  activeTool: string | null; // "draw", "fill", "erase", etc.
   selectedColor: string; // e.g. "#ff0000"
   lineThickness: number;
 }
 
-/**
- * SkiaPixelCanvasImpl:
- *
- * 1) We store an RGBA pixel buffer (Uint8Array) of size width×height×4,
- *    initially all alpha=0 => fully transparent background.
- * 2) On pointer moves, we "draw" line segments in that array => updated pixels.
- * 3) We re-create a Skia image with `Skia.Image.MakeImage(...)`.
- * 4) We show that image in a <Canvas>.
- * 5) doFloodFill(...) uses q-floodfill on the RGBA array, then rebuilds the image.
- */
+export function convertHexToRgbaString(hexColor: string): string {
+  let hex = hexColor.replace('#', '').trim();
+
+  // Expand short forms: #abc => #aabbccff, #abcd => #aabbccdd
+  if (hex.length === 3) {
+    // #rgb -> #rrggbb + "ff"
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2] + 'ff';
+  } else if (hex.length === 4) {
+    // #rgba -> #rrggbbaa
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  } else if (hex.length === 6) {
+    // #rrggbb -> #rrggbbff
+    hex += 'ff';
+  }
+  // Now hex should be 8 digits, "rrggbbaa"
+  if (hex.length !== 8) {
+    throw new Error(`Invalid hex color: #${hex}`);
+  }
+
+  // Parse out components
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const a = parseInt(hex.slice(6, 8), 16) / 255; // convert 0..255 => 0..1
+
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
 function SkiaPixelCanvasImpl(
   {width, height, activeTool, selectedColor, lineThickness}: PixelCanvasProps,
   ref: React.Ref<PixelCanvasRef>,
 ) {
-  // Round to int
   const RWidth = Math.floor(width);
   const RHeight = Math.floor(height);
 
-  // 1) RGBA pixel buffer with alpha=0 => fully transparent
+  // The RGBA buffer
   const [rgbaData] = useState<Uint8Array>(() => {
-    const arr = new Uint8Array(RWidth * RHeight * 4).fill(0);
+    const arr = new Uint8Array(RWidth * RHeight * 4).fill(0); // alpha=0 => transparent
     return arr;
   });
 
-  // 2) We'll store the current Skia image
   const [skImage, setSkImage] = useState<ReturnType<
     typeof Skia.Image.MakeImage
   > | null>(null);
 
-  // 3) For ephemeral line-drawing, track the last pointer location
+  // For "draw" pointer
   const [lastPoint, setLastPoint] = useState<{x: number; y: number} | null>(
     null,
   );
 
-  // ========== Rebuild the SkImage from RGBA data ==========
-  const rebuildImage = (pixels: Uint8Array) => {
-    // Create a Skia.Data from the raw pixel array
-    const data = Skia.Data.fromBytes(pixels);
+  // On mount, build initial empty image
+  useEffect(() => {
+    rebuildImage(rgbaData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const rebuildImage = (pixels: Uint8Array) => {
+    const data = Skia.Data.fromBytes(pixels);
     try {
       const image = Skia.Image.MakeImage(
         {
           width: RWidth,
           height: RHeight,
           colorType: ColorType.RGBA_8888,
-          alphaType: AlphaType.Unpremul, // unpremultiplied alpha => supports transparency
+          alphaType: AlphaType.Unpremul,
         },
         data,
         RWidth * 4,
@@ -86,23 +111,15 @@ function SkiaPixelCanvasImpl(
     }
   };
 
-  // On mount, build the initial (transparent) image
-  useEffect(() => {
-    rebuildImage(rgbaData);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ========== Helper: draw line in RGBA array ==========
+  // ---------- Drawing strokes ----------
   const drawLineSegmentInRgba = (
     p1: {x: number; y: number},
     p2: {x: number; y: number},
   ) => {
     const colorRGBA = parseCssColorToRGBA(selectedColor);
-    // Increase sampling steps for smoother line
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    // e.g. we do 2 or 3 samples per pixel distance for smoother coverage
     const steps = Math.ceil(dist * 2);
 
     for (let i = 0; i <= steps; i++) {
@@ -113,7 +130,6 @@ function SkiaPixelCanvasImpl(
     }
   };
 
-  // ========== Helper: draw a dot in RGBA array ==========
   function drawDot(
     data: Uint8Array,
     cx: number,
@@ -129,18 +145,77 @@ function SkiaPixelCanvasImpl(
           const px = Math.round(cx + xx);
           const py = Math.round(cy + yy);
           if (px >= 0 && px < RWidth && py >= 0 && py < RHeight) {
-            const index = (py * RWidth + px) * 4;
-            data[index + 0] = color[0]; // R
-            data[index + 1] = color[1]; // G
-            data[index + 2] = color[2]; // B
-            data[index + 3] = color[3]; // A=255 => fully opaque stroke
+            const idx = (py * RWidth + px) * 4;
+            data[idx + 0] = color[0];
+            data[idx + 1] = color[1];
+            data[idx + 2] = color[2];
+            data[idx + 3] = color[3]; // 255 => opaque
           }
         }
       }
     }
   }
 
-  // ========== Convert CSS "#RRGGBB" => [r,g,b,a=255] ==========
+  // ---------- Erase pixels (alpha=0) ----------
+  const eraseLineSegmentInRgba = (
+    p1: {x: number; y: number},
+    p2: {x: number; y: number},
+    thickness: number,
+  ) => {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.ceil(dist * 2);
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = Math.round(p1.x + dx * t);
+      const y = Math.round(p1.y + dy * t);
+      eraseDot(rgbaData, x, y, thickness);
+    }
+  };
+
+  function eraseDot(
+    data: Uint8Array,
+    cx: number,
+    cy: number,
+    diameter: number,
+  ) {
+    const radius = diameter / 2;
+    for (let yy = -radius; yy <= radius; yy++) {
+      for (let xx = -radius; xx <= radius; xx++) {
+        if (xx * xx + yy * yy <= radius * radius) {
+          const px = Math.round(cx + xx);
+          const py = Math.round(cy + yy);
+          if (px >= 0 && px < RWidth && py >= 0 && py < RHeight) {
+            const idx = (py * RWidth + px) * 4;
+            // set alpha=0 => erase
+            data[idx + 3] = 0;
+          }
+        }
+      }
+    }
+  }
+
+  function parseCssColorToRGBA2(
+    cssColor: string,
+  ): [number, number, number, number] {
+    let c = cssColor.replace('#', '');
+    if (c.length === 3) {
+      c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2] + 'FF'; // default to opaque
+    } else if (c.length === 6) {
+      c += 'FF'; // add alpha if missing
+    }
+
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    const a = parseInt(c.substring(6, 8), 16);
+
+    return [r, g, b, a];
+  }
+
+  // ---------- parse color ----------
   function parseCssColorToRGBA(
     cssColor: string,
   ): [number, number, number, number] {
@@ -154,7 +229,12 @@ function SkiaPixelCanvasImpl(
     return [r, g, b, 255];
   }
 
-  // ========== PanResponder for pointer events ==========
+  // ---------- (optional) panResponder for "draw" ----------
+  const [lastPointDraw, setLastPointDraw] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -164,45 +244,45 @@ function SkiaPixelCanvasImpl(
         onPanResponderGrant: evt => {
           if (activeTool === 'draw') {
             const {locationX, locationY} = evt.nativeEvent;
-            setLastPoint({x: locationX, y: locationY});
+            setLastPointDraw({x: locationX, y: locationY});
           }
         },
         onPanResponderMove: evt => {
-          if (activeTool === 'draw' && lastPoint) {
+          if (activeTool === 'draw' && lastPointDraw) {
             const {locationX, locationY} = evt.nativeEvent;
-            // 1) Draw line in RGBA
-            drawLineSegmentInRgba(lastPoint, {x: locationX, y: locationY});
-            // 2) Update lastPoint
-            setLastPoint({x: locationX, y: locationY});
-            // 3) Rebuild the image => show stroke
+            drawLineSegmentInRgba(lastPointDraw, {x: locationX, y: locationY});
+            setLastPointDraw({x: locationX, y: locationY});
             rebuildImage(rgbaData);
           }
         },
         onPanResponderRelease: () => {
           if (activeTool === 'draw') {
-            setLastPoint(null);
+            setLastPointDraw(null);
           }
         },
       }),
-    [activeTool, lastPoint, rgbaData, drawLineSegmentInRgba, rebuildImage],
+    [activeTool, lastPointDraw, rgbaData, drawLineSegmentInRgba, rebuildImage],
   );
 
-  // ========== Imperative Methods ==========
+  // ---------- Imperative handle ----------
   useImperativeHandle(ref, () => ({
     doFloodFill: async (x: number, y: number, fillColor: string) => {
-      // q-floodfill on entire RGBA buffer
       console.log('flood fill started');
+      
+      const rgbaColor = convertHexToRgbaString(fillColor)
       const ff = new FloodFill({
         data: rgbaData,
         width: RWidth,
         height: RHeight,
       });
-      ff.fill(fillColor, Math.floor(x), Math.floor(y), 20);
-      console.log('flood fill done. Rebuild image next.');
+      ff.fill(rgbaColor, Math.floor(x), Math.floor(y), 20);
       rebuildImage(rgbaData);
     },
     reDrawAllStrokes: () => {
-      // If needed, you can reload from a saved buffer. For now, we just rebuild
+      rebuildImage(rgbaData);
+    },
+    eraseBetweenPoints: (p1, p2, thickness) => {
+      eraseLineSegmentInRgba(p1, p2, thickness);
       rebuildImage(rgbaData);
     },
   }));
