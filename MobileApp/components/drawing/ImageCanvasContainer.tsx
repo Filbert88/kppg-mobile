@@ -2,21 +2,26 @@ import React, {useEffect, useState} from 'react';
 import {View, Image, StyleSheet, Dimensions} from 'react-native';
 // import DrawingCanvas from './DrawingCanvas'; // We'll replace this
 import HybridContainer from './HybridContainer';
+import { Tool } from '../../pages/fragmentation-form/fragmentation-form5';
 
 interface ImageCanvasContainerProps {
   activeTool: string | null;
+  setActiveTool : (tool: Tool) => void;
   selectedColor: string;
   lineThickness: number;
   onCanvasSizeChange: (size: {width: number; height: number}) => void;
+  backgroundImage: string;
 }
 
 const imageSource = require('../../public/assets/fotodiri.jpg');
 
 const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
   activeTool,
+  setActiveTool,
   selectedColor,
   lineThickness,
   onCanvasSizeChange,
+  backgroundImage,
 }) => {
   const [canvasSize, setCanvasSize] = useState<{width: number; height: number}>(
     {
@@ -26,13 +31,37 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
   );
 
   useEffect(() => {
-    const {width, height} = Image.resolveAssetSource(imageSource);
     const screenWidth = Dimensions.get('window').width;
-    const scaleFactor = screenWidth / width;
-    const size = {width: screenWidth, height: height * scaleFactor};
-    setCanvasSize(size);
-    onCanvasSizeChange(size);
-  }, []);
+
+    const setScaledSize = (imgWidth: number, imgHeight: number) => {
+      const scaleFactor = screenWidth / imgWidth;
+      const scaledWidth = screenWidth;
+      const scaledHeight = Math.floor(imgHeight * scaleFactor);
+      const size = {width: scaledWidth, height: scaledHeight};
+
+      setCanvasSize(size);
+      onCanvasSizeChange(size);
+    };
+   if (typeof backgroundImage === 'number') {
+     // It's a local require(...) resource.
+     // For example: require('./path/to/image')
+     const source = Image.resolveAssetSource(backgroundImage);
+     if (source && source.width && source.height) {
+       setScaledSize(source.width, source.height);
+     }
+   } else if (typeof backgroundImage === 'string') {
+     // It's probably a remote URL
+     Image.getSize(
+       backgroundImage,
+       (imgWidth, imgHeight) => {
+         setScaledSize(imgWidth, imgHeight);
+       },
+       error => {
+         console.log('Error loading remote image for size:', error);
+       },
+     );
+   }
+  }, [backgroundImage]);
 
   if (canvasSize.width === 0 || canvasSize.height === 0) {
     return null;
@@ -52,7 +81,7 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
         ]}
         pointerEvents="none">
         <Image
-          source={imageSource}
+          source={{uri: backgroundImage}}
           style={[
             styles.image,
             {width: canvasSize.width, height: canvasSize.height},
@@ -70,6 +99,7 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
         <HybridContainer
           width={canvasSize.width}
           height={canvasSize.height}
+          setActiveTool={setActiveTool}
           activeTool={activeTool as any} // or cast your type
           selectedColor={selectedColor}
           lineThickness={lineThickness}

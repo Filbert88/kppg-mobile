@@ -1,35 +1,40 @@
-import React, {useRef, useState, useEffect} from 'react';
-import {SafeAreaView, View, StyleSheet, Modal} from 'react-native';
+import React, {useRef, useState} from 'react';
+import {SafeAreaView, View, StyleSheet, Dimensions, Modal} from 'react-native';
 import ZoomableView, {
   ReactNativeZoomableView,
 } from '@openspacelabs/react-native-zoomable-view';
 import {captureRef} from 'react-native-view-shot';
+import AmazingCropper from 'react-native-amazing-cropper';
+
 import Toolbar from '../../components/drawing/Toolbar';
 import ImageCanvasContainer from '../../components/drawing/ImageCanvasContainer';
 import ColorPicker from '../../components/drawing/ColorPicker';
 import LineThicknessPicker from '../../components/drawing/LineThicknessPicker';
 import ShapePicker from '../../components/drawing/ShapePicker';
-import Cropper from 'react-native-amazing-cropper';
 
-// The same list of tools
 export type Tool = 'draw' | 'line' | 'shape' | 'fill' | 'crop' | 'erase' | null;
 
 const App = () => {
   const [activeTool, setActiveTool] = useState<Tool>(null);
   const [selectedColor, setSelectedColor] = useState<string>('#FF0000');
   const [lineThickness, setLineThickness] = useState<number>(4);
-  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
-  const [showLinePicker, setShowLinePicker] = useState<boolean>(false);
-  const [showShapePicker, setShowShapePicker] = useState<boolean>(false);
-  const [showCropper, setShowCropper] = useState<boolean>(false);
+
+  // Show/hide pickers as modals
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showLinePicker, setShowLinePicker] = useState(false);
+  const [showShapePicker, setShowShapePicker] = useState(false);
+
+  // Show/hide the Cropper
+  const [showCropper, setShowCropper] = useState(false);
+
   const [backgroundImage, setBackgroundImage] = useState<string>(
-    'https://example.com/sample.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg',
   );
 
-  // The view ref we use for exporting an image
+  // The container we capture
   const drawingViewRef = useRef<View>(null);
+  const [cropSourceUri, setCropSourceUri] = useState<string | null>(null);
 
-  // We'll still capture the final dimension from ImageCanvasContainer
   const [canvasSize, setCanvasSize] = useState<{width: number; height: number}>(
     {
       width: 0,
@@ -37,17 +42,13 @@ const App = () => {
     },
   );
 
-  /**
-   * Because we now use a HybridContainer approach (or similar) for fill,
-   * we no longer need the snapshot + FillCanvas trick. So we remove it.
-   */
-
+  // 1) When the user picks the "crop" tool, we capture, set `showCropper=true`, but do NOT unmount the container
   const handleToolSelect = (tool: Tool) => {
     if (activeTool === tool) {
       setActiveTool(null);
     } else {
       setActiveTool(tool);
-      // If using a color-based tool, open color picker, etc.
+
       if (tool === 'draw' || tool === 'fill' || tool === 'erase') {
         setShowColorPicker(true);
       }
@@ -58,50 +59,50 @@ const App = () => {
         setShowShapePicker(true);
       }
       if (tool === 'crop') {
-        setShowCropper(true);
+        if (drawingViewRef.current) {
+          captureRef(drawingViewRef, {format: 'png', quality: 1})
+            .then(uri => {
+              console.log('Captured =>', uri);
+              setCropSourceUri(uri);
+              setShowCropper(true); // We'll show the Cropper on top
+            })
+            .catch(err => console.error('Error capturing snapshot:', err));
+        }
       }
     }
   };
 
   const exportImage = async () => {
-    try {
-      if (drawingViewRef.current) {
-        const uri = await captureRef(drawingViewRef, {
-          format: 'png',
-          quality: 1,
-        });
-        console.log('Exported image URI:', uri);
-      }
-    } catch (error) {
-      console.error('Error exporting image', error);
+    if (drawingViewRef.current) {
+      const uri = await captureRef(drawingViewRef, {format: 'png', quality: 1});
+      console.log('Exported =>', uri);
     }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      {/* Always mount the drawing UI so ephemeral pixel data is not lost */}
+      <View
+        style={styles.container}
+        pointerEvents={showCropper ? 'none' : 'auto'}>
         <ReactNativeZoomableView
           maxZoom={3}
           minZoom={0.5}
-          zoomEnabled={activeTool === null}
-          panEnabled={activeTool === null}
+          zoomEnabled={!showCropper && activeTool === null}
+          panEnabled={!showCropper && activeTool === null}
           style={styles.zoomable}>
           <View collapsable={false} ref={drawingViewRef}>
-            {/* 
-              Instead of the old FillCanvas approach, 
-              we use the new ImageCanvasContainer 
-              that has a HybridContainer behind the scenes. 
-            */}
             <ImageCanvasContainer
               activeTool={activeTool}
+              setActiveTool={setActiveTool}
               selectedColor={selectedColor}
               lineThickness={lineThickness}
               onCanvasSizeChange={size => setCanvasSize(size)}
+              backgroundImage={backgroundImage}
             />
           </View>
         </ReactNativeZoomableView>
 
-        {/* Your toolbar */}
         <Toolbar
           activeTool={activeTool}
           onToolSelect={handleToolSelect}
@@ -109,51 +110,72 @@ const App = () => {
         />
       </View>
 
-      {/* Color picker modal */}
-      <Modal visible={showColorPicker} transparent animationType="slide">
-        <ColorPicker
-          selectedColor={selectedColor}
-          onSelect={color => {
-            setSelectedColor(color);
-            setShowColorPicker(false);
-          }}
-          onClose={() => setShowColorPicker(false)}
-        />
-      </Modal>
+      {/* Overlaid Cropper in absolute style, hidden unless showCropper=true */}
+      {showCropper && cropSourceUri && (
+        <View style={styles.cropOverlay}>
+          <AmazingCropper
+            imageUri={cropSourceUri}
+            imageWidth={canvasSize.width || 600}
+            imageHeight={canvasSize.height || 800}
+            onDone={croppedUri => {
+              console.log('Cropped =>', croppedUri);
+              setBackgroundImage(croppedUri);
+              setShowCropper(false);
+              setActiveTool(null);
+            }}
+            onCancel={() => {
+              console.log('Crop canceled');
+              setShowCropper(false);
+              setActiveTool(null);
+            }}
+            onError={err => {
+              console.log('Crop error =>', err);
+              setShowCropper(false);
+              setActiveTool(null);
+            }}
+            COMPONENT_HEIGHT={Dimensions.get('window').height - 120}
+          />
+        </View>
+      )}
 
-      {/* Line thickness modal */}
-      <Modal visible={showLinePicker} transparent animationType="slide">
-        <LineThicknessPicker
-          selectedThickness={lineThickness}
-          onSelect={thickness => {
-            setLineThickness(thickness);
-            setShowLinePicker(false);
-          }}
-          onClose={() => setShowLinePicker(false)}
-        />
-      </Modal>
+      {/* The color/line/shape pickers still modals */}
+      {showColorPicker && (
+        <Modal transparent animationType="slide">
+          <ColorPicker
+            selectedColor={selectedColor}
+            onSelect={color => {
+              setSelectedColor(color);
+              setShowColorPicker(false);
+            }}
+            onClose={() => setShowColorPicker(false)}
+          />
+        </Modal>
+      )}
 
-      {/* Shape picker modal */}
-      <Modal visible={showShapePicker} transparent animationType="slide">
-        <ShapePicker
-          onSelect={(shapeType: string) => {
-            setShowShapePicker(false);
-          }}
-          onClose={() => setShowShapePicker(false)}
-        />
-      </Modal>
+      {showLinePicker && (
+        <Modal transparent animationType="slide">
+          <LineThicknessPicker
+            selectedThickness={lineThickness}
+            onSelect={thickness => {
+              setLineThickness(thickness);
+              setShowLinePicker(false);
+            }}
+            onClose={() => setShowLinePicker(false)}
+          />
+        </Modal>
+      )}
 
-      {/* Cropper */}
-      <Modal visible={showCropper} transparent animationType="slide">
-        <Cropper
-          imageUri={backgroundImage}
-          onDone={croppedUri => {
-            setBackgroundImage(croppedUri);
-            setShowCropper(false);
-          }}
-          onCancel={() => setShowCropper(false)}
-        />
-      </Modal>
+      {showShapePicker && (
+        <Modal transparent animationType="slide">
+          <ShapePicker
+            onSelect={(shapeType: string) => {
+              setShowShapePicker(false);
+              // handle shape creation
+            }}
+            onClose={() => setShowShapePicker(false)}
+          />
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -170,5 +192,10 @@ const styles = StyleSheet.create({
   },
   zoomable: {
     flex: 1,
+  },
+  cropOverlay: {
+    // absolutely fill the screen
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000', // typical for a crop background
   },
 });

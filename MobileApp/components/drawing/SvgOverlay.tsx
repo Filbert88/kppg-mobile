@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import Svg, {Rect, Line, Circle} from 'react-native-svg';
+import { Tool } from '../../pages/fragmentation-form/fragmentation-form5';
 
 export interface Shape {
   id: string;
@@ -30,7 +31,7 @@ export interface LineType {
   strokeWidth: number;
 }
 
-type Tool = 'draw' | 'fill' | 'shape' | 'line' | null;
+
 
 interface Point {
   x: number;
@@ -47,6 +48,7 @@ interface SvgOverlayProps {
   setLines: React.Dispatch<React.SetStateAction<LineType[]>>;
 
   activeTool: Tool;
+  setActiveTool: (tool: Tool) => void;
   selectedColor: string;
   lineThickness: number;
 
@@ -119,6 +121,7 @@ export default function SvgOverlay({
   lines,
   setLines,
   activeTool,
+  setActiveTool,
   selectedColor,
   lineThickness,
   onCanvasFill,
@@ -368,6 +371,7 @@ export default function SvgOverlay({
             };
             setShapes(prev => [...prev, newShape]);
             setCreatingShape(null);
+            setActiveTool(null)
           }
           // finalize line creation
           if (activeTool === 'line' && creatingLine) {
@@ -383,6 +387,7 @@ export default function SvgOverlay({
             };
             setLines(prev => [...prev, newLine]);
             setCreatingLine(null);
+            setActiveTool(null)
           }
 
           // end selection
