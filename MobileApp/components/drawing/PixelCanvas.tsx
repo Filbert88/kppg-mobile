@@ -1,165 +1,160 @@
 import React, {
   useRef,
   useState,
-  useCallback,
   useImperativeHandle,
   forwardRef,
   useMemo,
   useEffect,
 } from 'react';
 import {View, PanResponder, StyleSheet} from 'react-native';
-import Canvas, { CanvasRenderingContext2D } from 'react-native-canvas';
+import {
+  Canvas,
+  Image as SkImageComp,
+  ColorType,
+  AlphaType,
+  Skia,
+} from '@shopify/react-native-skia';
+
 import FloodFill from 'q-floodfill';
 
-/** Exposes doFloodFill(...) for paint-bucket usage. */
 export interface PixelCanvasRef {
   doFloodFill: (x: number, y: number, fillColor: string) => void;
-  reDrawAllStrokes: () => void; // optional if you want to re-draw after unmount
+  reDrawAllStrokes: () => void;
 }
 
-/** A finished stroke: array of points + color/thickness. */
-interface Stroke {
-  points: Array<{x: number; y: number}>;
-  color: string;
-  thickness: number;
-}
-
-/** Props for the pixel-based canvas. */
 interface PixelCanvasProps {
   width: number;
   height: number;
-  activeTool: string | null; // e.g. 'draw', 'fill'
-  selectedColor: string;
+  activeTool: string | null; // "draw", "fill", etc.
+  selectedColor: string; // e.g. "#ff0000"
   lineThickness: number;
 }
 
-function PixelCanvasImpl(
+/**
+ * SkiaPixelCanvasImpl:
+ *
+ * 1) We store an RGBA pixel buffer (Uint8Array) of size width×height×4,
+ *    initially all alpha=0 => fully transparent background.
+ * 2) On pointer moves, we "draw" line segments in that array => updated pixels.
+ * 3) We re-create a Skia image with `Skia.Image.MakeImage(...)`.
+ * 4) We show that image in a <Canvas>.
+ * 5) doFloodFill(...) uses q-floodfill on the RGBA array, then rebuilds the image.
+ */
+function SkiaPixelCanvasImpl(
   {width, height, activeTool, selectedColor, lineThickness}: PixelCanvasProps,
   ref: React.Ref<PixelCanvasRef>,
 ) {
-  const canvasRef = useRef<Canvas | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  // Round to int
+  const RWidth = Math.floor(width);
+  const RHeight = Math.floor(height);
 
-  // We store finalized strokes, but we do NOT forcibly re-draw on every stroke change.
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  // 1) RGBA pixel buffer with alpha=0 => fully transparent
+  const [rgbaData] = useState<Uint8Array>(() => {
+    const arr = new Uint8Array(RWidth * RHeight * 4).fill(0);
+    return arr;
+  });
 
-  // The in-progress stroke points
-  const [currentStrokePoints, setCurrentStrokePoints] = useState<
-    Array<{x: number; y: number}>
-  >([]);
+  // 2) We'll store the current Skia image
+  const [skImage, setSkImage] = useState<ReturnType<
+    typeof Skia.Image.MakeImage
+  > | null>(null);
 
-  /**
-   * 1) A stable callback that runs only when the canvas first mounts.
-   *    We set the size and get the 2D context, storing it in `ctxRef`.
-   */
-  const handleCanvasRef = useCallback(
-    (canvas: Canvas | null) => {
-      if (!canvas) return;
-      canvasRef.current = canvas;
-
-      // Set the canvas size once
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext('2d');
-      ctxRef.current = ctx;
-
-      // Optionally fill a background color once
-      // ctx.fillStyle = "#ffffff";
-      // ctx.fillRect(0, 0, width, height);
-    },
-    [width, height],
+  // 3) For ephemeral line-drawing, track the last pointer location
+  const [lastPoint, setLastPoint] = useState<{x: number; y: number} | null>(
+    null,
   );
 
-  /**
-   * 2) On initial mount (empty deps), re-draw existing strokes if you want
-   *    so we have them if the user navigates away and back.
-   */
+  // ========== Rebuild the SkImage from RGBA data ==========
+  const rebuildImage = (pixels: Uint8Array) => {
+    // Create a Skia.Data from the raw pixel array
+    const data = Skia.Data.fromBytes(pixels);
+
+    try {
+      const image = Skia.Image.MakeImage(
+        {
+          width: RWidth,
+          height: RHeight,
+          colorType: ColorType.RGBA_8888,
+          alphaType: AlphaType.Unpremul, // unpremultiplied alpha => supports transparency
+        },
+        data,
+        RWidth * 4,
+      );
+      setSkImage(image);
+    } catch (err) {
+      console.log('MakeImage error:', err);
+    }
+  };
+
+  // On mount, build the initial (transparent) image
   useEffect(() => {
-    // If you want to re-draw stored strokes on mount, call reDrawAllStrokes() once
-    reDrawAllStrokes();
+    rebuildImage(rgbaData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /**
-   * 3) Re-draw all strokes from the array (clear first).
-   *    We only do this manually (on mount or if you add an undo/redo feature),
-   *    rather than on every stroke update, to avoid flicker.
-   */
-  const reDrawAllStrokes = useCallback(() => {
-    if (!ctxRef.current) return;
-    const ctx = ctxRef.current;
+  // ========== Helper: draw line in RGBA array ==========
+  const drawLineSegmentInRgba = (
+    p1: {x: number; y: number},
+    p2: {x: number; y: number},
+  ) => {
+    const colorRGBA = parseCssColorToRGBA(selectedColor);
+    // Increase sampling steps for smoother line
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // e.g. we do 2 or 3 samples per pixel distance for smoother coverage
+    const steps = Math.ceil(dist * 2);
 
-    // Clear
-    ctx.clearRect(0, 0, width, height);
-
-    // Re-draw each stroke
-    for (const stroke of strokes) {
-      if (stroke.points.length < 2) continue;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.thickness;
-      ctx.lineCap = 'round';
-
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-      }
-      ctx.stroke();
-      ctx.closePath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = Math.round(p1.x + dx * t);
+      const y = Math.round(p1.y + dy * t);
+      drawDot(rgbaData, x, y, colorRGBA, lineThickness);
     }
-  }, [strokes, width, height]);
+  };
 
-  /**
-   * 4) Draw a small ephemeral line segment from p1 => p2 directly on the pixel buffer
-   *    so the user sees immediate feedback while drawing, with no re-init or flicker.
-   */
-  const drawLiveSegment = useCallback(
-    (p1: {x: number; y: number}, p2: {x: number; y: number}) => {
-      if (!ctxRef.current) return;
-      const ctx = ctxRef.current;
-
-      ctx.strokeStyle = selectedColor;
-      ctx.lineWidth = lineThickness;
-      ctx.lineCap = 'round';
-
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
-      ctx.closePath();
-    },
-    [selectedColor, lineThickness],
-  );
-
-  /**
-   * 5) Imperative handle for doFloodFill
-   */
-  useImperativeHandle(ref, () => ({
-    doFloodFill: async (x: number, y: number, fillColor: string) => {
-      if (!ctxRef.current) return;
-      const ctx = ctxRef.current;
-        console.log("fill")
-      // get pixel data
-      const imgData = await ctx.getImageData(0, 0, width, height);
-        console.log('fill2');
-      const ff = new FloodFill(imgData);
-      try{
-        ff.fill(fillColor, Math.floor(x), Math.floor(y), 0);
-      }catch(err){
-        console.log(err)
+  // ========== Helper: draw a dot in RGBA array ==========
+  function drawDot(
+    data: Uint8Array,
+    cx: number,
+    cy: number,
+    color: [number, number, number, number],
+    diameter: number,
+  ) {
+    const radius = diameter / 2;
+    for (let yy = -radius; yy <= radius; yy++) {
+      for (let xx = -radius; xx <= radius; xx++) {
+        const dist2 = xx * xx + yy * yy;
+        if (dist2 <= radius * radius) {
+          const px = Math.round(cx + xx);
+          const py = Math.round(cy + yy);
+          if (px >= 0 && px < RWidth && py >= 0 && py < RHeight) {
+            const index = (py * RWidth + px) * 4;
+            data[index + 0] = color[0]; // R
+            data[index + 1] = color[1]; // G
+            data[index + 2] = color[2]; // B
+            data[index + 3] = color[3]; // A=255 => fully opaque stroke
+          }
+        }
       }
-      
-        console.log('fill3');
-      ctx.putImageData(imgData, 0, 0);
-    },
+    }
+  }
 
-    // Optional: let parent call reDrawAllStrokes if it wants to forcibly re-draw everything
-    reDrawAllStrokes,
-  }));
+  // ========== Convert CSS "#RRGGBB" => [r,g,b,a=255] ==========
+  function parseCssColorToRGBA(
+    cssColor: string,
+  ): [number, number, number, number] {
+    let c = cssColor.replace('#', '');
+    if (c.length === 3) {
+      c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    }
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return [r, g, b, 255];
+  }
 
-  // ========== PANRESPONDER for "draw" ==========
-
+  // ========== PanResponder for pointer events ==========
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -169,70 +164,74 @@ function PixelCanvasImpl(
         onPanResponderGrant: evt => {
           if (activeTool === 'draw') {
             const {locationX, locationY} = evt.nativeEvent;
-            setCurrentStrokePoints([{x: locationX, y: locationY}]);
+            setLastPoint({x: locationX, y: locationY});
           }
         },
-
         onPanResponderMove: evt => {
-          if (activeTool === 'draw' && currentStrokePoints.length > 0) {
+          if (activeTool === 'draw' && lastPoint) {
             const {locationX, locationY} = evt.nativeEvent;
-            const prevPt = currentStrokePoints[currentStrokePoints.length - 1];
-            const newPt = {x: locationX, y: locationY};
-
-            // 1) Draw ephemeral segment on the pixel buffer
-            drawLiveSegment(prevPt, newPt);
-
-            // 2) Add point to the in-progress array
-            setCurrentStrokePoints(prev => [...prev, newPt]);
+            // 1) Draw line in RGBA
+            drawLineSegmentInRgba(lastPoint, {x: locationX, y: locationY});
+            // 2) Update lastPoint
+            setLastPoint({x: locationX, y: locationY});
+            // 3) Rebuild the image => show stroke
+            rebuildImage(rgbaData);
           }
         },
-
         onPanResponderRelease: () => {
-          if (activeTool === 'draw' && currentStrokePoints.length > 1) {
-            // finalize stroke
-            const newStroke: Stroke = {
-              points: currentStrokePoints,
-              color: selectedColor,
-              thickness: lineThickness,
-            };
-            // store in array => can re-draw later if needed
-            setStrokes(prev => [...prev, newStroke]);
+          if (activeTool === 'draw') {
+            setLastPoint(null);
           }
-          // Clear the in-progress stroke
-          setCurrentStrokePoints([]);
         },
       }),
-    [
-      activeTool,
-      currentStrokePoints,
-      selectedColor,
-      lineThickness,
-      drawLiveSegment,
-    ],
+    [activeTool, lastPoint, rgbaData, drawLineSegmentInRgba, rebuildImage],
   );
+
+  // ========== Imperative Methods ==========
+  useImperativeHandle(ref, () => ({
+    doFloodFill: async (x: number, y: number, fillColor: string) => {
+      // q-floodfill on entire RGBA buffer
+      console.log('flood fill started');
+      const ff = new FloodFill({
+        data: rgbaData,
+        width: RWidth,
+        height: RHeight,
+      });
+      ff.fill(fillColor, Math.floor(x), Math.floor(y), 20);
+      console.log('flood fill done. Rebuild image next.');
+      rebuildImage(rgbaData);
+    },
+    reDrawAllStrokes: () => {
+      // If needed, you can reload from a saved buffer. For now, we just rebuild
+      rebuildImage(rgbaData);
+    },
+  }));
 
   return (
     <View
-      style={[styles.container, {width, height}]}
+      style={[styles.container, {width: RWidth, height: RHeight}]}
       {...panResponder.panHandlers}>
-      <Canvas
-        ref={handleCanvasRef}
-        style={{
-          width,
-          height,
-          backgroundColor: 'transparent',
-        }}
-      />
+      <Canvas style={{width: RWidth, height: RHeight}}>
+        {skImage && (
+          <SkImageComp
+            image={skImage}
+            x={0}
+            y={0}
+            width={RWidth}
+            height={RHeight}
+          />
+        )}
+      </Canvas>
     </View>
   );
 }
 
-export default forwardRef(PixelCanvasImpl);
+export default forwardRef(SkiaPixelCanvasImpl);
 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    left: 0,
     top: 0,
+    left: 0,
   },
 });

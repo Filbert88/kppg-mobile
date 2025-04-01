@@ -1,84 +1,73 @@
 import React from 'react';
-import {View, TouchableOpacity, StyleSheet} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import {COLORS, TOOLS} from '../../constants/drawing';
+import {View, TouchableOpacity, StyleSheet, Text} from 'react-native';
+import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
 
 interface ToolbarProps {
-  activeTool: string | null;
-  onToolPress: (toolId: string) => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
+  activeTool: Tool;
+  onToolSelect: (tool: Tool) => void;
+  onExport: () => void;
 }
 
-export default function Toolbar({
+const Toolbar: React.FC<ToolbarProps> = ({
   activeTool,
-  onToolPress,
-  onZoomIn,
-  onZoomOut,
-}: ToolbarProps) {
+  onToolSelect,
+  onExport,
+}) => {
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.zoomButton} onPress={onZoomIn}>
-        <Icon name="add" size={24} color={COLORS.text} />
+    <View style={styles.toolbar}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('draw')}>
+        <Text style={styles.text}>Draw</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.zoomButton} onPress={onZoomOut}>
-        <Icon name="remove" size={24} color={COLORS.text} />
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('line')}>
+        <Text style={styles.text}>Line</Text>
       </TouchableOpacity>
-
-      <View style={styles.toolsContainer}>
-        {TOOLS.map(tool => (
-          <TouchableOpacity
-            key={tool.id}
-            style={[
-              styles.toolButton,
-              activeTool === tool.id ? styles.activeToolButton : null,
-            ]}
-            onPress={() => onToolPress(tool.id)}>
-            <Icon
-              name={tool.icon}
-              size={24}
-              color={activeTool === tool.id ? COLORS.primary : COLORS.text}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('shape')}>
+        <Text style={styles.text}>Shape</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('fill')}>
+        <Text style={styles.text}>Fill</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('crop')}>
+        <Text style={styles.text}>Crop</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => onToolSelect('erase')}>
+        <Text style={styles.text}>Erase</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={onExport}>
+        <Text style={styles.text}>Export</Text>
+      </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default Toolbar;
 
 const styles = StyleSheet.create({
-  container: {
+  toolbar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  zoomButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-  },
-  toolsContainer: {
-    flexDirection: 'row',
-    flex: 1,
     justifyContent: 'space-around',
-    marginLeft: 16,
+    padding: 10,
+    backgroundColor: '#eee',
   },
-  toolButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+  button: {
+    padding: 10,
+    backgroundColor: '#ddd',
+    borderRadius: 5,
   },
-  activeToolButton: {
-    backgroundColor: '#d1fae5', // Light green
+  text: {
+    fontSize: 14,
+    color: '#333',
   },
 });

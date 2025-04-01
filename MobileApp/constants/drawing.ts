@@ -1,14 +1,8 @@
-import {Dimensions} from 'react-native';
-
 export const COLORS = {
-  primary: '#10b981', // Emerald-500
-  secondary: '#f472b6', // Pink-400
-  background: '#f9fafb', // Gray-50
-  surface: '#ffffff',
-  error: '#ef4444', // Red-500
-  text: '#1f2937', // Gray-800
-  border: '#e5e7eb', // Gray-200
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  primary: '#10b981', // Emerald 500
+  text: '#333333',
+  shapeStroke: '#000000',
+  error: '#ef4444',
 };
 
 export const DRAWING_COLORS = [
@@ -24,39 +18,29 @@ export const DRAWING_COLORS = [
   '#ffffff', // White
 ];
 
-export const LINE_THICKNESSES = [2, 4, 6, 8, 10];
+export const LINE_THICKNESSES = [2, 4, 6];
+
+export const CONSTANTS = {
+  CLOSE_THRESHOLD: 15, // Maximum distance between first and last point to consider a stroke closed
+  CONNECT_THRESHOLD: 20, // Maximum distance between stroke endpoints to merge them
+  CROP_HANDLE_SIZE: 20, // Size (diameter) of crop corner handles
+  CROP_HANDLE_HIT_SIZE: 30, // Larger hit area for detecting crop handle touches
+  MIN_CROP_SIZE: 50, // Minimum crop rectangle width/height
+  MIN_SHAPE_SIZE: 30, // Minimum shape size when resizing
+  HANDLE_SIZE: 15, // Size of shape resizing handles
+};
 
 export const SHAPES = [
-  {id: 'rect', name: 'Rectangle', icon: 'crop-square'},
-  {id: 'circle', name: 'Circle', icon: 'circle'},
-  {id: 'triangle', name: 'Triangle', icon: 'change-history'},
+  {id: 'rect', icon: 'crop-square'},
+  {id: 'circle', icon: 'radio-button-unchecked'},
+  {id: 'triangle', icon: 'change-history'},
 ];
 
 export const TOOLS = [
-  {id: 'draw', name: 'Draw', icon: 'edit'},
-  {id: 'erase', name: 'Erase', icon: 'delete'},
-  {id: 'shape', name: 'Shape', icon: 'crop-square'},
-  {id: 'line', name: 'Line', icon: 'remove'},
-  {id: 'paint', name: 'Fill', icon: 'format-color-fill'},
-  {id: 'crop', name: 'Crop', icon: 'crop'},
+  {id: 'draw', icon: 'edit'},
+  {id: 'erase', icon: 'backspace'},
+  {id: 'line', icon: 'show-chart'},
+  {id: 'shape', icon: 'crop-square'},
+  {id: 'paint', icon: 'format-color-fill'},
+  {id: 'crop', icon: 'crop'},
 ];
-
-export const CONSTANTS = {
-  PAGE_PADDING: 16,
-  ERASE_THRESHOLD: 15,
-  HANDLE_SIZE: 15,
-  CLOSE_THRESHOLD: 15,
-  CONNECT_THRESHOLD: 20,
-  CROP_HANDLE_SIZE: 20,
-  MIN_CROP_SIZE: 50,
-  RESIZE_SENSITIVITY: 0.2,
-  CORNER_THRESHOLD: 24,
-  TOOLBAR_HEIGHT: 56,
-  MODAL_WIDTH: '80%',
-  FILL_TOLERANCE: 32,
-};
-
-export const SCREEN = {
-  width: Dimensions.get('window').width,
-  height: Dimensions.get('window').height,
-};

@@ -1,92 +1,68 @@
 import React from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
-import {DRAWING_COLORS} from '../../constants/drawing';
 
 interface ColorPickerProps {
   selectedColor: string;
-  onColorSelect: (color: string) => void;
+  onSelect: (color: string) => void;
   onClose: () => void;
 }
 
-export default function ColorPicker({
+const colors = [
+  '#FF0000',
+  '#00FF00',
+  '#0000FF',
+  '#000000',
+  '#FFFFFF',
+  '#FFFF00',
+  '#FFA500',
+  '#800080',
+];
+
+const ColorPicker: React.FC<ColorPickerProps> = ({
   selectedColor,
-  onColorSelect,
+  onSelect,
   onClose,
-}: ColorPickerProps) {
+}) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select Color</Text>
-
       <View style={styles.colorsContainer}>
-        {DRAWING_COLORS.map(color => (
+        {colors.map(color => (
           <TouchableOpacity
             key={color}
             style={[
               styles.colorButton,
-              selectedColor === color ? styles.selectedColorButton : null,
+              {backgroundColor: color},
+              selectedColor === color && styles.selected,
             ]}
-            onPress={() => onColorSelect(color)}>
-            <View style={[styles.colorSwatch, {backgroundColor: color}]} />
-          </TouchableOpacity>
+            onPress={() => onSelect(color)}
+          />
         ))}
       </View>
-
-      <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-        <Text style={styles.cancelText}>Cancel</Text>
+      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <Text>Close</Text>
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default ColorPicker;
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 80,
-    left: 16,
-    right: 16,
+    margin: 20,
+    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    padding: 16,
-    zIndex: 10,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
+  title: {fontSize: 18, fontWeight: 'bold', marginBottom: 10},
   colorsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  colorButton: {
-    margin: 8,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedColorButton: {
-    borderColor: '#10b981', // Emerald-500
-  },
-  colorSwatch: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  cancelButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-  },
-  cancelText: {
-    textAlign: 'center',
-    fontWeight: '500',
-  },
+  colorButton: {width: 40, height: 40, margin: 5, borderRadius: 20},
+  selected: {borderWidth: 2, borderColor: '#000'},
+  closeButton: {marginTop: 20, alignItems: 'center'},
 });

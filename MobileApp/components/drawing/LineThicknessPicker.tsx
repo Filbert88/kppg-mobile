@@ -1,99 +1,61 @@
 import React from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
-import {LINE_THICKNESSES} from '../../constants/drawing';
 
 interface LineThicknessPickerProps {
   selectedThickness: number;
-  onThicknessSelect: (thickness: number) => void;
+  onSelect: (thickness: number) => void;
   onClose: () => void;
 }
 
-export default function LineThicknessPicker({
+const thicknessOptions = [2, 4, 6, 8, 10];
+
+const LineThicknessPicker: React.FC<LineThicknessPickerProps> = ({
   selectedThickness,
-  onThicknessSelect,
+  onSelect,
   onClose,
-}: LineThicknessPickerProps) {
+}) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select Line Thickness</Text>
-
-      <View style={styles.thicknessContainer}>
-        {LINE_THICKNESSES.map(thickness => (
+      <View style={styles.options}>
+        {thicknessOptions.map(thickness => (
           <TouchableOpacity
-            key={thickness}
+            key={thickness.toString()}
             style={[
-              styles.thicknessButton,
-              selectedThickness === thickness
-                ? styles.selectedThicknessButton
-                : null,
+              styles.option,
+              selectedThickness === thickness && styles.selected,
             ]}
-            onPress={() => onThicknessSelect(thickness)}>
-            <View style={[styles.thicknessLine, {height: thickness}]} />
+            onPress={() => onSelect(thickness)}>
+            <View
+              style={{height: thickness, width: 40, backgroundColor: '#000'}}
+            />
           </TouchableOpacity>
         ))}
       </View>
-
-      <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-        <Text style={styles.cancelText}>Cancel</Text>
+      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <Text>Close</Text>
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default LineThicknessPicker;
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 80,
-    left: 16,
-    right: 16,
+    margin: 20,
+    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    padding: 16,
-    zIndex: 10,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  thicknessContainer: {
+  title: {fontSize: 18, fontWeight: 'bold', marginBottom: 10},
+  options: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 16,
+    width: '100%',
   },
-  thicknessButton: {
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 25,
-    backgroundColor: '#f3f4f6',
-  },
-  selectedThicknessButton: {
-    backgroundColor: '#d1fae5',
-    borderWidth: 2,
-    borderColor: '#10b981',
-  },
-  thicknessLine: {
-    width: 30,
-    backgroundColor: 'black',
-    borderRadius: 4,
-  },
-  cancelButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-  },
-  cancelText: {
-    textAlign: 'center',
-    fontWeight: '500',
-  },
+  option: {padding: 10},
+  selected: {borderColor: '#000', borderWidth: 1},
+  closeButton: {marginTop: 20, alignItems: 'center'},
 });
