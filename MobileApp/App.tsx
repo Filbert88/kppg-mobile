@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from './types/navigation';
@@ -18,12 +18,47 @@ import FragmentationForm3 from './pages/fragmentation-form/fragmentation-form3';
 import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
+import Help from './pages/Help/help';
 import {DepthAverageProvider} from './context/DepthAverageContext';
+import NetInfo from '@react-native-community/netinfo';
+import {syncLocalDataWithBackend} from './database/services/syncService';
 import './global.css';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const syncTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerSync = () => {
+    
+    if (syncTimeout.current) {
+      clearTimeout(syncTimeout.current);
+    }
+
+    syncTimeout.current = setTimeout(() => {
+      syncLocalDataWithBackend();
+    }, 3000);
+  };
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      console.log('Connection type:', state.type);
+      console.log('Is connected?', state.isConnected);
+      if (state.isConnected) {
+        console.log('Device is online. Initiating sync...');
+        triggerSync();
+      } else {
+        console.log('Device is offline.');
+      }
+    });
+
+    return () => {
+      if (syncTimeout.current) {
+        clearTimeout(syncTimeout.current);
+      }
+      unsubscribe();
+    };
+  }, []);
   return (
     <NavigationContainer>
       <DepthAverageProvider>
@@ -36,6 +71,12 @@ export default function App() {
             {(
               props: NativeStackScreenProps<RootStackParamList, 'AddOrHistory'>,
             ) => <ScreenWrapper component={AddOrHistory} {...props} />}
+          </Stack.Screen>
+
+          <Stack.Screen name="Help">
+            {(props: NativeStackScreenProps<RootStackParamList, 'Help'>) => (
+              <ScreenWrapper component={Help} {...props} />
+            )}
           </Stack.Screen>
 
           <Stack.Screen name="DepthAverageUpload">

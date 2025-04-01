@@ -2,7 +2,8 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type RootStackParamList = {
   Homepage: undefined;
-  AddOrHistory: {type: 'FragmentasiForm1' | 'DepthAverage'};
+  Help: undefined;
+  AddOrHistory: { type: 'FragmentasiForm1' | 'DepthAverage' };
   FragmentationForm1: undefined;
   FragmentationForm2: undefined;
   FragmentationForm3: undefined;
