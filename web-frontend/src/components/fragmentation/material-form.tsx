@@ -12,6 +12,11 @@ interface MaterialFormProps {
 }
 
 export default function MaterialForm({ formData, updateFormData, onNext }: MaterialFormProps) {
+  const isFormValid =
+    formData.rockType.trim() !== "" &&
+    formData.ammoniumNitrate.trim() !== "" &&
+    formData.blastingVolume.trim() !== ""
+
   return (
     <div className="flex-1 flex flex-col p-6 mt-10 w-full min-h-[500px]">
       <div className="flex-1 space-y-6">
@@ -19,7 +24,10 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
           <Label htmlFor="rockType" className="text-lg font-bold">
             Litologi Batuan
           </Label>
-          <Select value={formData.rockType} onValueChange={(value) => updateFormData("rockType", value)}>
+          <Select
+            value={formData.rockType}
+            onValueChange={(value) => updateFormData("rockType", value)}
+          >
             <SelectTrigger className="w-full bg-white rounded-full mt-1">
               <SelectValue placeholder="Masukkan jenis..." />
             </SelectTrigger>
@@ -52,10 +60,15 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
         </div>
       </div>
 
-      <div className="absolute -bottom-8 right-4">
+      <div className="mt-6 flex justify-end">
         <Button
           onClick={onNext}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
+          disabled={!isFormValid}
+          className={`${
+            isFormValid
+              ? "bg-green-800 hover:bg-green-900"
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white font-medium py-2 px-6 rounded-lg`}
         >
           Next
         </Button>
@@ -63,4 +76,3 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
     </div>
   )
 }
-
