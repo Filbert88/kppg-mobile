@@ -1,223 +1,161 @@
-import React, {useRef, useState} from 'react';
-import {SafeAreaView, View, StyleSheet, Dimensions, Modal} from 'react-native';
-import ZoomableView, {
-  ReactNativeZoomableView,
-} from '@openspacelabs/react-native-zoomable-view';
-import {captureRef} from 'react-native-view-shot';
-import AmazingCropper from 'react-native-amazing-cropper';
+import React, {useState} from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Modal,
+  StyleSheet,
+} from 'react-native';
+import {launchImageLibrary} from 'react-native-image-picker';
 
-import Toolbar from '../../components/drawing/Toolbar';
-import ImageCanvasContainer from '../../components/drawing/ImageCanvasContainer';
-import ColorPicker from '../../components/drawing/ColorPicker';
-import LineThicknessPicker from '../../components/drawing/LineThicknessPicker';
-import ShapePicker from '../../components/drawing/ShapePicker';
-import EraseThicknessPicker from '../../components/drawing/EraseThicknessPicker';
+// Our advanced editing UI
+import EditingApp from './EditingApp.tsx';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
 
-export type Tool = 'draw' | 'line' | 'shape' | 'fill' | 'crop' | 'erase' | null;
+type FragmentationForm5RouteProp = RouteProp<
+  RootStackParamList,
+  'FragmentationForm5'
+>;
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'FragmentationForm5'
+>;
 
-const App = () => {
-  const [activeTool, setActiveTool] = useState<Tool>(null);
-  const [selectedColor, setSelectedColor] = useState<string>('#FF0000');
-  const [lineThickness, setLineThickness] = useState<number>(4);
-  const [eraseThickness, setEraseThickness] = useState<number>(8);
+export default function FragmentationForm5() {
+  const route = useRoute<FragmentationForm5RouteProp>();
+  const navigation = useNavigation<NavigationProp>();
+  const {images: initialImages} = route.params;
+  // We'll store multiple image URIs in an array:
+  const [images, setImages] = useState<string[]>(initialImages ?? []);
 
-  // Show/hide pickers as modals
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showLinePicker, setShowLinePicker] = useState(false);
-  const [showShapePicker, setShowShapePicker] = useState(false);
-  const [showErasePicker, setShowErasePicker] = useState(false);
+  // The index of the image currently being edited (or -1 if none)
+  const [editingIndex, setEditingIndex] = useState<number>(-1);
 
-  // Show/hide the Cropper
-  const [showCropper, setShowCropper] = useState(false);
 
-  const [backgroundImage, setBackgroundImage] = useState<string>(
-    'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg',
-  );
-
-  // The container we capture
-  const drawingViewRef = useRef<View>(null);
-  const [cropSourceUri, setCropSourceUri] = useState<string | null>(null);
-
-  const [canvasSize, setCanvasSize] = useState<{width: number; height: number}>(
-    {
-      width: 0,
-      height: 0,
-    },
-  );
-
-  // 1) When the user picks the "crop" tool, we capture, set `showCropper=true`, but do NOT unmount the container
-  const handleToolSelect = (tool: Tool) => {
-    if (activeTool === tool) {
-      setActiveTool(null);
-    } else {
-      setActiveTool(tool);
-
-      if (tool === 'draw' || tool === 'fill') {
-        setShowColorPicker(true);
-      }
-      if (tool === 'line') {
-        setShowLinePicker(true);
-      }
-      if (tool === 'shape') {
-        setShowShapePicker(true);
-      }
-      // For erase => show erase thickness
-      if (tool === 'erase') {
-        setShowErasePicker(true);
-      }
-      if (tool === 'crop') {
-        if (drawingViewRef.current) {
-          captureRef(drawingViewRef, {format: 'png', quality: 1})
-            .then(uri => {
-              console.log('Captured =>', uri);
-              setCropSourceUri(uri);
-              setShowCropper(true); // We'll show the Cropper on top
-            })
-            .catch(err => console.error('Error capturing snapshot:', err));
-        }
-      }
-    }
+  // Called when user taps "Edit" on an image
+  const handleEditImage = (index: number) => {
+    setEditingIndex(index);
   };
 
-  const exportImage = async () => {
-    if (drawingViewRef.current) {
-      const uri = await captureRef(drawingViewRef, {format: 'png', quality: 1});
-      console.log('Exported =>', uri);
-    }
+  // The user closed the editing app with a new "resultUri"
+  // so we replace the old image at "editingIndex" with the new one
+  const handleSaveEdited = (resultUri: string) => {
+    if (editingIndex < 0) return;
+    setImages(prev => {
+      const newArr = [...prev];
+      newArr[editingIndex] = resultUri; // replace old
+      return newArr;
+    });
+    setEditingIndex(-1);
   };
+
+  // If editingIndex >=0, we show the EditingApp in a modal or separate screen
+  const isEditing = editingIndex >= 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      {/* Always mount the drawing UI so ephemeral pixel data is not lost */}
-      <View
-        style={styles.container}
-        pointerEvents={showCropper ? 'none' : 'auto'}>
-        <ReactNativeZoomableView
-          maxZoom={3}
-          minZoom={0.5}
-          zoomEnabled={!showCropper && activeTool === null}
-          panEnabled={!showCropper && activeTool === null}
-          style={styles.zoomable}>
-          <View collapsable={false} ref={drawingViewRef}>
-            <ImageCanvasContainer
-              activeTool={activeTool}
-              setActiveTool={setActiveTool}
-              selectedColor={selectedColor}
-              lineThickness={lineThickness}
-              eraserThickness={eraseThickness}
-              onCanvasSizeChange={size => setCanvasSize(size)}
-              backgroundImage={backgroundImage}
-            />
+    <SafeAreaView style={styles.root}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Render images in a list */}
+        {images.map((uri, idx) => (
+          <View key={idx} style={styles.imageWrapper}>
+            <Image source={{uri}} style={styles.image} resizeMode="contain" />
+            {/* Edit button in top-left */}
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => handleEditImage(idx)}>
+              <Text style={{color: '#fff'}}>Edit</Text>
+            </TouchableOpacity>
           </View>
-        </ReactNativeZoomableView>
+        ))}
+      </ScrollView>
 
-        <Toolbar
-          activeTool={activeTool}
-          onToolSelect={handleToolSelect}
-          onExport={exportImage}
-        />
-      </View>
+      {/* Fixed bottom button */}
+            <View style={styles.bottomBar}>
+              <TouchableOpacity style={styles.nextButton} onPress={() => navigation.navigate("FragmentationResult")}>
+                <Text style={styles.nextButtonText}>Next</Text>
+              </TouchableOpacity>
+            </View>
 
-      {/* Overlaid Cropper in absolute style, hidden unless showCropper=true */}
-      {showCropper && cropSourceUri && (
-        <View style={styles.cropOverlay}>
-          <AmazingCropper
-            imageUri={cropSourceUri}
-            imageWidth={canvasSize.width || 600}
-            imageHeight={canvasSize.height || 800}
-            onDone={croppedUri => {
-              console.log('Cropped =>', croppedUri);
-              setBackgroundImage(croppedUri);
-              setShowCropper(false);
-              setActiveTool(null);
+      {/* If editingIndex >=0, show the EditingApp in a modal */}
+      <Modal visible={isEditing} animationType="slide">
+        {/* We pass images[editingIndex] to the editor, plus an onClose that returns the final URI */}
+        {isEditing && (
+          <EditingApp
+            initialImage={images[editingIndex]}
+            onClose={(resultUri: string | null) => {
+              // If user canceled or didn't produce a new image, resultUri might be null
+              // If they produced a new image, we get that
+              if (resultUri) {
+                handleSaveEdited(resultUri);
+              } else {
+                // user canceled => no changes
+                setEditingIndex(-1);
+              }
             }}
-            onCancel={() => {
-              console.log('Crop canceled');
-              setShowCropper(false);
-              setActiveTool(null);
-            }}
-            onError={err => {
-              console.log('Crop error =>', err);
-              setShowCropper(false);
-              setActiveTool(null);
-            }}
-            COMPONENT_HEIGHT={Dimensions.get('window').height - 120}
           />
-        </View>
-      )}
-
-      {/* The color/line/shape pickers still modals */}
-      {showColorPicker && (
-        <Modal transparent animationType="slide">
-          <ColorPicker
-            selectedColor={selectedColor}
-            onSelect={color => {
-              setSelectedColor(color);
-              setShowColorPicker(false);
-            }}
-            onClose={() => setShowColorPicker(false)}
-          />
-        </Modal>
-      )}
-
-      {showLinePicker && (
-        <Modal transparent animationType="slide">
-          <LineThicknessPicker
-            selectedThickness={lineThickness}
-            onSelect={thickness => {
-              setLineThickness(thickness);
-              setShowLinePicker(false);
-            }}
-            onClose={() => setShowLinePicker(false)}
-          />
-        </Modal>
-      )}
-
-      {showShapePicker && (
-        <Modal transparent animationType="slide">
-          <ShapePicker
-            onSelect={(shapeType: string) => {
-              setShowShapePicker(false);
-              // handle shape creation
-            }}
-            onClose={() => setShowShapePicker(false)}
-          />
-        </Modal>
-      )}
-
-      {/* ERASE THICKNESS PICKER MODAL */}
-      {showErasePicker && (
-        <Modal transparent animationType="slide">
-          <EraseThicknessPicker
-            selectedThickness={eraseThickness}
-            onSelect={thick => {
-              setEraseThickness(thick);
-              setShowErasePicker(false);
-            }}
-            onClose={() => setShowErasePicker(false)}
-          />
-        </Modal>
-      )}
+        )}
+      </Modal>
     </SafeAreaView>
   );
-};
-
-export default App;
+}
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
+  root: {flex: 1, backgroundColor: '#fff'},
+  scrollContent: {
+    padding: 16,
+  },
+  imageWrapper: {
+    position: 'relative',
+    width: '100%',
+    aspectRatio: 1, // square
+    marginBottom: 20,
+    backgroundColor: '#eee',
+  },
+  image: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  editButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+  },
+  addButton: {
+    backgroundColor: 'orange',
+    padding: 14,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginVertical: 10,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
     backgroundColor: '#fff',
   },
-  container: {
-    flex: 1,
+
+  nextButton: {
+    backgroundColor: 'green',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  zoomable: {
-    flex: 1,
-  },
-  cropOverlay: {
-    // absolutely fill the screen
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000', // typical for a crop background
+
+  nextButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

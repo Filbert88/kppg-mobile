@@ -3,7 +3,7 @@ import React, {useState, useRef} from 'react';
 import {View, StyleSheet} from 'react-native';
 import PixelCanvas, {PixelCanvasRef} from './PixelCanvas';
 import SvgOverlay, {Shape, LineType} from './SvgOverlay';
-import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/EditingApp';
 
 // The same "tool" type you used before
 
@@ -15,6 +15,7 @@ interface HybridContainerProps {
   setActiveTool: (tool: Tool) => void;
   activeTool: Tool; // 'draw', 'fill', etc.
   selectedColor: string;
+  selectedShapeType: string;
   lineThickness: number;
 }
 
@@ -25,6 +26,7 @@ export default function HybridContainer({
   setActiveTool,
   activeTool,
   selectedColor,
+  selectedShapeType,
   lineThickness,
 }: HybridContainerProps) {
   // We store shapes/lines in parent-level state
@@ -68,6 +70,7 @@ export default function HybridContainer({
         height={height}
         shapes={shapes}
         setShapes={setShapes}
+        selectedShapeType={selectedShapeType}
         lines={lines}
         setLines={setLines}
         activeTool={activeTool}

@@ -11,6 +11,16 @@ import {LineChart} from 'react-native-chart-kit';
 import {Save} from 'react-native-feather';
 import {Dimensions} from 'react-native';
 
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'FragmentationResult'
+>;
+
+
 const graphData = {
   labels: ['0', '10', '20', '30', '40', '50', '60', '70'],
   datasets: [
@@ -51,6 +61,7 @@ const sizeMetrics = [
 
 const FragmentationResult = () => {
   const screenWidth = Dimensions.get('window').width;
+  const navigation = useNavigation<NavigationProp>();
 
   return (
     <SafeAreaView className="flex-1">

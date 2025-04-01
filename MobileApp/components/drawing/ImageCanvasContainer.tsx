@@ -2,24 +2,25 @@ import React, {useEffect, useState} from 'react';
 import {View, Image, StyleSheet, Dimensions} from 'react-native';
 // import DrawingCanvas from './DrawingCanvas'; // We'll replace this
 import HybridContainer from './HybridContainer';
-import { Tool } from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/EditingApp';
 
 interface ImageCanvasContainerProps {
   activeTool: string | null;
-  setActiveTool : (tool: Tool) => void;
+  setActiveTool: (tool: Tool) => void;
   selectedColor: string;
+  selectedShapeType: string;
   lineThickness: number;
   eraserThickness: number;
   onCanvasSizeChange: (size: {width: number; height: number}) => void;
   backgroundImage: string;
 }
 
-const imageSource = require('../../public/assets/fotodiri.jpg');
 
 const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
   activeTool,
   setActiveTool,
   selectedColor,
+  selectedShapeType,
   lineThickness,
   eraserThickness,
   onCanvasSizeChange,
@@ -44,25 +45,25 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
       setCanvasSize(size);
       onCanvasSizeChange(size);
     };
-   if (typeof backgroundImage === 'number') {
-     // It's a local require(...) resource.
-     // For example: require('./path/to/image')
-     const source = Image.resolveAssetSource(backgroundImage);
-     if (source && source.width && source.height) {
-       setScaledSize(source.width, source.height);
-     }
-   } else if (typeof backgroundImage === 'string') {
-     // It's probably a remote URL
-     Image.getSize(
-       backgroundImage,
-       (imgWidth, imgHeight) => {
-         setScaledSize(imgWidth, imgHeight);
-       },
-       error => {
-         console.log('Error loading remote image for size:', error);
-       },
-     );
-   }
+    if (typeof backgroundImage === 'number') {
+      // It's a local require(...) resource.
+      // For example: require('./path/to/image')
+      const source = Image.resolveAssetSource(backgroundImage);
+      if (source && source.width && source.height) {
+        setScaledSize(source.width, source.height);
+      }
+    } else if (typeof backgroundImage === 'string') {
+      // It's probably a remote URL
+      Image.getSize(
+        backgroundImage,
+        (imgWidth, imgHeight) => {
+          setScaledSize(imgWidth, imgHeight);
+        },
+        error => {
+          console.log('Error loading remote image for size:', error);
+        },
+      );
+    }
   }, [backgroundImage]);
 
   if (canvasSize.width === 0 || canvasSize.height === 0) {
@@ -104,6 +105,7 @@ const ImageCanvasContainer: React.FC<ImageCanvasContainerProps> = ({
           eraserThickness={eraserThickness}
           setActiveTool={setActiveTool}
           activeTool={activeTool as any} // or cast your type
+          selectedShapeType={selectedShapeType}
           selectedColor={selectedColor}
           lineThickness={lineThickness}
         />

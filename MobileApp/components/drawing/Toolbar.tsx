@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, TouchableOpacity, StyleSheet, Text} from 'react-native';
-import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/EditingApp';
 
 interface ToolbarProps {
   activeTool: Tool;
@@ -52,7 +52,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={onExport}>
-        <Text style={styles.text}>Export</Text>
+        <Text style={styles.text}>Save</Text>
       </TouchableOpacity>
     </View>
   );

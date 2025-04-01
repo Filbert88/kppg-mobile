@@ -2,7 +2,7 @@
 import React, {useState, useMemo} from 'react';
 import {View, PanResponder, StyleSheet} from 'react-native';
 import Svg, {Rect, Line, Circle} from 'react-native-svg';
-import {Tool} from '../../pages/fragmentation-form/fragmentation-form5';
+import {Tool} from '../../pages/fragmentation-form/EditingApp';
 
 // shape and line interfaces
 export interface Shape {
@@ -42,6 +42,7 @@ interface SvgOverlayProps {
 
   activeTool: Tool;
   setActiveTool: (tool: Tool) => void;
+  selectedShapeType: string;
   selectedColor: string;
   lineThickness: number;
 
@@ -158,6 +159,7 @@ export default function SvgOverlay({
   activeTool,
   setActiveTool,
   selectedColor,
+  selectedShapeType,
   lineThickness,
   onCanvasFill,
   onPixelErase,
