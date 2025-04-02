@@ -8,7 +8,7 @@ export type RootStackParamList = {
   FragmentationForm2: undefined;
   FragmentationForm3: undefined;
   FragmentationForm4: undefined;
-  FragmentationForm5: undefined;
+  FragmentationForm5: {images: string[]};
   FragmentationResult: undefined;
   FragmentationHistory: undefined;
   FormDA1: undefined;
