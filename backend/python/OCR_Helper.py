@@ -39,6 +39,16 @@ def process_image(img_path, output_base, black_pixel_threshold=50, margin_size=1
 
     os.makedirs(output_base, exist_ok=True)
 
+    for idx, contour in enumerate(contours):
+        x, y, w, h = cv2.boundingRect(contour)
+        if w * h >= min_red_area:
+            valid_red_regions.append((x, y, w, h))
+            cropped_region = image[y:y + h, x:x + w]
+
+            # Save the cropped red region
+            red_region_path = os.path.join(output_base, f"red_region_{idx + 1}.jpg")
+            cv2.imwrite(red_region_path, cropped_region)
+
     output_files = []
     for idx, (x, y, w, h) in enumerate(valid_red_regions):
         cropped_region = image[y:y + h, x:x + w]
@@ -46,7 +56,7 @@ def process_image(img_path, output_base, black_pixel_threshold=50, margin_size=1
             segment_height = h // 30
             for i in range(30):
                 seg_y1, seg_y2 = y + i * segment_height, y + (i + 1) * segment_height
-                segment = image[seg_y1 - 7 :seg_y2 + 7, x:x + w]
+                segment = image[seg_y1 - 5 :seg_y2 + 5, x:x + w] # atas bawah 
 
                 gray_segment = cv2.cvtColor(segment, cv2.COLOR_BGR2GRAY)
                 _, binary_segment = cv2.threshold(gray_segment, 50, 255, cv2.THRESH_BINARY_INV)
@@ -55,8 +65,8 @@ def process_image(img_path, output_base, black_pixel_threshold=50, margin_size=1
                 if non_zero_coords.size > 0:
                     leftmost_black = non_zero_coords[:, 1].min()
                     rightmost_black = non_zero_coords[:, 1].max()
-                    left_crop = max(leftmost_black - 50, 0)
-                    right_crop = min(rightmost_black + 50, segment.shape[1])
+                    left_crop = max(leftmost_black - 100, 0) # kiri kanan
+                    right_crop = min(rightmost_black + 100, segment.shape[1]) # kiri kanan
                     segment = segment[:, left_crop:right_crop]
 
                     gray_segment = cv2.cvtColor(segment, cv2.COLOR_BGR2GRAY)
