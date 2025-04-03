@@ -280,7 +280,10 @@ export default function CanvasPage() {
           doubleClick={{ disabled: true }}
           panning={{
             disabled:
-              activeTool === "draw" || activeTool === "shapes" || disablePan,
+              activeTool === "draw" ||
+              activeTool === "shapes" ||
+              activeTool === "erase" ||
+              disablePan,
           }}
         >
           <TransformComponent>
