@@ -182,7 +182,8 @@ export default function CanvasPage() {
 
   async function handleCropDone() {
     try {
-      const croppedImage = await getCroppedImg(bgImage, croppedAreaPixels!);
+      if (!croppedAreaPixels) return;
+      const croppedImage = await getCroppedImg(bgImage, croppedAreaPixels);
       if (croppedImage != null) {
         setBgImage(croppedImage);
       }
@@ -297,7 +298,35 @@ export default function CanvasPage() {
         </TransformWrapper>
       </div>
 
-      {/* Modals */}
+      {showCropModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div
+            className="relative bg-white rounded shadow-lg overflow-hidden"
+            style={{ width: "80vw", height: "80vh" }}
+          >
+            <div className="absolute inset-0 z-10">
+              <Cropper
+                image={bgImage}
+                crop={crop}
+                zoom={cropZoom}
+                aspect={600 / 400}
+                onCropChange={setCrop}
+                onZoomChange={setCropZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+
+            <div className="absolute top-4 right-4 z-20 flex space-x-2">
+              <Button variant="secondary" onClick={handleCropCancel}>
+                Cancel
+              </Button>
+              <Button onClick={handleCropDone}>Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Modals */}
       {showColorPicker && (
         <ColorPickerModal
           initialColor={chosenColor}
@@ -324,30 +353,6 @@ export default function CanvasPage() {
             setShowThicknessPicker(false);
           }}
         />
-      )}
-
-      {/* Crop Modal using react-easy-crop */}
-      {showCropModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div
-            className="relative bg-white p-4 rounded shadow-lg"
-            style={{ width: "80vw", height: "80vh" }}
-          >
-            <Cropper
-              image={bgImage}
-              crop={crop}
-              zoom={cropZoom}
-              aspect={600 / 400}
-              onCropChange={setCrop}
-              onZoomChange={setCropZoom}
-              onCropComplete={onCropComplete}
-            />
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button onClick={handleCropCancel}>Cancel</Button>
-              <Button onClick={handleCropDone}>Done</Button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
