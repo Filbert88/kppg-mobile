@@ -182,6 +182,7 @@ export function SvgOverlay({
       } else {
         onPixelFill(x, y);
       }
+      setActiveTool("none");
       e.stopPropagation();
       return;
     }

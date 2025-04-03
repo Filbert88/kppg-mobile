@@ -283,6 +283,7 @@ export default function CanvasPage() {
               activeTool === "draw" ||
               activeTool === "shapes" ||
               activeTool === "erase" ||
+              activeTool === "fill" ||
               disablePan,
           }}
         >
@@ -318,7 +319,6 @@ export default function CanvasPage() {
                 onCropComplete={onCropComplete}
               />
             </div>
-
             <div className="absolute top-4 right-4 z-20 flex space-x-2">
               <Button variant="secondary" onClick={handleCropCancel}>
                 Cancel
