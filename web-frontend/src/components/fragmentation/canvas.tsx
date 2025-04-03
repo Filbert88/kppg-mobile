@@ -12,15 +12,15 @@ import {
   ShapesIcon,
 } from "lucide-react";
 
-// Modal components – implement these as needed
+// Modal components
 import ColorPickerModal from "./modal/ColorPickerModal";
 import ShapePickerModal from "./modal/ShapePickerModal";
 import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 
-// Our container that wraps the drawing area (it should forward its ref)
+// Our container that wraps the drawing area (pastikan ImageContainer mengoper ref-nya)
 import ImageContainer from "./ImageContainer";
 
-// Import zoom/pan and crop libraries
+// Import zoom/pan dan crop libraries
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-easy-crop";
 import { Area } from "react-easy-crop";
@@ -101,7 +101,7 @@ async function getCroppedImg(
 }
 // --- End helpers ---
 
-// Define our tool and shape types.
+// Definisikan tipe tool dan shape.
 export type Tool =
   | "none"
   | "draw"
@@ -116,33 +116,33 @@ export type Tool =
 export type ShapeType = "rect" | "circle";
 
 export default function CanvasPage() {
-  // Tool state
+  // State untuk alat yang aktif
   const [activeTool, setActiveTool] = useState<Tool>("none");
   const [chosenColor, setChosenColor] = useState("#000000");
   const [lineThickness, setLineThickness] = useState<number>(3);
   const [shapeType, setShapeType] = useState<ShapeType>("rect");
 
-  // Modal visibility state
+  // State untuk visibilitas modal
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
 
-  // Crop state for react-easy-crop
+  // State untuk crop (react-easy-crop)
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [cropZoom, setCropZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  // Background image state
+  // State untuk background image
   const [bgImage, setBgImage] = useState<string>(
     "https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg"
   );
 
-  // Refs for zoom wrapper and image container (ImageContainer should forward its ref)
+  // Refs untuk TransformWrapper dan ImageContainer
   const transformWrapperRef = useRef<any>(null);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Handler for tool selection
+  // Handler untuk pemilihan alat
   function handleToolSelect(tool: Tool) {
     if (tool === "zoomIn") {
       transformWrapperRef.current?.zoomIn();
@@ -265,10 +265,9 @@ export default function CanvasPage() {
         </button>
       </div>
 
-      {/* Main drawing area with zoom/pan */}
+      {/* Area gambar utama dengan zoom/pan */}
       <div
         className="relative border border-gray-300 bg-white"
-        // Let ImageContainer control its own size – no fixed aspect ratio here.
         style={{ width: "100%", maxWidth: 600 }}
       >
         <TransformWrapper
@@ -276,6 +275,7 @@ export default function CanvasPage() {
           initialScale={1}
           wheel={{ step: 0.1 }}
           doubleClick={{ disabled: true }}
+          panning={{ disabled: activeTool === "draw" || activeTool === "shapes" }}
         >
           <TransformComponent>
             <ImageContainer
@@ -320,7 +320,7 @@ export default function CanvasPage() {
         />
       )}
 
-      {/* Crop Modal using react-easy-crop */}
+      {/* Crop Modal menggunakan react-easy-crop */}
       {showCropModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div
@@ -346,7 +346,6 @@ export default function CanvasPage() {
     </div>
   );
 }
-
 function handleCropCancel() {
   // Reset crop state if needed.
 }
