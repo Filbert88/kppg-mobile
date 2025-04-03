@@ -6,6 +6,8 @@ import MultiStepForm from "./components/fragmentation/multi-step-form";
 import DepthAverageForm from "./components/depth-average/depth-average-form";
 import Help from "./pages/Help"; // Import Help page
 import "./styles/App.css";
+import ImageUploadForm from "./components/fragmentation/image-upload-form";
+import Canvas from "./components/fragmentation/canvas";
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<"home" | "fragmentation" | "depthAverage">(
@@ -22,7 +24,12 @@ export default function App() {
         <Routes>
           {/* Route for Help Page */}
           <Route path="/help" element={<Help />} />
-
+          <Route
+            path="/canvas"
+            element={
+              <Canvas image="https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg" />
+            }
+          />
           {/* Default App Layout */}
           <Route
             path="/"
