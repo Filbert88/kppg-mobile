@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ZoomIn,
@@ -17,10 +17,10 @@ import ColorPickerModal from "./modal/ColorPickerModal";
 import ShapePickerModal from "./modal/ShapePickerModal";
 import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 
-// Our container that wraps the drawing area (pastikan ImageContainer mengoper ref-nya)
+// Our container that wraps the drawing area (ensure ImageContainer passes its ref)
 import ImageContainer from "./ImageContainer";
 
-// Import zoom/pan dan crop libraries
+// Import zoom/pan and crop libraries
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-easy-crop";
 import { Area } from "react-easy-crop";
@@ -101,7 +101,7 @@ async function getCroppedImg(
 }
 // --- End helpers ---
 
-// Definisikan tipe tool dan shape.
+// Define tool and shape types.
 export type Tool =
   | "none"
   | "draw"
@@ -116,33 +116,36 @@ export type Tool =
 export type ShapeType = "rect" | "circle";
 
 export default function CanvasPage() {
-  // State untuk alat yang aktif
+  // Active tool state
   const [activeTool, setActiveTool] = useState<Tool>("none");
   const [chosenColor, setChosenColor] = useState("#000000");
   const [lineThickness, setLineThickness] = useState<number>(3);
   const [shapeType, setShapeType] = useState<ShapeType>("rect");
 
-  // State untuk visibilitas modal
+  // Modal visibility state
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
 
-  // State untuk crop (react-easy-crop)
+  // Crop state (react-easy-crop)
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [cropZoom, setCropZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  // State untuk background image
+  // Background image state
   const [bgImage, setBgImage] = useState<string>(
     "https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg"
   );
 
-  // Refs untuk TransformWrapper dan ImageContainer
+  // New state to disable panning when interacting with a shape
+  const [disablePan, setDisablePan] = useState(false);
+
+  // Refs for TransformWrapper and ImageContainer
   const transformWrapperRef = useRef<any>(null);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Handler untuk pemilihan alat
+  // Handler for tool selection
   function handleToolSelect(tool: Tool) {
     if (tool === "zoomIn") {
       transformWrapperRef.current?.zoomIn();
@@ -265,7 +268,6 @@ export default function CanvasPage() {
         </button>
       </div>
 
-      {/* Area gambar utama dengan zoom/pan */}
       <div
         className="relative border border-gray-300 bg-white"
         style={{ width: "100%", maxWidth: 600 }}
@@ -275,7 +277,10 @@ export default function CanvasPage() {
           initialScale={1}
           wheel={{ step: 0.1 }}
           doubleClick={{ disabled: true }}
-          panning={{ disabled: activeTool === "draw" || activeTool === "shapes" }}
+          panning={{
+            disabled:
+              activeTool === "draw" || activeTool === "shapes" || disablePan,
+          }}
         >
           <TransformComponent>
             <ImageContainer
@@ -286,6 +291,7 @@ export default function CanvasPage() {
               color={chosenColor}
               setActiveTool={setActiveTool}
               lineThickness={lineThickness}
+              setDisablePan={setDisablePan}
             />
           </TransformComponent>
         </TransformWrapper>
@@ -320,7 +326,7 @@ export default function CanvasPage() {
         />
       )}
 
-      {/* Crop Modal menggunakan react-easy-crop */}
+      {/* Crop Modal using react-easy-crop */}
       {showCropModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div

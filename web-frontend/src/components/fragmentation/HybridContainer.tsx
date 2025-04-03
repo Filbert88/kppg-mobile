@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useRef } from "react";
-import PixelCanvas from "./PixelCanvas.tsx"; // your pixel-based freehand canvas component
-import { SvgOverlay } from "./SvgOverlay.tsx"; // your SVG overlay component
+import { useState, useRef } from "react";
+import PixelCanvas from "./PixelCanvas"; 
+import { SvgOverlay } from "./SvgOverlay";
 
 type Tool =
   | "none"
@@ -25,6 +25,7 @@ interface Props {
   selectedColor: string;
   lineThickness: number;
   setActiveTool: (tool: Tool) => void;
+  setDisablePan: (disable: boolean) => void;
 }
 
 export default function HybridContainer({
@@ -34,7 +35,8 @@ export default function HybridContainer({
   shapeType,
   selectedColor,
   lineThickness,
-  setActiveTool
+  setActiveTool,
+  setDisablePan,
 }: Props) {
   // Store shapes and lines for the SVG overlay.
   const [shapes, setShapes] = useState<any[]>([]);
@@ -109,6 +111,7 @@ export default function HybridContainer({
           onPixelFill={handleCanvasFill}
           onPixelErase={handlePixelErase}
           pointerEvents={overlayPointer}
+          setDisablePan={setDisablePan}
         />
       </div>
     </div>

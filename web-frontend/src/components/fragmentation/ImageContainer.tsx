@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import HybridContainer from "./HybridContainer";
 import { Tool } from "./canvas";
 
@@ -10,6 +10,7 @@ interface ImageContainerProps {
   color: string;
   setActiveTool: (tool: Tool) => void;
   lineThickness: number;
+  setDisablePan: (disable: boolean) => void; 
 }
 
 const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
@@ -21,6 +22,7 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       color,
       setActiveTool,
       lineThickness,
+      setDisablePan,
     },
     ref
   ) => {
@@ -65,15 +67,26 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
             left: 0,
           }}
         />
-        <HybridContainer
-          width={containerSize.width}
-          height={containerSize.height}
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
-          shapeType={shapeType}
-          selectedColor={color}
-          lineThickness={lineThickness}
-        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <HybridContainer
+            width={containerSize.width}
+            height={containerSize.height}
+            activeTool={activeTool}
+            setActiveTool={setActiveTool}
+            shapeType={shapeType}
+            selectedColor={color}
+            lineThickness={lineThickness}
+            setDisablePan={setDisablePan}
+          />
+        </div>
       </div>
     );
   }
