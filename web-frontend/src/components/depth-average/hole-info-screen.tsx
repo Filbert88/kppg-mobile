@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Edit2 } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Edit2 } from "lucide-react";
 
 interface HoleInfoScreenProps {
-  numberOfHoles: string
-  location: string
-  date: string
-  onUpdateNumberOfHoles: (value: string) => void
-  onUpdateLocation: (value: string) => void
-  onUpdateDate: (value: string) => void
-  onNext: () => void
+  numberOfHoles: string;
+  location: string;
+  date: string;
+  onUpdateNumberOfHoles: (value: string) => void;
+  onUpdateLocation: (value: string) => void;
+  onUpdateDate: (value: string) => void;
+  onNext: () => void;
 }
 
 export default function HoleInfoScreen({
@@ -24,6 +24,9 @@ export default function HoleInfoScreen({
   onUpdateDate,
   onNext,
 }: HoleInfoScreenProps) {
+  const isFormValid =
+    numberOfHoles.trim() !== "" && location.trim() !== "" && date.trim() !== "";
+
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full">
       <div className="flex-1 space-y-6 mt-10">
@@ -70,9 +73,9 @@ export default function HoleInfoScreen({
           <div className="relative">
             <Input
               id="date"
+              type="date"
               value={date}
               onChange={(e) => onUpdateDate(e.target.value)}
-              placeholder="Masukkan tanggal..."
               className="w-full bg-white rounded-md mt-1 pr-10 ring-blue-500 ring-offset-2 focus-visible:ring-1"
             />
             <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -85,12 +88,16 @@ export default function HoleInfoScreen({
       <div className="flex justify-end mt-4">
         <Button
           onClick={onNext}
-          className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-6 rounded-lg"
+          disabled={!isFormValid}
+          className={`${
+            isFormValid
+              ? "bg-green-800 hover:bg-green-900"
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white font-medium py-2 px-6 rounded-lg`}
         >
           Next
         </Button>
       </div>
     </div>
-  )
+  );
 }
-
