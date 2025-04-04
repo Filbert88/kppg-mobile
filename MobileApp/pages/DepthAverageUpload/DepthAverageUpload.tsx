@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import { ArrowRight } from 'react-native-feather';
+import React, {useState} from 'react';
+import {View, Text, TouchableOpacity, Image, Alert} from 'react-native';
+import {launchImageLibrary} from 'react-native-image-picker';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {ArrowRight} from 'react-native-feather';
+import {requestPhotoPermission} from '../../components/requestPhotoPermission';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -16,6 +17,9 @@ const DepthAverageUpload = () => {
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   const handleImagePicker = async () => {
+    const hasPermission = await requestPhotoPermission();
+    if (!hasPermission) return;
+
     const result = await launchImageLibrary({
       mediaType: 'photo',
       quality: 1,
@@ -24,11 +28,12 @@ const DepthAverageUpload = () => {
     if (result.didCancel) {
       console.log('User cancelled image picker');
     } else if (result.errorCode) {
-      console.error('ImagePicker Error: ', result.errorMessage);
-      Alert.alert('Error', 'An error occurred while picking the image.');
-    } else if (result.assets && result.assets.length > 0) {
-      const selectedImage = result.assets[0];
-      setImageUri(selectedImage.uri || null);
+      console.error('ImagePicker Error:', result.errorMessage);
+      Alert.alert('Error', result.errorMessage || 'Failed to pick image');
+    } else if (result.assets?.[0]?.uri) {
+      const selectedUri = result.assets[0].uri;
+      console.log('Selected image URI:', selectedUri);
+      setImageUri(selectedUri);
     }
   };
 
@@ -39,18 +44,12 @@ const DepthAverageUpload = () => {
       <TouchableOpacity
         className="w-full max-w-md h-[400px] border border-gray-400 bg-white rounded-lg flex justify-center items-center"
         onPress={handleImagePicker}
-        style={{ width: '90%' }}>
-
+        style={{width: '90%'}}>
         {imageUri ? (
-          <View className="flex-row items-center">
+          <View className="w-full h-full">
             <Image
-              source={{ uri: imageUri }}
-              className="w-56 h-56 rounded-lg"
-              resizeMode="contain"
-            />
-            <Image
-              source={require('../../public/assets/Plus.png')}
-              className="w-12 h-12 ml-4"
+              source={{uri: imageUri}}
+              style={{width: '100%', height: '100%', borderRadius: 12}}
               resizeMode="contain"
             />
           </View>

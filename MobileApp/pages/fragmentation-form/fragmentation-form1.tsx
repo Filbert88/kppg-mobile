@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,16 @@ import {
   ScrollView,
   Image,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { ChevronDown, Edit, ArrowRight } from 'react-native-feather';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import { launchImageLibrary } from 'react-native-image-picker';
+import {ChevronDown, Edit, ArrowRight} from 'react-native-feather';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {launchImageLibrary} from 'react-native-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {Platform} from 'react-native';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -29,6 +33,34 @@ export default function FragmentationForm1() {
   const [ukuran, setUkuran] = useState('');
   const [lokasi, setLokasi] = useState('');
   const [tanggal, setTanggal] = useState('');
+
+  const [skalaDropdownOpen, setSkalaDropdownOpen] = useState(false);
+  const [pilihanDropdownOpen, setPilihanDropdownOpen] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Animation values
+  const skalaDropdownHeight = useRef(new Animated.Value(0)).current;
+  const pilihanDropdownHeight = useRef(new Animated.Value(0)).current;
+
+  const skalaOptions = ['Skala Helm', 'Skala Bola', 'Skala Manual'];
+  const pilihanOptions = ['Centimeter (cm)', 'Meter (m)', 'Decimeter (dm)'];
+
+  // Animation functions
+  useEffect(() => {
+    Animated.timing(skalaDropdownHeight, {
+      toValue: skalaDropdownOpen ? skalaOptions.length * 44 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [skalaDropdownOpen]);
+
+  useEffect(() => {
+    Animated.timing(pilihanDropdownHeight, {
+      toValue: pilihanDropdownOpen ? pilihanOptions.length * 44 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [pilihanDropdownOpen]);
 
   const handleImagePicker = async () => {
     const result = await launchImageLibrary({
@@ -55,21 +87,30 @@ export default function FragmentationForm1() {
     lokasi.trim() !== '' &&
     tanggal.trim() !== '';
 
+  // Close other dropdown when one is opened
+  const toggleSkalaDropdown = () => {
+    setPilihanDropdownOpen(false);
+    setSkalaDropdownOpen(!skalaDropdownOpen);
+  };
+
+  const togglePilihanDropdown = () => {
+    setSkalaDropdownOpen(false);
+    setPilihanDropdownOpen(!pilihanDropdownOpen);
+  };
+
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          className="w-full my-8"
-        >
+          contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}
+          className="w-full my-8">
           {/* Image Upload */}
           <TouchableOpacity
             className="w-full aspect-[16/9] bg-white rounded-lg items-center justify-center border border-gray-300"
-            onPress={handleImagePicker}
-          >
+            onPress={handleImagePicker}>
             {imageUri ? (
               <Image
-                source={{ uri: imageUri }}
+                source={{uri: imageUri}}
                 className="w-full h-full rounded-lg"
                 resizeMode="contain"
               />
@@ -84,27 +125,96 @@ export default function FragmentationForm1() {
           {/* Form Fields */}
           <View className="flex-1 mt-4 gap-4">
             {/* Skala */}
-            <View className="gap-1">
+            <View className="gap-1 z-20">
               <Text className="text-black font-black mb-1">Skala</Text>
-              <TextInput
-                placeholder="Masukkan skala..."
-                value={skala}
-                onChangeText={setSkala}
-                placeholderTextColor="#9CA3AF"
-                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
-              />
+              <TouchableOpacity
+                className={`w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center ${
+                  skalaDropdownOpen ? 'rounded-b-none' : ''
+                }`}
+                onPress={toggleSkalaDropdown}>
+                <Text className={`text-black ${!skala ? 'text-gray-400' : ''}`}>
+                  {skala || 'Masukkan skala...'}
+                </Text>
+                <ChevronDown
+                  stroke="#666"
+                  width={24}
+                  height={24}
+                  style={{
+                    transform: [
+                      {rotate: skalaDropdownOpen ? '180deg' : '0deg'},
+                    ],
+                  }}
+                />
+              </TouchableOpacity>
+
+              {/* Dropdown for Skala */}
+              <Animated.View
+                style={{
+                  height: skalaDropdownHeight,
+                  overflow: 'hidden',
+                }}
+                className="w-full bg-white border-x border-b border-gray-300 rounded-b-lg shadow-md z-10">
+                {skalaOptions.map((option, index) => (
+                  <TouchableOpacity
+                    key={option}
+                    className={`py-3 px-4 border-b border-gray-100 ${
+                      index === skalaOptions.length - 1 ? 'border-b-0' : ''
+                    }`}
+                    onPress={() => {
+                      setSkala(option);
+                      setSkalaDropdownOpen(false);
+                    }}>
+                    <Text className="text-black">{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
             </View>
 
             {/* Pilihan */}
-            <View className="gap-1">
+            <View className="gap-1 z-10">
               <Text className="text-black font-black mb-1">Pilihan</Text>
-              <TextInput
-                placeholder="Masukkan pilihan..."
-                value={pilihan}
-                onChangeText={setPilihan}
-                placeholderTextColor="#9CA3AF"
-                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
-              />
+              <TouchableOpacity
+                className={`w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center ${
+                  pilihanDropdownOpen ? 'rounded-b-none' : ''
+                }`}
+                onPress={togglePilihanDropdown}>
+                <Text
+                  className={`text-black ${!pilihan ? 'text-gray-400' : ''}`}>
+                  {pilihan || 'Masukkan pilihan...'}
+                </Text>
+                <ChevronDown
+                  stroke="#666"
+                  width={24}
+                  height={24}
+                  style={{
+                    transform: [
+                      {rotate: pilihanDropdownOpen ? '180deg' : '0deg'},
+                    ],
+                  }}
+                />
+              </TouchableOpacity>
+
+              {/* Dropdown for Pilihan */}
+              <Animated.View
+                style={{
+                  height: pilihanDropdownHeight,
+                  overflow: 'hidden',
+                }}
+                className="w-full bg-white border-x border-b border-gray-300 rounded-b-lg shadow-md">
+                {pilihanOptions.map((option, index) => (
+                  <TouchableOpacity
+                    key={option}
+                    className={`py-3 px-4 border-b border-gray-100 ${
+                      index === pilihanOptions.length - 1 ? 'border-b-0' : ''
+                    }`}
+                    onPress={() => {
+                      setPilihan(option);
+                      setPilihanDropdownOpen(false);
+                    }}>
+                    <Text className="text-black">{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
             </View>
 
             {/* Ukuran */}
@@ -141,16 +251,34 @@ export default function FragmentationForm1() {
             {/* Tanggal */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Tanggal</Text>
-              <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
-                <TextInput
-                  placeholder="Masukkan tanggal..."
-                  value={tanggal}
-                  onChangeText={setTanggal}
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 text-black"
-                />
+              <TouchableOpacity
+                className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center"
+                onPress={() => setShowDatePicker(true)}>
+                <Text
+                  className={`text-black ${!tanggal ? 'text-gray-400' : ''}`}>
+                  {tanggal || 'Masukkan tanggal...'}
+                </Text>
                 <Edit stroke="#666" width={20} height={20} />
-              </View>
+              </TouchableOpacity>
+
+              {/* Show the actual native date picker */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={tanggal ? new Date(tanggal) : new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios'); // keep open on iOS
+                    if (selectedDate) {
+                      const formatted = selectedDate
+                        .toISOString()
+                        .split('T')[0];
+                      setTanggal(formatted);
+                    }
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
             </View>
           </View>
 
@@ -160,8 +288,7 @@ export default function FragmentationForm1() {
             onPress={() => navigation.navigate('FragmentationForm2')}
             className={`w-full rounded-lg px-4 py-3 items-center mt-6 mb-4 ${
               isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
-            }`}
-          >
+            }`}>
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>
         </ScrollView>
