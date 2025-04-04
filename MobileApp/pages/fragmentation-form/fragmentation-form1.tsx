@@ -9,7 +9,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { ChevronDown, Edit } from 'react-native-feather';
+import { ChevronDown, Edit, ArrowRight } from 'react-native-feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -23,6 +23,12 @@ type NavigationProp = NativeStackNavigationProp<
 export default function FragmentationForm1() {
   const navigation = useNavigation<NavigationProp>();
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const [skala, setSkala] = useState('');
+  const [pilihan, setPilihan] = useState('');
+  const [ukuran, setUkuran] = useState('');
+  const [lokasi, setLokasi] = useState('');
+  const [tanggal, setTanggal] = useState('');
 
   const handleImagePicker = async () => {
     const result = await launchImageLibrary({
@@ -41,6 +47,14 @@ export default function FragmentationForm1() {
     }
   };
 
+  const isFormValid =
+    imageUri &&
+    skala.trim() !== '' &&
+    pilihan.trim() !== '' &&
+    ukuran.trim() !== '' &&
+    lokasi.trim() !== '' &&
+    tanggal.trim() !== '';
+
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
@@ -48,7 +62,7 @@ export default function FragmentationForm1() {
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
           className="w-full my-8"
         >
-          {/* Image Upload Area */}
+          {/* Image Upload */}
           <TouchableOpacity
             className="w-full aspect-[16/9] bg-white rounded-lg items-center justify-center border border-gray-300"
             onPress={handleImagePicker}
@@ -67,60 +81,73 @@ export default function FragmentationForm1() {
             )}
           </TouchableOpacity>
 
-          {/* Form Fields with Larger Gaps */}
+          {/* Form Fields */}
           <View className="flex-1 mt-4 gap-4">
-            {/* Skala Dropdown */}
+            {/* Skala */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Skala</Text>
-              <TouchableOpacity className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center">
-                <Text className="text-gray-400">Masukkan skala...</Text>
-                <ChevronDown stroke="#666" width={24} height={24} />
-              </TouchableOpacity>
+              <TextInput
+                placeholder="Masukkan skala..."
+                value={skala}
+                onChangeText={setSkala}
+                placeholderTextColor="#9CA3AF"
+                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
+              />
             </View>
 
-            {/* Pilihan Dropdown */}
+            {/* Pilihan */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Pilihan</Text>
-              <TouchableOpacity className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center">
-                <Text className="text-gray-400">Masukkan pilihan...</Text>
-                <ChevronDown stroke="#666" width={24} height={24} />
-              </TouchableOpacity>
+              <TextInput
+                placeholder="Masukkan pilihan..."
+                value={pilihan}
+                onChangeText={setPilihan}
+                placeholderTextColor="#9CA3AF"
+                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
+              />
             </View>
 
-            {/* Ukuran Input */}
+            {/* Ukuran */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Ukuran</Text>
               <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
                 <TextInput
                   placeholder="Masukkan ukuran..."
+                  value={ukuran}
+                  onChangeText={setUkuran}
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
+                  className="flex-1 text-black"
+                  keyboardType="numeric"
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
             </View>
 
-            {/* Lokasi Input */}
+            {/* Lokasi */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Lokasi</Text>
               <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
                 <TextInput
                   placeholder="Masukkan lokasi..."
+                  value={lokasi}
+                  onChangeText={setLokasi}
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
+                  className="flex-1 text-black"
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
             </View>
 
-            {/* Tanggal Input */}
+            {/* Tanggal */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Tanggal</Text>
               <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
                 <TextInput
                   placeholder="Masukkan tanggal..."
+                  value={tanggal}
+                  onChangeText={setTanggal}
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
+                  className="flex-1 text-black"
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
@@ -129,8 +156,11 @@ export default function FragmentationForm1() {
 
           {/* Next Button */}
           <TouchableOpacity
-            className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6 mb-4"
+            disabled={!isFormValid}
             onPress={() => navigation.navigate('FragmentationForm2')}
+            className={`w-full rounded-lg px-4 py-3 items-center mt-6 mb-4 ${
+              isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+            }`}
           >
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>

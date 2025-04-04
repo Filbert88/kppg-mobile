@@ -1,10 +1,10 @@
-import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, Image, Alert} from 'react-native';
-import {launchImageLibrary} from 'react-native-image-picker';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
-import {ArrowRight} from 'react-native-feather';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+import { ArrowRight } from 'react-native-feather';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -32,17 +32,19 @@ const DepthAverageUpload = () => {
     }
   };
 
+  const isFormValid = imageUri !== null;
+
   return (
     <View className="flex-1 justify-center items-center px-4">
       <TouchableOpacity
         className="w-full max-w-md h-[400px] border border-gray-400 bg-white rounded-lg flex justify-center items-center"
         onPress={handleImagePicker}
         style={{ width: '90%' }}>
-        
+
         {imageUri ? (
           <View className="flex-row items-center">
             <Image
-              source={{uri: imageUri}}
+              source={{ uri: imageUri }}
               className="w-56 h-56 rounded-lg"
               resizeMode="contain"
             />
@@ -76,12 +78,17 @@ const DepthAverageUpload = () => {
 
       <View className="absolute bottom-5 right-5 mb-4">
         <TouchableOpacity
-          className="bg-green-700 px-6 py-3 rounded-lg shadow-md"
-          onPress={() => navigation.navigate('FormDA1')}>
-          <View className="flex-row items-center">
-            <Text className="text-white font-semibold mr-2">Next</Text>
-            <ArrowRight width={18} height={18} color="white" />
-          </View>
+          disabled={!isFormValid}
+          className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
+            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+          }`}
+          onPress={() => {
+            if (isFormValid) {
+              navigation.navigate('FormDA1');
+            }
+          }}>
+          <Text className="text-white font-semibold mr-2">Next</Text>
+          <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>
       </View>
     </View>

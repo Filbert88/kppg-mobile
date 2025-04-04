@@ -23,7 +23,7 @@ type NavigationProp = NativeStackNavigationProp<
 >;
 
 export default function FragmentationForm4() {
-    const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<NavigationProp>();
   // We'll store multiple image URIs in an array:
   const [images, setImages] = useState<string[]>([
     // Start with the default image
@@ -62,6 +62,9 @@ export default function FragmentationForm4() {
     setEditingIndex(-1);
   };
   const handleNext = () => {
+    if (images.length === 0) {
+      return; // No images? Don't navigate
+    }
     navigation.navigate('FragmentationForm5', {images});
   };
   // If editingIndex >=0, we show the EditingApp in a modal or separate screen
@@ -91,7 +94,13 @@ export default function FragmentationForm4() {
 
       {/* Fixed bottom button */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+        <TouchableOpacity
+          onPress={handleNext}
+          disabled={images.length === 0}
+          style={[
+            styles.nextButton,
+            images.length === 0 && {backgroundColor: 'gray', opacity: 0.6},
+          ]}>
           <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>
       </View>

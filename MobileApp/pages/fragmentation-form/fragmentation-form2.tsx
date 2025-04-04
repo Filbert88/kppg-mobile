@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { ChevronDown  } from 'react-native-feather';
+import { ChevronDown } from 'react-native-feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -16,6 +16,16 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Fragmentati
 
 export default function FragmentationForm2() {
   const navigation = useNavigation<NavigationProp>();
+
+  const [litologi, setLitologi] = useState('');
+  const [ammoniumNitrate, setAmmoniumNitrate] = useState('');
+  const [volumeBlasting, setVolumeBlasting] = useState('');
+
+  const isFormValid =
+    litologi.trim() !== '' &&
+    ammoniumNitrate.trim() !== '' &&
+    volumeBlasting.trim() !== '';
+
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
@@ -24,34 +34,44 @@ export default function FragmentationForm2() {
           className="w-full my-20"
         >
           <View className="flex-1 mt-4 gap-4">
-            {/* Skala Dropdown */}
+            {/* Litologi Dropdown (input simulation for now) */}
             <View className="gap-1">
-              <Text className="text-black font-black mb-1">Litologi Bantuan</Text>
-              <TouchableOpacity className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center">
-                <Text className="text-gray-400">Masukkan jenis...</Text>
-                <ChevronDown stroke="#666" width={24} height={24} />
-              </TouchableOpacity>
+              <Text className="text-black font-black mb-1">Litologi Batuan</Text>
+              <TextInput
+                placeholder="Masukkan jenis..."
+                value={litologi}
+                onChangeText={setLitologi}
+                placeholderTextColor="#9CA3AF"
+                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
+              />
             </View>
 
+            {/* Amonium Nitrat */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Amonium Nitrat</Text>
               <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
                 <TextInput
                   placeholder="Masukkan jumlah..."
+                  value={ammoniumNitrate}
+                  onChangeText={setAmmoniumNitrate}
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
+                  keyboardType="numeric"
+                  className="flex-1 text-black"
                 />
               </View>
             </View>
 
-            {/* Lokasi Input */}
+            {/* Volume Blasting */}
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Volume Blasting</Text>
               <View className="w-full bg-rose-50 rounded-lg px-4 py-1 flex-row justify-between items-center">
                 <TextInput
                   placeholder="Masukkan volume..."
+                  value={volumeBlasting}
+                  onChangeText={setVolumeBlasting}
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
+                  keyboardType="numeric"
+                  className="flex-1 text-black"
                 />
               </View>
             </View>
@@ -59,8 +79,15 @@ export default function FragmentationForm2() {
 
           {/* Next Button */}
           <TouchableOpacity
-            className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6"
-            onPress={() => navigation.navigate('FragmentationForm3')}
+            disabled={!isFormValid}
+            className={`w-full rounded-lg px-4 py-3 items-center mt-6 ${
+              isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+            }`}
+            onPress={() => {
+              if (isFormValid) {
+                navigation.navigate('FragmentationForm3');
+              }
+            }}
           >
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>

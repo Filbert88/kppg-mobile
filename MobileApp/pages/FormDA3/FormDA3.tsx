@@ -1,4 +1,4 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,16 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import {Save, Percent} from 'react-native-feather';
-import {DepthAverageContext} from '../../context/DepthAverageContext';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
+import { Save, Percent } from 'react-native-feather';
+import { DepthAverageContext } from '../../context/DepthAverageContext';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA3'>;
 
 const FormDA3 = () => {
-  const {formData, setFormData, saveToDatabase} = useContext(DepthAverageContext);
+  const { formData, setFormData, saveToDatabase } = useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [calculatedAverage, setCalculatedAverage] = useState<string>('N/A');
 
@@ -31,7 +31,7 @@ const FormDA3 = () => {
 
   useEffect(() => {
     if (averageValue !== formData.average) {
-      setFormData({average: averageValue});
+      setFormData({ average: averageValue });
       setCalculatedAverage(averageValue);
     }
   }, [averageValue, formData.average, setFormData]);
@@ -45,8 +45,13 @@ const FormDA3 = () => {
     }
   };
 
+  const isFormValid =
+    calculatedAverage !== 'N/A' &&
+    calculatedAverage !== '' &&
+    !isNaN(Number(calculatedAverage));
+
   return (
-    <SafeAreaView className="flex-1 ">
+    <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
 
       <View className="flex-1 px-6 pt-8">
@@ -66,12 +71,14 @@ const FormDA3 = () => {
 
       <View className="p-6 mb-4">
         <TouchableOpacity
-          className="bg-green-700 px-6 py-3 rounded-lg shadow-md active:bg-green-800 ml-auto"
-          onPress={handleSaveAndNavigate}>
-          <View className="flex-row items-center">
-            <Text className="text-white font-bold mr-2">Simpan</Text>
-            <Save width={20} height={20} color="white" className="mr-4" />
-          </View>
+          disabled={!isFormValid}
+          onPress={handleSaveAndNavigate}
+          className={`px-6 py-3 rounded-lg shadow-md ml-auto flex-row items-center ${
+            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+          }`}
+        >
+          <Text className="text-white font-bold mr-2">Simpan</Text>
+          <Save width={20} height={20} color="white" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
