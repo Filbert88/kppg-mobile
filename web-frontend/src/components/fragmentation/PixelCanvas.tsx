@@ -1,4 +1,3 @@
-// PixelCanvas.tsx
 "use client";
 import React, {
   useRef,
@@ -39,7 +38,6 @@ function PixelCanvasImpl(
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
         ctxRef.current = ctx;
-        // Start with a transparent background
         ctx.clearRect(0, 0, width, height);
       }
     }
@@ -51,7 +49,6 @@ function PixelCanvasImpl(
       const ctx = ctxRef.current;
       const imageData = ctx.getImageData(0, 0, width, height);
       const ff = new FloodFill(imageData);
-      // Here fillColor must be a valid CSS color string (e.g. "#ff0000" or "rgba(0,0,0,0)")
       ff.fill(fillColor, Math.floor(x), Math.floor(y), 20);
       ctx.putImageData(imageData, 0, 0);
     },
