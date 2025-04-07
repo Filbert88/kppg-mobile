@@ -8,9 +8,118 @@ from pathlib import Path
 import shutil
 
 
+# def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
+#     """
+#     Extract and straighten the red box from an image.
+    
+#     Args:
+#         image_path: Path to the input image
+#         output_dir: Directory to save the extracted box
+        
+#     Returns:
+#         Path to the extracted and straightened red box image
+#     """
+#     # Check if image exists
+#     if not os.path.exists(image_path):
+#         raise FileNotFoundError(f"Image not found: {image_path}")
+        
+#     # Read the image
+#     image = cv2.imread(image_path)
+#     if image is None:
+#         raise ValueError(f"Could not read image from {image_path}")
+    
+#     # Create a copy of original image
+#     orig_image = image.copy()
+    
+#     # Convert to HSV for better red color detection
+#     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+#     # Define range for red/orange color in HSV
+#     lower_red1 = np.array([0, 60, 80])    # Lower saturation & value thresholds
+#     upper_red1 = np.array([15, 255, 255]) # Increased hue range to catch orange
+
+#     lower_red2 = np.array([160, 60, 80])  # Lower saturation & value thresholds
+#     upper_red2 = np.array([180, 255, 255])
+
+#     lower_orange = np.array([15, 60, 80])
+#     upper_orange = np.array([25, 255, 255])
+
+#     # Create masks for red detection
+#     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+#     mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+#     mask3 = cv2.inRange(hsv, lower_orange, upper_orange)
+#     mask = cv2.bitwise_or(mask1, mask2)
+    
+#     # Find contours in the mask
+#     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+#     # If no contours found with color filtering, try edge detection
+#     if not contours:
+#         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#         edges = cv2.Canny(gray, 50, 150)
+#         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+#     # Find the largest contour, which is likely our red box
+#     if contours:
+#         largest_contour = max(contours, key=cv2.contourArea)
+        
+#         # Approximate the contour to a polygon
+#         epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+#         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+        
+#         # If we have a quadrilateral (4 corners)
+#         if len(approx) == 4:
+#             corners = approx.reshape(4, 2)
+#         else:
+#             # If we don't get exactly 4 corners, use a minimum area rectangle
+#             rect = cv2.minAreaRect(largest_contour)
+#             box = cv2.boxPoints(rect)
+#             corners = np.int32(box)
+        
+#         # Sort corners to ensure they are in the order: top-left, top-right, bottom-right, bottom-left
+#         corners = order_points(corners)
+        
+#         # Get width and height of the box
+#         width = max(
+#             np.linalg.norm(corners[0] - corners[1]),
+#             np.linalg.norm(corners[2] - corners[3])
+#         )
+#         height = max(
+#             np.linalg.norm(corners[0] - corners[3]),
+#             np.linalg.norm(corners[1] - corners[2])
+#         )
+#         width, height = int(width), int(height)
+        
+#         # Define destination points for perspective transform
+#         dst_points = np.array([
+#             [0, 0],
+#             [width, 0],
+#             [width, height],
+#             [0, height]
+#         ], dtype=np.float32)
+        
+#         # Perform perspective transform
+#         matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), dst_points)
+#         warped = cv2.warpPerspective(orig_image, matrix, (width, height))
+        
+#         # Create output directory if it doesn't exist
+#         os.makedirs(output_dir, exist_ok=True)
+        
+#         # Get the filename from the path
+#         filename = Path(image_path).stem
+#         output_path = os.path.join(output_dir, f"{filename}_red_box.jpg")
+        
+#         # Save the warped image
+#         cv2.imwrite(output_path, warped)
+        
+#         print(f"Red box extracted and saved to {output_path}")
+#         return output_path, warped
+#     else:
+#         raise ValueError("Could not detect a red box in the image")
+  
 def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
     """
-    Extract and straighten the red box from an image.
+    Extract and straighten the red/orange box from an image with improved detection.
     
     Args:
         image_path: Path to the input image
@@ -31,86 +140,222 @@ def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
     # Create a copy of original image
     orig_image = image.copy()
     
-    # Convert to HSV for better red color detection
+    # Try multiple detection methods
+    contours = None
+    
+    # Method 1: Enhanced HSV color detection for orange-red
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
-    # Define range for red color (2 ranges because red wraps around in HSV)
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
+    # Much broader range for red/orange detection
+    lower_red1 = np.array([0, 40, 60])     # Very relaxed thresholds
+    upper_red1 = np.array([20, 255, 255])  # Expanded hue range
     
-    # Create masks for red detection
+    lower_red2 = np.array([150, 40, 60])   # Very relaxed thresholds
+    upper_red2 = np.array([180, 255, 255]) # End of hue spectrum
+    
+    # Create masks
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
     mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
     mask = cv2.bitwise_or(mask1, mask2)
     
-    # Find contours in the mask
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Apply morphology to enhance detection
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
     
-    # If no contours found with color filtering, try edge detection
-    if not contours:
+    # Find contours in the mask
+    contours_color, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if contours_color and len(contours_color) > 0:
+        # Filter contours by size and shape (looking for a large rectangular contour)
+        valid_contours = []
+        for cnt in contours_color:
+            area = cv2.contourArea(cnt)
+            if area > 10000:  # Minimum area threshold
+                # Check if it's rectangular
+                peri = cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+                if len(approx) >= 4:  # At least 4 corners
+                    valid_contours.append(cnt)
+        
+        if valid_contours:
+            contours = valid_contours
+    
+    # Method 2: Try edge detection if color detection failed
+    if not contours or len(contours) == 0:
+        print("Color detection failed, trying edge detection...")
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150)
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 30, 150)
+        
+        # Enhance edges
+        kernel = np.ones((5, 5), np.uint8)
+        edges = cv2.dilate(edges, kernel, iterations=1)
+        
+        contours_edges, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Filter for large rectangular contours
+        valid_contours = []
+        for cnt in contours_edges:
+            area = cv2.contourArea(cnt)
+            if area > 10000:  # Minimum area threshold
+                # Check if it's rectangular
+                peri = cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+                if len(approx) >= 4:  # At least 4 corners
+                    valid_contours.append(cnt)
+        
+        if valid_contours:
+            contours = valid_contours
+    
+    # Method 3: Try direct rectangle detection
+    if not contours or len(contours) == 0:
+        print("Edge detection failed, trying direct rectangle detection...")
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                      cv2.THRESH_BINARY_INV, 11, 2)
+        # Find contours in binary image
+        contours_rect, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Look for the largest roughly rectangular contour
+        max_area = 0
+        largest_rect_contour = None
+        
+        for cnt in contours_rect:
+            area = cv2.contourArea(cnt)
+            if area > max_area and area > 10000:
+                peri = cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+                if len(approx) >= 4 and len(approx) <= 8:  # Approximately rectangular
+                    max_area = area
+                    largest_rect_contour = cnt
+        
+        if largest_rect_contour is not None:
+            contours = [largest_rect_contour]
     
     # Find the largest contour, which is likely our red box
-    if contours:
+    if contours and len(contours) > 0:
         largest_contour = max(contours, key=cv2.contourArea)
         
         # Approximate the contour to a polygon
         epsilon = 0.02 * cv2.arcLength(largest_contour, True)
         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
         
-        # If we have a quadrilateral (4 corners)
-        if len(approx) == 4:
-            corners = approx.reshape(4, 2)
-        else:
-            # If we don't get exactly 4 corners, use a minimum area rectangle
-            rect = cv2.minAreaRect(largest_contour)
-            box = cv2.boxPoints(rect)
-            corners = np.int32(box)
+        # If we have a quadrilateral (or can approximate as one)
+        if len(approx) >= 4:
+            # If more than 4 points, find the 4 extreme corners
+            if len(approx) > 4:
+                # Find bounding rectangle
+                rect = cv2.minAreaRect(approx)
+                box = cv2.boxPoints(rect)
+                corners = np.int0(box)
+            else:
+                corners = approx.reshape(4, 2)
+            
+            # Sort corners to ensure they are in the order: top-left, top-right, bottom-right, bottom-left
+            corners = order_points(corners)
+            
+            # Get width and height of the box
+            width = max(
+                np.linalg.norm(corners[0] - corners[1]),
+                np.linalg.norm(corners[2] - corners[3])
+            )
+            height = max(
+                np.linalg.norm(corners[0] - corners[3]),
+                np.linalg.norm(corners[1] - corners[2])
+            )
+            width, height = int(width), int(height)
+            
+            # Define destination points for perspective transform
+            dst_points = np.array([
+                [0, 0],
+                [width, 0],
+                [width, height],
+                [0, height]
+            ], dtype=np.float32)
+            
+            # Perform perspective transform
+            matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), dst_points)
+            warped = cv2.warpPerspective(orig_image, matrix, (width, height))
+            
+            # Create output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Get the filename from the path
+            filename = Path(image_path).stem
+            output_path = os.path.join(output_dir, f"{filename}_red_box.jpg")
+            
+            # Save the warped image
+            cv2.imwrite(output_path, warped)
+            
+            print(f"Box extracted and saved to {output_path}")
+            return output_path, warped
+    
+    # If all detection methods fail, use a fallback method - detect the largest rectangular area
+    print("All detection methods failed, using fallback method...")
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    
+    # Find external contours
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if contours:
+        # Sort contours by area (largest first)
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
         
-        # Sort corners to ensure they are in the order: top-left, top-right, bottom-right, bottom-left
-        corners = order_points(corners)
-        
-        # Get width and height of the box
-        width = max(
-            np.linalg.norm(corners[0] - corners[1]),
-            np.linalg.norm(corners[2] - corners[3])
-        )
-        height = max(
-            np.linalg.norm(corners[0] - corners[3]),
-            np.linalg.norm(corners[1] - corners[2])
-        )
-        width, height = int(width), int(height)
-        
-        # Define destination points for perspective transform
-        dst_points = np.array([
-            [0, 0],
-            [width, 0],
-            [width, height],
-            [0, height]
-        ], dtype=np.float32)
-        
-        # Perform perspective transform
-        matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), dst_points)
-        warped = cv2.warpPerspective(orig_image, matrix, (width, height))
-        
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Get the filename from the path
-        filename = Path(image_path).stem
-        output_path = os.path.join(output_dir, f"{filename}_red_box.jpg")
-        
-        # Save the warped image
-        cv2.imwrite(output_path, warped)
-        
-        print(f"Red box extracted and saved to {output_path}")
-        return output_path, warped
-    else:
-        raise ValueError("Could not detect a red box in the image")
+        # Try to find a rectangular contour
+        for contour in contours[:5]:  # Check the 5 largest contours
+            peri = cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, 0.04 * peri, True)
+            
+            if len(approx) >= 4:  # At least 4 corners
+                # Create a refined rectangle from this approximation
+                rect = cv2.minAreaRect(approx)
+                box = cv2.boxPoints(rect)
+                corners = np.int0(box)
+                
+                # Sort corners
+                corners = order_points(corners)
+                
+                # Get width and height of the box
+                width = max(
+                    np.linalg.norm(corners[0] - corners[1]),
+                    np.linalg.norm(corners[2] - corners[3])
+                )
+                height = max(
+                    np.linalg.norm(corners[0] - corners[3]),
+                    np.linalg.norm(corners[1] - corners[2])
+                )
+                width, height = int(width), int(height)
+                
+                # Check if dimensions make sense for a form
+                if width > 100 and height > 100:
+                    # Define destination points for perspective transform
+                    dst_points = np.array([
+                        [0, 0],
+                        [width, 0],
+                        [width, height],
+                        [0, height]
+                    ], dtype=np.float32)
+                    
+                    # Perform perspective transform
+                    matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), dst_points)
+                    warped = cv2.warpPerspective(orig_image, matrix, (width, height))
+                    
+                    # Create output directory if it doesn't exist
+                    os.makedirs(output_dir, exist_ok=True)
+                    
+                    # Get the filename from the path
+                    filename = Path(image_path).stem
+                    output_path = os.path.join(output_dir, f"{filename}_red_box.jpg")
+                    
+                    # Save the warped image
+                    cv2.imwrite(output_path, warped)
+                    
+                    print(f"Box extracted with fallback method and saved to {output_path}")
+                    return output_path, warped
+    
+    raise ValueError("Could not detect a box in the image using any method")
 
 def order_points(pts):
     """
@@ -444,7 +689,7 @@ def convert_char(text_list):
     mapping = {
         'A': '4', 'B': '8', 'm': '3', 'G': '6', 'I': '1', 'O': '0', 
         'S': '5', 'T': '7', 'Z': '2', 'l': '1', 'M': '3', 'g': '9', 
-        ',': '.', '+': '7', '-': '', 'D': ''
+        ',': '.', '+': '7', '-': '', 'D': '', '/': '1', '|': '1', '\\': '1'
     }
     
     if not text_list:
@@ -472,7 +717,9 @@ def parse(data):
         return []
         
     result = []
+    # print("SUBLIST")
     for sublist in data:
+        # print(sublist)
         if not sublist:
             continue
             
@@ -520,11 +767,12 @@ def parse(data):
                         i += 1
 
             processed_sublist.append(final_parts)
+            # print("proc: ", processed_sublist)
         result.append(processed_sublist)
+        # print("res: ", result)
     
     return result
-
-
+ 
 def perform_ocr(img_path, font_path=None, output_dir='sample_output'):
     """
     Perform OCR on an image and save visualization of results.
@@ -578,8 +826,8 @@ def perform_ocr(img_path, font_path=None, output_dir='sample_output'):
         txts = [line[1][0] for line in result[0]]
         scores = [line[1][1] for line in result[0]]
 
-        if not any(char.isdigit() for char in str(txts)):
-            txts = []
+        # if not any(char.isdigit() for char in str(txts)):
+        #     txts = []
 
         # Save visualization if font is provided
         if font_path and os.path.exists(font_path):
@@ -597,35 +845,29 @@ def perform_ocr(img_path, font_path=None, output_dir='sample_output'):
 
 def parse_and_merge(arr):
     """
-    Parse and merge processed OCR data.
+    Parse and merge processed OCR data, including the first array.
     
     Args:
         arr: Processed OCR data
         
     Returns:
-        length: Length value if present in first row
-        text: Merged list of OCR texts
+        length: Always None since we're keeping all data
+        text: Merged list of OCR texts including all arrays
     """
     # Handle empty input
-    if not arr or not arr[0] or not arr[0][0]:
+    if not arr:
         return None, []
-        
-    # Extract length from first item if possible
-    try:
-        length = arr[0][0][0] 
-    except (IndexError, TypeError):
-        length = None
     
-    # Merge all text items from remaining rows
+    # Merge all text items from all rows
     text = []
     try:
-        for sublist in arr[1:]:
+        for sublist in arr:  # Include all arrays, not just arr[1:]
             for item in sublist:
                 text.extend(item)
     except Exception as e:
         print(f"Error merging OCR data: {e}")
-        
-    return length, text
+    
+    return None, text
 
 def ocr_pipeline(image_path, output_base=None, temp_dir=None):
     """
@@ -655,7 +897,7 @@ def ocr_pipeline(image_path, output_base=None, temp_dir=None):
         # Remove unused image 
         remove_images_without_enough_black_pixels()
         crop_images_to_black_content()
-        enhance_images_for_paddleocr()
+        # enhance_images_for_paddleocr()
         
         # Perform OCR on each line
         all_texts = {}
@@ -704,59 +946,4 @@ def write_to_json(arr, filename='result.json'):
         print(f"Error writing JSON: {e}")
 
 
-def OCR(image_path, temp_folder='temp_ocr', output_folder='output'):
-    """
-    Main OCR function.
-    
-    Args:
-        image_path: Path to the input image
-        temp_folder: Folder for temporary files
-        output_folder: Folder for output files
-        
-    Returns:
-        None
-    """
-    # Create output directories
-    os.makedirs(temp_folder, exist_ok=True)
-    os.makedirs(output_folder, exist_ok=True)
 
-    try:
-        # Run OCR pipeline on the image
-        results = ocr_pipeline(image_path, temp_folder)
-        
-        if not results:
-            print(f"No results found for image: {image_path}")
-            return
-            
-        # Convert results to list for processing
-        result_list = []
-        for file, texts in results.items():
-            print(f"{file}: {texts}")
-            result_list.append(texts)
-            
-        # Parse and process results
-        parsed_results = parse(result_list)
-        length, merged_results = parse_and_merge(parsed_results)
-        print(f"Parsed results: {merged_results}")
-        
-        # Save results to JSON
-        base_name = Path(image_path).stem
-        output_file = os.path.join(output_folder, f'res_{base_name}.json')
-        write_to_json(merged_results, output_file)
-        print(f"Result saved to: {output_file}")
-        
-    except Exception as e:
-        print(f"Error in OCR process: {e}")
-        
-    finally:
-        # Uncomment to clean up temporary files
-        # if os.path.exists(temp_folder):
-        #     shutil.rmtree(temp_folder)
-        #     print(f"Deleted temp folder: {temp_folder}")
-        pass
-
-# Example usage
-if __name__ == "__main__":
-    # Replace with your image path
-    img_path = "input_ocr/ocr4.jpg"
-    OCR(img_path)
