@@ -13,7 +13,7 @@ type DepthAverageFormData = {
   numberOfHoles: number;
   location: string;
   date: string;
-  priority: string; 
+  priority: string;
   image: string | null;
   depths: string[];
   average: string;
@@ -26,16 +26,17 @@ export default function DepthAverageForm({
     React.SetStateAction<"home" | "fragmentation" | "depthAverage">
   >;
 }) {
-  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for ActionScreenDA
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<DepthAverageFormData>({
     numberOfHoles: 0,
     location: "",
     date: "",
-    priority : "",
+    priority: "",
     image: null,
     depths: [],
     average: "22.5 cm",
   });
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const updateFormData = (field: keyof DepthAverageFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -50,7 +51,6 @@ export default function DepthAverageForm({
     }));
   };
 
-  // Update a specific depth by index
   const updateDepth = (index: number, value: string) => {
     setFormData((prev) => {
       const newDepths = [...prev.depths];
@@ -59,20 +59,88 @@ export default function DepthAverageForm({
     });
   };
 
-  const handleNext = () => {
-    // If leaving depth measurement step, calculate average
-    if (currentStep === 3) {
-      const depths = formData.depths.filter((d) => d !== "");
+  const processOcr = async (file: File) => {
+    const formDataOcr = new FormData();
+    formDataOcr.append("file", file);
+
+    try {
+      const response = await fetch("http://localhost:5180/api/ocr", {
+        method: "POST",
+        body: formDataOcr,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch OCR result");
+      }
+
+      const result = (await response.json()) as {
+        ocr_result: Record<string, any>;
+      };
+
+      const ocrResult = result.ocr_result;
+      const entries = Object.entries(ocrResult).map(([key, value]) => [
+        Number(key),
+        value,
+      ]);
+
+      entries.sort((a, b) => a[0] - b[0]);
+      const newDepths = entries.map((entry) => entry[1]);
+
+      updateFormData("numberOfHoles", entries.length);
+      updateFormData("depths", newDepths);
+
+      console.log("OCR processed:", {
+        numberOfHoles: entries.length,
+        depths: newDepths,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error processing OCR:", error.message);
+      } else {
+        console.error("Error processing OCR:", String(error));
+      }
+    }
+  };
+
+  const handleNext = async () => {
+    if (currentStep === 2 && uploadedFile) {
+      try {
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+
+        const uploadResponse = await fetch(
+          "http://localhost:5180/api/Upload/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        const imageUrl = uploadResult.url;
+        updateFormData("image", imageUrl);
+
+        await processOcr(uploadedFile);
+      } catch (error) {
+        console.error("Image upload or OCR error:", error);
+        alert("Gagal mengunggah atau memproses gambar.");
+        return;
+      }
+    }
+
+    if (currentStep === 4) {
+      const depths = formData.depths.filter((d) => d.trim() !== "");
       if (depths.length > 0) {
         const sum = depths.reduce(
-          (acc, curr) => acc + Number.parseFloat(curr || "0"),
+          (acc, curr) => acc + (Number.parseFloat(curr) || 0),
           0
         );
         const avg = sum / depths.length;
-        setFormData((prev) => ({
-          ...prev,
-          average: `${avg.toFixed(1)} cm`,
-        }));
+        updateFormData("average", `${avg.toFixed(1)} cm`);
       }
     }
     setCurrentStep((prev) => prev + 1);
@@ -89,34 +157,11 @@ export default function DepthAverageForm({
   const handleSave = async () => {
     console.log("Depth Average data saved:", formData);
     try {
-      // const res = await fetch("/api/depth-average", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
-      // if (res.ok) {
-      //   setActiveScreen("home");
-      // } else {
-      //   console.error("Error saving data");
-      // }
       setActiveScreen("home");
     } catch (error) {
       console.error("Error saving data:", error);
     }
   };
-
-  const renderBackButton = () => {
-    return (
-      <button
-        onClick={handleBack}
-        className="absolute left-0 top-0 bg-green-800 text-white px-4 py-2 font-medium rounded-lg"
-      >
-        Back
-      </button>
-    );
-  };
-
-  console.log("da", formData);
 
   const renderStep = () => {
     switch (currentStep) {
@@ -132,7 +177,7 @@ export default function DepthAverageForm({
           <DatePriority
             date={formData.date}
             onDateChange={(value) => updateFormData("date", value)}
-            priority={formData.priority} // Make sure your formData includes a 'priority' field.
+            priority={formData.priority}
             onPriorityChange={(value) => updateFormData("priority", value)}
             onNext={handleNext}
             formType="depthAverage"
@@ -143,7 +188,7 @@ export default function DepthAverageForm({
         return (
           <ImageUploadScreen
             image={formData.image}
-            onImageUpload={(img) => updateFormData("image", img)}
+            onImageSelect={(file) => setUploadedFile(file)}
             onNext={handleNext}
           />
         );
@@ -153,7 +198,7 @@ export default function DepthAverageForm({
             numberOfHoles={formData.numberOfHoles.toString()}
             location={formData.location}
             date={formData.date}
-            onUpdateNumberOfHoles={updateNumberOfHoles}
+            onUpdateNumberOfHoles={(value) => updateNumberOfHoles(value)}
             onUpdateLocation={(value) => updateFormData("location", value)}
             onNext={handleNext}
           />
@@ -177,7 +222,12 @@ export default function DepthAverageForm({
 
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-5xl relative h-full">
-      {renderBackButton()}
+      <button
+        onClick={handleBack}
+        className="absolute left-0 top-0 bg-green-800 text-white px-4 py-2 font-medium rounded-lg"
+      >
+        Back
+      </button>
       {renderStep()}
     </div>
   );

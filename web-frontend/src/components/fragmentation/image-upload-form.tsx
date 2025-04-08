@@ -339,7 +339,7 @@ export default function ImageUploadForm({
       */}
       <div
         ref={imageContainerRef}
-        className="flex border border-gray-300 rounded-md bg-white justify-center"
+        className="flex rounded-md bg-white justify-center"
         style={{ width: "fit-content", height: "fit-content" }}
       >
         {bgImage ? (
