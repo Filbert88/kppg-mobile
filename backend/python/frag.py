@@ -64,8 +64,8 @@ def fragmentation_to_outline(input_path, output_path):
 
 # Example usage
 if __name__ == "__main__":
-    img_path = "input_frag/big.jpg"
-    output = "output_frag/res_big.jpg"
+    img_path = "input_frag/1.jpeg"
+    output = "output_frag/res_1.jpeg"
     fragmentation_to_outline(img_path, output)
 
     
