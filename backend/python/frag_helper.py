@@ -64,11 +64,11 @@ class SegmentAnythingPipeline:
     def process_image(self, input_path, output_dir="output_frag"):
         # Get image name and extension
         image_basename = os.path.basename(input_path)
-        image_name, image_ext = os.path.splitext(image_basename)
-        
+        image_name, _ = os.path.splitext(image_basename)
+
         # Create output directories
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Read the image
         image = cv2.imread(input_path)
         if image is None:
@@ -81,9 +81,11 @@ class SegmentAnythingPipeline:
         print(f"Number of masks generated: {len(masks)}")
 
         # Save main segmentation result
-        result_path = os.path.join(output_dir, f"res_{image_basename}")
+        result_path = os.path.join(output_dir, f"res_{image_name}.jpg")
         self.save_segmentation_result(image, masks, result_path)
-        
-        # Save individual cutouts
-        cutouts_dir = os.path.join(output_dir, f"res_{image_name}")
+
+        # Save cutouts to a properly named directory
+        cutouts_dir = os.path.join(output_dir, f"cutouts_{image_name}")
         self.save_cutouts(image, masks, cutouts_dir, image_name)
+
+        return result_path
