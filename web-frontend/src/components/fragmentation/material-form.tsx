@@ -32,9 +32,10 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
               <SelectValue placeholder="Masukkan jenis..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Amonium Nitrat">Amonium Nitrat</SelectItem>
-              <SelectItem value="Batuan Beku">Batuan Beku</SelectItem>
-              <SelectItem value="Batuan Sedimen">Batuan Sedimen</SelectItem>
+              <SelectItem value="Claystone">Claystone</SelectItem>
+              <SelectItem value="Sandstone">Sandstone</SelectItem>
+              <SelectItem value="Siltstone">Siltstone</SelectItem>
+              <SelectItem value="Others">Others</SelectItem>
             </SelectContent>
           </Select>
         </div>

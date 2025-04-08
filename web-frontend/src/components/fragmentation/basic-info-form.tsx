@@ -156,19 +156,6 @@ export default function BasicInfoForm({
               <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
           </div>
-
-          <div>
-            <Label htmlFor="date" className="text-lg font-bold">
-              Tanggal
-            </Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => updateFormData("date", e.target.value)}
-              className="w-full bg-white rounded-md mt-1"
-            />
-          </div>
         </div>
       </div>
       <div className="mt-6 flex justify-end">

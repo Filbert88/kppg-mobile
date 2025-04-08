@@ -1,16 +1,8 @@
-'''
-References:
-- https://github.com/facebookresearch/segment-anything.git
-https://colab.research.google.com/github/facebookresearch/segment-anything/blob/main/notebooks/automatic_mask_generator_example.ipynb
-'''
-
+import os
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 import cv2
-from skimage import measure
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
-import os
 
 class SegmentAnythingPipeline:
     def __init__(self, model_type="vit_h", checkpoint_path="sam_vit_h_4b8939.pth", device=None):
@@ -29,49 +21,69 @@ class SegmentAnythingPipeline:
         masks = mask_generator.generate(image)
         return masks
 
-    def show_anns(self, anns):
-        if len(anns) == 0:
-            return
-        sorted_anns = sorted(anns, key=lambda x: x['area'], reverse=True)
-        ax = plt.gca()
-        ax.set_autoscale_on(False)
+    def save_segmentation_result(self, image, masks, output_path):
+        # Create a black background image with white regions and black outlines
+        height, width = image.shape[:2]
+        result_mask = np.zeros((height, width), dtype=np.uint8)  # Black background
+        
+        # Draw all masks as white regions
+        for mask in masks:
+            seg = mask['segmentation'].astype(np.uint8)
+            result_mask[seg > 0] = 255  # Set segmented areas to white
+        
+        # Draw contours in black
+        for mask in masks:
+            seg = mask['segmentation'].astype(np.uint8)
+            contours, _ = cv2.findContours(seg.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(result_mask, contours, -1, 0, 1)  # Black outlines
+        
+        # Save the result mask
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        cv2.imwrite(output_path, result_mask)
+        print(f"Saved segmentation result to {output_path}")
 
-        img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
-        img[:, :, 3] = 0
-        for ann in sorted_anns:
-            m = ann['segmentation']
-            color_mask = np.concatenate([np.random.random(3), [0.35]])
-            img[m] = color_mask
-        ax.imshow(img)
+    def save_cutouts(self, original_image, masks, save_dir, image_name):
+        os.makedirs(save_dir, exist_ok=True)
 
-    def show_mask_outlines(self, anns, ax=None, outline_color='black'):
-        if ax is None:
-            ax = plt.gca()
-        for ann in anns:
-            mask = ann['segmentation']
-            contours = measure.find_contours(mask, 0.5)
-            for contour in contours:
-                contour = np.fliplr(contour)
-                ax.plot(contour[:, 0], contour[:, 1], linewidth=2, color=outline_color)
+        for idx, mask in enumerate(masks):
+            seg = mask['segmentation'].astype(np.uint8)
+            
+            # Create RGBA image (with alpha channel for transparency)
+            # Convert RGB to RGBA
+            rgba = cv2.cvtColor(original_image, cv2.COLOR_RGB2BGRA)
+            
+            # Set alpha channel to 0 (transparent) where mask is 0
+            rgba[:, :, 3] = seg * 255
+            
+            # Save as PNG to preserve transparency
+            output_file = os.path.join(save_dir, f"cutout_{image_name}_{idx}.png")
+            cv2.imwrite(output_file, rgba)
 
-    def process_image(self, input_path, output_path):
+        print(f"Saved {len(masks)} cutouts to {save_dir}")
+
+    def process_image(self, input_path, output_dir="output_frag"):
+        # Get image name and extension
+        image_basename = os.path.basename(input_path)
+        image_name, image_ext = os.path.splitext(image_basename)
+        
+        # Create output directories
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Read the image
         image = cv2.imread(input_path)
         if image is None:
             print(f"Error: Image not found at {input_path}")
             return
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+        # Generate masks
         masks = self.generate_masks(image)
         print(f"Number of masks generated: {len(masks)}")
-        if len(masks) > 0:
-            print(f"Keys in first mask: {masks[0].keys()}")
 
-        white_background = np.ones_like(image) * 255
-        plt.figure(figsize=(20, 20))
-        plt.imshow(white_background)
-        self.show_mask_outlines(masks, outline_color='black')
-        plt.axis('off')
-
-        plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
-        print(f"Output saved to {output_path}")
-
+        # Save main segmentation result
+        result_path = os.path.join(output_dir, f"res_{image_basename}")
+        self.save_segmentation_result(image, masks, result_path)
+        
+        # Save individual cutouts
+        cutouts_dir = os.path.join(output_dir, f"res_{image_name}")
+        self.save_cutouts(image, masks, cutouts_dir, image_name)
