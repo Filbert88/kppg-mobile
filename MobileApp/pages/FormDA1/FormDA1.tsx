@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -9,31 +9,37 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import {ArrowRight, Edit2, Calendar, MapPin, Hash} from 'react-native-feather';
+import { ArrowRight, Edit2, Calendar, MapPin, Hash } from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
-import {DepthAverageContext} from '../../context/DepthAverageContext';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+import { DepthAverageContext } from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA1'>;
 
 const FormDA1 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const {formData, setFormData} = useContext(DepthAverageContext);
+  const { formData, setFormData } = useContext(DepthAverageContext);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (field: string, value: string) => {
-    setFormData({[field]: value});
+    setFormData({ [field]: value });
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       const formattedDate = selectedDate.toISOString().split('T')[0];
-      setFormData({tanggal: formattedDate});
+      setFormData({ tanggal: formattedDate });
     }
   };
+
+  // 🔍 Form validation
+  const isFormValid =
+    formData.jumlahLubang?.trim() !== '' &&
+    formData.lokasi?.trim() !== '' &&
+    formData.tanggal?.trim() !== '';
 
   return (
     <SafeAreaView className="flex-1">
@@ -41,6 +47,7 @@ const FormDA1 = () => {
 
       <ScrollView className="flex-1 px-6 pt-6">
         <View className="gap-8">
+          {/* Jumlah Lubang */}
           <View className="space-y-2">
             <Text className="text-2xl font-bold text-black mb-1">
               Jumlah Lubang
@@ -65,6 +72,7 @@ const FormDA1 = () => {
             </View>
           </View>
 
+          {/* Lokasi */}
           <View className="space-y-2">
             <Text className="text-2xl font-bold text-black mb-1">Lokasi</Text>
             <View className="relative">
@@ -86,6 +94,7 @@ const FormDA1 = () => {
             </View>
           </View>
 
+          {/* Tanggal */}
           <View className="space-y-2">
             <Text className="text-2xl font-bold text-black mb-1">Tanggal</Text>
             <View className="relative">
@@ -121,14 +130,20 @@ const FormDA1 = () => {
         </View>
       </ScrollView>
 
+      {/* Next Button */}
       <View className="p-5 items-end mb-4">
         <TouchableOpacity
-          className="bg-green-700 px-6 py-3 rounded-lg shadow-md"
-          onPress={() => navigation.navigate('FormDA2')}>
-          <View className="flex-row items-center">
-            <Text className="text-white font-semibold mr-2">Next</Text>
-            <ArrowRight width={18} height={18} color="white" />
-          </View>
+          disabled={!isFormValid}
+          className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
+            isFormValid
+              ? 'bg-green-700'
+              : 'bg-gray-400 opacity-60'
+          }`}
+          onPress={() => {
+            if (isFormValid) navigation.navigate('FormDA2');
+          }}>
+          <Text className="text-white font-semibold mr-2">Next</Text>
+          <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ZoomIn,
@@ -12,12 +12,12 @@ import {
   ShapesIcon,
 } from "lucide-react";
 
-// Modal components – implement these as needed
+// Modal components
 import ColorPickerModal from "./modal/ColorPickerModal";
 import ShapePickerModal from "./modal/ShapePickerModal";
 import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 
-// Our container that wraps the drawing area (it should forward its ref)
+// Our container that wraps the drawing area (ensure ImageContainer passes its ref)
 import ImageContainer from "./ImageContainer";
 
 // Import zoom/pan and crop libraries
@@ -101,7 +101,7 @@ async function getCroppedImg(
 }
 // --- End helpers ---
 
-// Define our tool and shape types.
+// Define tool and shape types.
 export type Tool =
   | "none"
   | "draw"
@@ -116,7 +116,7 @@ export type Tool =
 export type ShapeType = "rect" | "circle";
 
 export default function CanvasPage() {
-  // Tool state
+  // Active tool state
   const [activeTool, setActiveTool] = useState<Tool>("none");
   const [chosenColor, setChosenColor] = useState("#000000");
   const [lineThickness, setLineThickness] = useState<number>(3);
@@ -128,7 +128,7 @@ export default function CanvasPage() {
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
 
-  // Crop state for react-easy-crop
+  // Crop state (react-easy-crop)
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [cropZoom, setCropZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -138,7 +138,10 @@ export default function CanvasPage() {
     "https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg"
   );
 
-  // Refs for zoom wrapper and image container (ImageContainer should forward its ref)
+  // New state to disable panning when interacting with a shape
+  const [disablePan, setDisablePan] = useState(false);
+
+  // Refs for TransformWrapper and ImageContainer
   const transformWrapperRef = useRef<any>(null);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -179,7 +182,8 @@ export default function CanvasPage() {
 
   async function handleCropDone() {
     try {
-      const croppedImage = await getCroppedImg(bgImage, croppedAreaPixels!);
+      if (!croppedAreaPixels) return;
+      const croppedImage = await getCroppedImg(bgImage, croppedAreaPixels);
       if (croppedImage != null) {
         setBgImage(croppedImage);
       }
@@ -265,10 +269,8 @@ export default function CanvasPage() {
         </button>
       </div>
 
-      {/* Main drawing area with zoom/pan */}
       <div
         className="relative border border-gray-300 bg-white"
-        // Let ImageContainer control its own size – no fixed aspect ratio here.
         style={{ width: "100%", maxWidth: 600 }}
       >
         <TransformWrapper
@@ -276,6 +278,14 @@ export default function CanvasPage() {
           initialScale={1}
           wheel={{ step: 0.1 }}
           doubleClick={{ disabled: true }}
+          panning={{
+            disabled:
+              activeTool === "draw" ||
+              activeTool === "shapes" ||
+              activeTool === "erase" ||
+              activeTool === "fill" ||
+              disablePan,
+          }}
         >
           <TransformComponent>
             <ImageContainer
@@ -286,12 +296,40 @@ export default function CanvasPage() {
               color={chosenColor}
               setActiveTool={setActiveTool}
               lineThickness={lineThickness}
+              setDisablePan={setDisablePan}
             />
           </TransformComponent>
         </TransformWrapper>
       </div>
 
-      {/* Modals */}
+      {showCropModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div
+            className="relative bg-white rounded shadow-lg overflow-hidden"
+            style={{ width: "80vw", height: "80vh" }}
+          >
+            <div className="absolute inset-0 z-10">
+              <Cropper
+                image={bgImage}
+                crop={crop}
+                zoom={cropZoom}
+                aspect={600 / 400}
+                onCropChange={setCrop}
+                onZoomChange={setCropZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="absolute top-4 right-4 z-20 flex space-x-2">
+              <Button variant="secondary" onClick={handleCropCancel}>
+                Cancel
+              </Button>
+              <Button onClick={handleCropDone}>Done</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Modals */}
       {showColorPicker && (
         <ColorPickerModal
           initialColor={chosenColor}
@@ -319,34 +357,9 @@ export default function CanvasPage() {
           }}
         />
       )}
-
-      {/* Crop Modal using react-easy-crop */}
-      {showCropModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div
-            className="relative bg-white p-4 rounded shadow-lg"
-            style={{ width: "80vw", height: "80vh" }}
-          >
-            <Cropper
-              image={bgImage}
-              crop={crop}
-              zoom={cropZoom}
-              aspect={600 / 400}
-              onCropChange={setCrop}
-              onZoomChange={setCropZoom}
-              onCropComplete={onCropComplete}
-            />
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button onClick={handleCropCancel}>Cancel</Button>
-              <Button onClick={handleCropDone}>Done</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
 function handleCropCancel() {
   // Reset crop state if needed.
 }

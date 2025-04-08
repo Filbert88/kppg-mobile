@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,10 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Fragmentati
 
 export default function FragmentationForm3() {
   const navigation = useNavigation<NavigationProp>();
+  const [powderFactor, setPowderFactor] = useState('25');
+
+  const isFormValid = powderFactor.trim() !== '';
+
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
@@ -29,8 +33,10 @@ export default function FragmentationForm3() {
                 <TextInput
                   placeholder="Masukkan jumlah..."
                   placeholderTextColor="#9CA3AF"
-                  className="flex-1"
-                  value="25"
+                  value={powderFactor}
+                  onChangeText={setPowderFactor}
+                  keyboardType="numeric"
+                  className="flex-1 text-black"
                 />
               </View>
             </View>
@@ -38,8 +44,15 @@ export default function FragmentationForm3() {
 
           {/* Next Button */}
           <TouchableOpacity
-            className="w-full bg-green-700 rounded-lg px-4 py-3 items-center mt-6"
-            onPress={() => navigation.navigate('FragmentationForm4')}
+            disabled={!isFormValid}
+            className={`w-full rounded-lg px-4 py-3 items-center mt-6 ${
+              isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+            }`}
+            onPress={() => {
+              if (isFormValid) {
+                navigation.navigate('FragmentationForm4');
+              }
+            }}
           >
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>

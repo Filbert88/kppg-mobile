@@ -135,8 +135,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       case 6:
         return (
           <ImageUploadedFrag
-            formData={formData}
-            updateFormData={updateFormData}
             onNext={handleNext}
           />
         );

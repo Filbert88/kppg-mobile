@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -8,19 +8,20 @@ import {
   StatusBar,
   ScrollView,
 } from 'react-native';
-import {ArrowRight, Edit2, Hash} from 'react-native-feather';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
-import {DepthAverageContext} from '../../context/DepthAverageContext';
+import { ArrowRight, Edit2, Hash } from 'react-native-feather';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+import { DepthAverageContext } from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA2'>;
 
 const FormDA2 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const {formData, setFormData} = useContext(DepthAverageContext);
-
+  const { formData, setFormData } = useContext(DepthAverageContext);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
 
   const handleChange = (field: string, value: string) => {
     if (/^\d*\.?\d*$/.test(value)) {
@@ -48,8 +49,6 @@ const FormDA2 = () => {
         : 'border border-gray-200'
     }`;
   };
-
-  const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
 
   const renderDepthInput = (number: number, field: string) => (
     <View className="space-y-2.5" key={field}>
@@ -92,13 +91,19 @@ const FormDA2 = () => {
     </View>
   );
 
+  const isFormValid = Array.from({ length: jumlahLubang }).every((_, i) => {
+    const field = `kedalaman${i + 1}`;
+    const value = formData.kedalaman?.[field];
+    return value && value.trim() !== '';
+  });
+
   return (
-    <SafeAreaView className="flex-1 ">
+    <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
 
       <ScrollView className="flex-1 px-6 pt-8">
         <View className="gap-6">
-          {Array.from({length: jumlahLubang}, (_, i) =>
+          {Array.from({ length: jumlahLubang }, (_, i) =>
             renderDepthInput(i + 1, `kedalaman${i + 1}`),
           )}
         </View>
@@ -107,12 +112,17 @@ const FormDA2 = () => {
 
       <View className="p-6 mb-4">
         <TouchableOpacity
-          className="bg-green-700 px-6 py-3 rounded-lg shadow-md active:bg-green-800 ml-auto"
-          onPress={() => navigation.navigate('FormDA3')}>
-          <View className="flex-row items-center">
-            <Text className="text-white font-bold mr-2">Next</Text>
-            <ArrowRight width={18} height={18} color="white" />
-          </View>
+          disabled={!isFormValid}
+          className={`px-6 py-3 rounded-lg shadow-md ml-auto flex-row items-center ${
+            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+          }`}
+          onPress={() => {
+            if (isFormValid) {
+              navigation.navigate('FormDA3');
+            }
+          }}>
+          <Text className="text-white font-bold mr-2">Next</Text>
+          <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

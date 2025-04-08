@@ -36,7 +36,6 @@ export default function FragmentationForm5() {
   // The index of the image currently being edited (or -1 if none)
   const [editingIndex, setEditingIndex] = useState<number>(-1);
 
-
   // Called when user taps "Edit" on an image
   const handleEditImage = (index: number) => {
     setEditingIndex(index);
@@ -56,7 +55,7 @@ export default function FragmentationForm5() {
 
   // If editingIndex >=0, we show the EditingApp in a modal or separate screen
   const isEditing = editingIndex >= 0;
-
+  const isFormValid = images.length > 0;
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -75,11 +74,21 @@ export default function FragmentationForm5() {
       </ScrollView>
 
       {/* Fixed bottom button */}
-            <View style={styles.bottomBar}>
-              <TouchableOpacity style={styles.nextButton} onPress={() => navigation.navigate("FragmentationResult")}>
-                <Text style={styles.nextButtonText}>Next</Text>
-              </TouchableOpacity>
-            </View>
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          disabled={!isFormValid}
+          onPress={() => {
+            if (isFormValid) {
+              navigation.navigate('FragmentationResult');
+            }
+          }}
+          style={[
+            styles.nextButton,
+            !isFormValid && {backgroundColor: 'gray', opacity: 0.6},
+          ]}>
+          <Text style={styles.nextButtonText}>Next</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* If editingIndex >=0, show the EditingApp in a modal */}
       <Modal visible={isEditing} animationType="slide">
