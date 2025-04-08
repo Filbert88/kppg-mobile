@@ -1,4 +1,5 @@
 import SQLite, {SQLiteDatabase} from 'react-native-sqlite-storage';
+import { FragmentationData } from '../../context/FragmentationContext';
 
 SQLite.enablePromise(true);
 
@@ -15,10 +16,21 @@ export default class SQLiteService {
           location: 'default',
         });
         console.log('Database opened');
+        //         await this.dropFragmentationDataTable();
         await this.createTables();
       } catch (error) {
         console.error('Failed to open database:', error);
       }
+    }
+  }
+
+  async dropFragmentationDataTable() {
+    if (!this.db) return;
+    try {
+      await this.db.executeSql('DROP TABLE IF EXISTS FragmentationData;');
+      console.log('FragmentationData table dropped successfully.');
+    } catch (error) {
+      console.error('Failed to drop FragmentationData table:', error);
     }
   }
 
@@ -47,14 +59,38 @@ export default class SQLiteService {
       synced INTEGER DEFAULT 0
     )`,
       `CREATE TABLE IF NOT EXISTS FragmentationData (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      imageUri TEXT,
-      measurement TEXT,
-      location TEXT,
-      date TEXT,
-      result TEXT,
-      synced INTEGER DEFAULT 0
-    )`,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          skala TEXT,
+          pilihan TEXT,
+          ukuran TEXT,
+          prioritas INTEGER,
+          lokasi TEXT,
+          tanggal TEXT,
+          litologi TEXT,
+          ammoniumNitrate TEXT,
+          volumeBlasting TEXT,
+          powderFactor TEXT,
+          synced INTEGER DEFAULT 0
+       )`,
+      // Stores each image in the fragmentation record.
+      `CREATE TABLE IF NOT EXISTS FragmentationImages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fragmentationId INTEGER,
+          imageUri TEXT,
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (fragmentationId) REFERENCES FragmentationData(id) ON DELETE CASCADE
+       )`,
+      // Stores the result data for each fragmentation image.
+      `CREATE TABLE IF NOT EXISTS FragmentationImageResults (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fragmentationImageId INTEGER,
+          result1 TEXT,
+          result2 TEXT,
+          result3 TEXT,
+          measurement TEXT,  -- JSON string
+          synced INTEGER DEFAULT 0,
+          FOREIGN KEY (fragmentationImageId) REFERENCES FragmentationImages(id) ON DELETE CASCADE
+       )`,
     ];
 
     try {
@@ -74,6 +110,140 @@ export default class SQLiteService {
       return results[0].rows.raw();
     } catch (error) {
       console.error('Failed to fetch data:', error);
+      return [];
+    }
+  }
+
+  async saveOrUpdateFragmentationData(data: FragmentationData) {
+    if (!this.db) return;
+    try {
+      // Check if record exists by testing if data.id is defined and a number.
+      if (data.id && !isNaN(data.id)) {
+        // 1. Update the main fragmentation record.
+        await this.db.executeSql(
+          `UPDATE FragmentationData 
+           SET skala = ?,
+               pilihan = ?,
+               ukuran = ?,
+               prioritas = ?,
+               lokasi = ?,
+               tanggal = ?,
+               litologi = ?,
+               ammoniumNitrate = ?,
+               volumeBlasting = ?,
+               powderFactor = ?
+           WHERE id = ?`,
+          [
+            data.skala,
+            data.pilihan,
+            data.ukuran,
+            data.prioritas,
+            data.lokasi,
+            data.tanggal,
+            data.litologi,
+            data.ammoniumNitrate,
+            data.volumeBlasting,
+            data.powderFactor,
+            data.id,
+          ],
+        );
+        console.log('FragmentationData updated with id:', data.id);
+        // 2. Delete existing images for this record.
+        await this.db.executeSql(
+          `DELETE FROM FragmentationImages WHERE fragmentationId = ?`,
+          [data.id],
+        );
+        // 3. Reinsert the images from data.imageUris.
+        for (const image of data.imageUris) {
+          await this.db.executeSql(
+            `INSERT INTO FragmentationImages (fragmentationId, imageUri, synced)
+             VALUES (?, ?, 0)`,
+            [data.id, image],
+          );
+        }
+      } else {
+        // New record: Insert the main fragmentation record.
+        const insertMain = await this.db.executeSql(
+          `INSERT INTO FragmentationData (
+             skala,
+             pilihan,
+             ukuran,
+             prioritas,
+             lokasi,
+             tanggal,
+             litologi,
+             ammoniumNitrate,
+             volumeBlasting,
+             powderFactor,
+             synced
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+          [
+            data.skala,
+            data.pilihan,
+            data.ukuran,
+            data.prioritas,
+            data.lokasi,
+            data.tanggal,
+            data.litologi,
+            data.ammoniumNitrate,
+            data.volumeBlasting,
+            data.powderFactor,
+          ],
+        );
+        const mainId = insertMain[0].insertId;
+        console.log('FragmentationData saved with id:', mainId);
+        // Insert each image.
+        for (const image of data.imageUris) {
+          await this.db.executeSql(
+            `INSERT INTO FragmentationImages (fragmentationId, imageUri, synced)
+             VALUES (?, ?, 0)`,
+            [mainId, image],
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save/update FragmentationData:', error);
+    }
+  }
+
+  async getFragmentationData(): Promise<any[]> {
+    if (!this.db) return [];
+
+    try {
+      // Step 1: Retrieve all records from FragmentationData.
+      const mainResults = await this.db.executeSql(
+        `SELECT * FROM FragmentationData`,
+      );
+      const mainRecords = mainResults[0].rows.raw();
+
+      // Step 2: For each main record, retrieve the related images.
+      for (const record of mainRecords) {
+        const imageResults = await this.db.executeSql(
+          `SELECT * FROM FragmentationImages WHERE fragmentationId = ?`,
+          [record.id],
+        );
+        const images = imageResults[0].rows.raw();
+
+        // Step 3: For each image, retrieve the associated results.
+        for (const image of images) {
+          const resultResults = await this.db.executeSql(
+            `SELECT * FROM FragmentationImageResults WHERE fragmentationImageId = ?`,
+            [image.id],
+          );
+          if (resultResults[0].rows.length > 0) {
+            image.resultData = resultResults[0].rows.raw()[0];
+          } else {
+            image.resultData = null;
+          }
+        }
+
+        // Attach the images array to the main record.
+        record.images = images;
+      }
+
+      return mainRecords;
+    } catch (error) {
+      console.error('Failed to get fragmentation data:', error);
       return [];
     }
   }
@@ -126,7 +296,9 @@ export default class SQLiteService {
   async getUnsyncedData(model: string) {
     if (!this.db) return [];
     try {
-      const results = await this.db.executeSql(`SELECT * FROM ${model} WHERE synced = 0`);
+      const results = await this.db.executeSql(
+        `SELECT * FROM ${model} WHERE synced = 0`,
+      );
       return results[0].rows.raw();
     } catch (error) {
       console.error(`Failed to fetch unsynced data for ${model}:`, error);
@@ -137,7 +309,9 @@ export default class SQLiteService {
   async markDataAsSynced(model: string, ids: number[]) {
     if (!this.db) return;
     try {
-      await this.db.executeSql(`UPDATE ${model} SET synced = 1 WHERE id IN (${ids.join(',')})`);
+      await this.db.executeSql(
+        `UPDATE ${model} SET synced = 1 WHERE id IN (${ids.join(',')})`,
+      );
       console.log(`${model} data marked as synced`);
     } catch (error) {
       console.error(`Failed to mark data as synced for ${model}:`, error);
