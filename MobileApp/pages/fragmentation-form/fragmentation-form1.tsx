@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useContext} from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {RootStackParamList} from '../../types/navigation';
 import {launchImageLibrary} from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {Platform} from 'react-native';
+import { FormContext} from '../../context/FragmentationContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -26,13 +27,14 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function FragmentationForm1() {
   const navigation = useNavigation<NavigationProp>();
-  const [imageUri, setImageUri] = useState<string | null>(null);
-
-  const [skala, setSkala] = useState('');
-  const [pilihan, setPilihan] = useState('');
-  const [ukuran, setUkuran] = useState('');
-  const [lokasi, setLokasi] = useState('');
-  const [tanggal, setTanggal] = useState('');
+  const { formData, updateForm } = useContext(FormContext);
+//   const [imageUri, setImageUri] = useState<string | null>(null);
+//
+//   const [skala, setSkala] = useState('');
+//   const [pilihan, setPilihan] = useState('');
+//   const [ukuran, setUkuran] = useState('');
+//   const [lokasi, setLokasi] = useState('');
+//   const [tanggal, setTanggal] = useState('');
 
   const [skalaDropdownOpen, setSkalaDropdownOpen] = useState(false);
   const [pilihanDropdownOpen, setPilihanDropdownOpen] = useState(false);
@@ -75,12 +77,25 @@ export default function FragmentationForm1() {
       Alert.alert('Error', 'An error occurred while picking the image.');
     } else if (result.assets && result.assets.length > 0) {
       const selectedImage = result.assets[0];
-      setImageUri(selectedImage.uri || null);
+      updateForm({
+            imageUris: [
+              ...formData.imageUris,
+              selectedImage.uri || '',
+            ],
+          });
+
+      console.log('Updated imageUris:', [
+        ...formData.imageUris,
+        selectedImage.uri || '',
+      ]);
     }
   };
+  const { imageUris, skala, pilihan, ukuran, lokasi, tanggal } = formData;
+
+  console.log("Form data ", formData)
 
   const isFormValid =
-    imageUri &&
+    imageUris.length >= 1 &&
     skala.trim() !== '' &&
     pilihan.trim() !== '' &&
     ukuran.trim() !== '' &&
@@ -108,9 +123,9 @@ export default function FragmentationForm1() {
           <TouchableOpacity
             className="w-full aspect-[16/9] bg-white rounded-lg items-center justify-center border border-gray-300"
             onPress={handleImagePicker}>
-            {imageUri ? (
+            {imageUris.length != 0 ? (
               <Image
-                source={{uri: imageUri}}
+                source={{uri: imageUris[0]}}
                 className="w-full h-full rounded-lg"
                 resizeMode="contain"
               />
@@ -161,7 +176,8 @@ export default function FragmentationForm1() {
                       index === skalaOptions.length - 1 ? 'border-b-0' : ''
                     }`}
                     onPress={() => {
-                      setSkala(option);
+                      console.log("press")
+                      updateForm({ skala: option });
                       setSkalaDropdownOpen(false);
                     }}>
                     <Text className="text-black">{option}</Text>
@@ -208,7 +224,7 @@ export default function FragmentationForm1() {
                       index === pilihanOptions.length - 1 ? 'border-b-0' : ''
                     }`}
                     onPress={() => {
-                      setPilihan(option);
+                      updateForm({ pilihan: option });
                       setPilihanDropdownOpen(false);
                     }}>
                     <Text className="text-black">{option}</Text>
@@ -224,7 +240,7 @@ export default function FragmentationForm1() {
                 <TextInput
                   placeholder="Masukkan ukuran..."
                   value={ukuran}
-                  onChangeText={setUkuran}
+                  onChangeText={text => updateForm({ ukuran: text })}
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 text-black"
                   keyboardType="numeric"
@@ -240,7 +256,7 @@ export default function FragmentationForm1() {
                 <TextInput
                   placeholder="Masukkan lokasi..."
                   value={lokasi}
-                  onChangeText={setLokasi}
+                  onChangeText={text => updateForm({ lokasi: text })}
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 text-black"
                 />
@@ -270,10 +286,8 @@ export default function FragmentationForm1() {
                   onChange={(event, selectedDate) => {
                     setShowDatePicker(Platform.OS === 'ios'); // keep open on iOS
                     if (selectedDate) {
-                      const formatted = selectedDate
-                        .toISOString()
-                        .split('T')[0];
-                      setTanggal(formatted);
+                      const formatted = selectedDate.toISOString().split('T')[0];
+                                            updateForm({ tanggal: formatted });
                     }
                   }}
                   maximumDate={new Date()}

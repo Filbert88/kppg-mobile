@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,15 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
-
+import { FormContext} from '../../context/FragmentationContext';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm3'>;
 
 export default function FragmentationForm3() {
   const navigation = useNavigation<NavigationProp>();
-  const [powderFactor, setPowderFactor] = useState('25');
+  const { formData, updateForm } = useContext(FormContext);
+  const { powderFactor } = formData;
+
+//   const [powderFactor, setPowderFactor] = useState('25');
 
   const isFormValid = powderFactor.trim() !== '';
 
@@ -34,7 +37,7 @@ export default function FragmentationForm3() {
                   placeholder="Masukkan jumlah..."
                   placeholderTextColor="#9CA3AF"
                   value={powderFactor}
-                  onChangeText={setPowderFactor}
+                  onChangeText={text => updateForm({ powderFactor: text })}
                   keyboardType="numeric"
                   className="flex-1 text-black"
                 />

@@ -1,71 +1,89 @@
-import React, { createContext, useState, ReactNode } from 'react';
+// FormContext.tsx
+import React, { createContext, useState, FC, ReactNode } from 'react';
 
-
-type FragmentationFormDataType = {
-  imageUri: string | null;
+export interface FragmentationData {
+  id?: number;
+  imageUris: string[]; // Sekarang merupakan array of string
   skala: string;
   pilihan: string;
   ukuran: string;
+  prioritas: number;
   lokasi: string;
   tanggal: string;
-  litologiBantuan: string;
-  amoniumNitrat: string;
+  litologi: string;
+  ammoniumNitrate: string;
   volumeBlasting: string;
   powderFactor: string;
-  additionalImages: string[];
-};
+}
 
-type FragmentationContextType = {
-  fragmentationData: FragmentationFormDataType;
-  setFragmentationData: (data: Partial<FragmentationFormDataType>) => void;
-  saveFragmentationData: () => void;
-};
+interface FormContextProps {
+  formData: FragmentationData;
+  updateForm: (data: Partial<FragmentationData>) => void;
+  resetForm: () => void;
+}
 
-const defaultFragmentationData: FragmentationFormDataType = {
-  imageUri: null,
-  skala: '',
-  pilihan: '',
-  ukuran: '',
-  lokasi: '',
-  tanggal: '',
-  litologiBantuan: '',
-  amoniumNitrat: '',
-  volumeBlasting: '',
-  powderFactor: '',
-  additionalImages: [],
-};
-
-export const FragmentationContext = createContext<FragmentationContextType>({
-  fragmentationData: defaultFragmentationData,
-  setFragmentationData: () => {},
-  saveFragmentationData: () => {},
+export const FormContext = createContext<FormContextProps>({
+  formData: {
+      id: NaN,
+    imageUris: [],
+    skala: '',
+    pilihan: '',
+    ukuran: '',
+    prioritas: NaN,
+    lokasi: '',
+    tanggal: '',
+    litologi: '',
+    ammoniumNitrate: '',
+    volumeBlasting: '',
+    powderFactor: '',
+  },
+  updateForm: () => {},
+  resetForm: () => {},
 });
 
-// FragmentationDataProvider component to wrap around app or specific screens
-export const FragmentationDataProvider = ({ children }: { children: ReactNode }) => {
-  const [fragmentationData, setFragmentationDataState] = useState<FragmentationFormDataType>(defaultFragmentationData);
+export const FormProvider = ({children}: {children: ReactNode}) => {
+  const [formData, setFormData] = useState<FragmentationData>({
+      id: NaN,
+    imageUris: [],
+    skala: '',
+    pilihan: '',
+    ukuran: '',
+    prioritas: NaN,
+    lokasi: '',
+    tanggal: '',
+    litologi: '',
+    ammoniumNitrate: '',
+    volumeBlasting: '',
+    powderFactor: '',
+  });
 
-  // Function to update form data
-  const setFragmentationData = (data: Partial<FragmentationFormDataType>) => {
-    setFragmentationDataState((prev) => ({ ...prev, ...data }));
+  const updateForm = (data: Partial<FragmentationData>) => {
+    setFormData(prev => ({
+      ...prev,
+      ...data,
+    }));
   };
 
-  // Function to simulate saving data to a database
-  const saveFragmentationData = async () => {
-    try {
-      console.log('Fragmentation Data to be saved:', JSON.stringify(fragmentationData, null, 2));
-      // You can replace this with actual save logic, e.g., API call
-      console.log('Fragmentation data saved successfully');
-    } catch (error) {
-      console.error('Failed to save fragmentation data:', error);
-    }
+  const resetForm = () => {
+    setFormData({
+        id: NaN,
+      imageUris: [],
+      skala: '',
+      pilihan: '',
+      ukuran: '',
+      prioritas: NaN,
+      lokasi: '',
+      tanggal: '',
+      litologi: '',
+      ammoniumNitrate: '',
+      volumeBlasting: '',
+      powderFactor: '',
+    });
   };
 
   return (
-    <FragmentationContext.Provider
-      value={{ fragmentationData, setFragmentationData, saveFragmentationData }}
-    >
+    <FormContext.Provider value={{ formData, updateForm, resetForm }}>
       {children}
-    </FragmentationContext.Provider>
+    </FormContext.Provider>
   );
 };
