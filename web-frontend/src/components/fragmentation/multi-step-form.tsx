@@ -41,7 +41,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     location: "",
     date: "",
     priority: "",
-    rockType: "Amonium Nitrat",
+    rockType: "Claystone",
     ammoniumNitrate: "",
     blastingVolume: "",
     powderFactor: "25",
