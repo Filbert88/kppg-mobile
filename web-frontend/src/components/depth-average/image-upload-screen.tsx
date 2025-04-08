@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { Button } from "@/components/ui/button"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 interface ImageUploadScreenProps {
   image: string | null
@@ -16,16 +16,34 @@ export default function ImageUploadScreen({
   onNext,
 }: ImageUploadScreenProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const imageUrl = event.target?.result as string
-        onImageUpload(imageUrl)
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    setIsUploading(true)
+    try {
+      const response = await fetch("http://localhost:5180/api/Upload/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error("Upload failed")
       }
-      reader.readAsDataURL(file)
+
+      const result = await response.json()
+      const imageUrl = result.url 
+      onImageUpload(imageUrl)
+    } catch (error) {
+      console.error("Image upload error:", error)
+      alert("Upload gambar gagal.")
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -33,7 +51,7 @@ export default function ImageUploadScreen({
     fileInputRef.current?.click()
   }
 
-  const isFormValid = image !== null
+  const isFormValid = image !== null && !isUploading
 
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full">
@@ -51,7 +69,9 @@ export default function ImageUploadScreen({
           ) : (
             <>
               <div className="text-4xl mb-2 text-gray-400">🖼️</div>
-              <div className="text-gray-400 text-center">Masukkan gambar...</div>
+              <div className="text-gray-400 text-center">
+                {isUploading ? "Mengunggah..." : "Masukkan gambar..."}
+              </div>
             </>
           )}
           <input
@@ -74,7 +94,7 @@ export default function ImageUploadScreen({
               : "bg-gray-400 cursor-not-allowed"
           } text-white font-medium py-2 px-6 rounded-lg`}
         >
-          Next
+          {isUploading ? "Uploading..." : "Next"}
         </Button>
       </div>
     </div>

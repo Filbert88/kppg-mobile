@@ -9,6 +9,7 @@ import ImageUploadForm from "./image-upload-form";
 import ImageUploadedFrag from "./image-uploaded-frag";
 import GraphScreen from "./graph-screen";
 import SummaryScreen from "./summary-screen";
+import DatePriority from "../date-priority";
 
 export type FragmentationFormData = {
   scale: string;
@@ -16,6 +17,7 @@ export type FragmentationFormData = {
   size: string;
   location: string;
   date: string;
+  priority: string; 
   rockType: string;
   ammoniumNitrate: string;
   blastingVolume: string;
@@ -38,6 +40,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     size: "",
     location: "",
     date: "",
+    priority: "",
     rockType: "Amonium Nitrat",
     ammoniumNitrate: "",
     blastingVolume: "",
@@ -80,6 +83,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     </button>
   );
 
+  console.log(formData)
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -95,8 +99,20 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             }}
           />
         );
-
-      case 2:
+      case 2: 
+        return (
+          <DatePriority
+            date={formData.date}
+            priority={formData.priority}
+            onPriorityChange={(value) => updateFormData("priority", value)}
+            onDateChange={(value) => updateFormData("date", value)}
+            onNext={handleNext}
+            formType="fragmentation"
+            label="Tanggal Fragmentasi"
+            nextLabel="Next" 
+          />
+        );
+      case 3:
         return (
           <BasicInfoForm
             formData={formData}
@@ -105,7 +121,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
 
-      case 3:
+      case 4:
         return (
           <MaterialForm
             formData={formData}
@@ -114,7 +130,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
 
-      case 4:
+      case 5:
         return (
           <PowderFactorForm
             formData={formData}
@@ -123,7 +139,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
 
-      case 5:
+      case 6:
         return (
           <ImageUploadForm
             formData={formData}
@@ -132,17 +148,17 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
 
-      case 6:
+      case 7:
         return (
           <ImageUploadedFrag
             onNext={handleNext}
           />
         );
 
-      case 7:
+      case 8:
         return <GraphScreen formData={formData} onSave={handleSave} />;
 
-      case 8:
+      case 9:
         return (
           <SummaryScreen
             formData={formData}
