@@ -7,11 +7,13 @@ import DepthMeasurementScreen from "./depth-measurement-screen";
 import AverageScreen from "./average-screen";
 import SummaryScreen from "./summary-screen";
 import ActionScreenDA from "./action-da";
+import DatePriority from "../date-priority";
 
 type DepthAverageFormData = {
   numberOfHoles: number;
   location: string;
   date: string;
+  priority: string; 
   image: string | null;
   depths: string[];
   average: string;
@@ -29,6 +31,7 @@ export default function DepthAverageForm({
     numberOfHoles: 0,
     location: "",
     date: "",
+    priority : "",
     image: null,
     depths: [],
     average: "22.5 cm",
@@ -113,6 +116,8 @@ export default function DepthAverageForm({
     );
   };
 
+  console.log("da", formData);
+
   const renderStep = () => {
     switch (currentStep) {
       case 0:
@@ -124,13 +129,25 @@ export default function DepthAverageForm({
         );
       case 1:
         return (
+          <DatePriority
+            date={formData.date}
+            onDateChange={(value) => updateFormData("date", value)}
+            priority={formData.priority} // Make sure your formData includes a 'priority' field.
+            onPriorityChange={(value) => updateFormData("priority", value)}
+            onNext={handleNext}
+            formType="depthAverage"
+            label="Tanggal Pengukuran"
+          />
+        );
+      case 2:
+        return (
           <ImageUploadScreen
             image={formData.image}
             onImageUpload={(img) => updateFormData("image", img)}
             onNext={handleNext}
           />
         );
-      case 2:
+      case 3:
         return (
           <HoleInfoScreen
             numberOfHoles={formData.numberOfHoles.toString()}
@@ -138,11 +155,10 @@ export default function DepthAverageForm({
             date={formData.date}
             onUpdateNumberOfHoles={updateNumberOfHoles}
             onUpdateLocation={(value) => updateFormData("location", value)}
-            onUpdateDate={(value) => updateFormData("date", value)}
             onNext={handleNext}
           />
         );
-      case 3:
+      case 4:
         return (
           <DepthMeasurementScreen
             depths={formData.depths}
@@ -150,9 +166,9 @@ export default function DepthAverageForm({
             onNext={handleNext}
           />
         );
-      case 4:
-        return <AverageScreen average={formData.average} onSave={handleSave} />;
       case 5:
+        return <AverageScreen average={formData.average} onSave={handleSave} />;
+      case 6:
         return <SummaryScreen formData={formData} onSave={handleSave} />;
       default:
         return null;

@@ -11,7 +11,6 @@ interface HoleInfoScreenProps {
   date: string;
   onUpdateNumberOfHoles: (value: string) => void;
   onUpdateLocation: (value: string) => void;
-  onUpdateDate: (value: string) => void;
   onNext: () => void;
 }
 
@@ -21,7 +20,6 @@ export default function HoleInfoScreen({
   date,
   onUpdateNumberOfHoles,
   onUpdateLocation,
-  onUpdateDate,
   onNext,
 }: HoleInfoScreenProps) {
   const isFormValid =
@@ -59,24 +57,6 @@ export default function HoleInfoScreen({
               onChange={(e) => onUpdateLocation(e.target.value)}
               placeholder="Masukkan lokasi..."
               className="w-full bg-white rounded-md mt-1 pr-10"
-            />
-            <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <Edit2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="date" className="text-lg font-bold">
-            Tanggal
-          </Label>
-          <div className="relative">
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => onUpdateDate(e.target.value)}
-              className="w-full bg-white rounded-md mt-1 pr-10 ring-blue-500 ring-offset-2 focus-visible:ring-1"
             />
             <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               <Edit2 className="w-4 h-4" />
