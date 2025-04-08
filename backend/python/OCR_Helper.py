@@ -1,121 +1,13 @@
 import os
 import cv2
 import numpy as np
-from paddleocr import PaddleOCR, draw_ocr
 from PIL import Image
 import json
 from pathlib import Path
-import shutil
 
+from paddleocr import PaddleOCR, draw_ocr
+# https://github.com/PaddlePaddle/PaddleOCR.git
 
-# def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
-#     """
-#     Extract and straighten the red box from an image.
-    
-#     Args:
-#         image_path: Path to the input image
-#         output_dir: Directory to save the extracted box
-        
-#     Returns:
-#         Path to the extracted and straightened red box image
-#     """
-#     # Check if image exists
-#     if not os.path.exists(image_path):
-#         raise FileNotFoundError(f"Image not found: {image_path}")
-        
-#     # Read the image
-#     image = cv2.imread(image_path)
-#     if image is None:
-#         raise ValueError(f"Could not read image from {image_path}")
-    
-#     # Create a copy of original image
-#     orig_image = image.copy()
-    
-#     # Convert to HSV for better red color detection
-#     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-#     # Define range for red/orange color in HSV
-#     lower_red1 = np.array([0, 60, 80])    # Lower saturation & value thresholds
-#     upper_red1 = np.array([15, 255, 255]) # Increased hue range to catch orange
-
-#     lower_red2 = np.array([160, 60, 80])  # Lower saturation & value thresholds
-#     upper_red2 = np.array([180, 255, 255])
-
-#     lower_orange = np.array([15, 60, 80])
-#     upper_orange = np.array([25, 255, 255])
-
-#     # Create masks for red detection
-#     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-#     mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-#     mask3 = cv2.inRange(hsv, lower_orange, upper_orange)
-#     mask = cv2.bitwise_or(mask1, mask2)
-    
-#     # Find contours in the mask
-#     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-#     # If no contours found with color filtering, try edge detection
-#     if not contours:
-#         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#         edges = cv2.Canny(gray, 50, 150)
-#         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-#     # Find the largest contour, which is likely our red box
-#     if contours:
-#         largest_contour = max(contours, key=cv2.contourArea)
-        
-#         # Approximate the contour to a polygon
-#         epsilon = 0.02 * cv2.arcLength(largest_contour, True)
-#         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
-        
-#         # If we have a quadrilateral (4 corners)
-#         if len(approx) == 4:
-#             corners = approx.reshape(4, 2)
-#         else:
-#             # If we don't get exactly 4 corners, use a minimum area rectangle
-#             rect = cv2.minAreaRect(largest_contour)
-#             box = cv2.boxPoints(rect)
-#             corners = np.int32(box)
-        
-#         # Sort corners to ensure they are in the order: top-left, top-right, bottom-right, bottom-left
-#         corners = order_points(corners)
-        
-#         # Get width and height of the box
-#         width = max(
-#             np.linalg.norm(corners[0] - corners[1]),
-#             np.linalg.norm(corners[2] - corners[3])
-#         )
-#         height = max(
-#             np.linalg.norm(corners[0] - corners[3]),
-#             np.linalg.norm(corners[1] - corners[2])
-#         )
-#         width, height = int(width), int(height)
-        
-#         # Define destination points for perspective transform
-#         dst_points = np.array([
-#             [0, 0],
-#             [width, 0],
-#             [width, height],
-#             [0, height]
-#         ], dtype=np.float32)
-        
-#         # Perform perspective transform
-#         matrix = cv2.getPerspectiveTransform(corners.astype(np.float32), dst_points)
-#         warped = cv2.warpPerspective(orig_image, matrix, (width, height))
-        
-#         # Create output directory if it doesn't exist
-#         os.makedirs(output_dir, exist_ok=True)
-        
-#         # Get the filename from the path
-#         filename = Path(image_path).stem
-#         output_path = os.path.join(output_dir, f"{filename}_red_box.jpg")
-        
-#         # Save the warped image
-#         cv2.imwrite(output_path, warped)
-        
-#         print(f"Red box extracted and saved to {output_path}")
-#         return output_path, warped
-#     else:
-#         raise ValueError("Could not detect a red box in the image")
   
 def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
     """
@@ -147,11 +39,10 @@ def extract_red_box(image_path, output_dir='temp_ocr/red_box'):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
     # Much broader range for red/orange detection
-    lower_red1 = np.array([0, 40, 60])     # Very relaxed thresholds
-    upper_red1 = np.array([20, 255, 255])  # Expanded hue range
-    
-    lower_red2 = np.array([150, 40, 60])   # Very relaxed thresholds
-    upper_red2 = np.array([180, 255, 255]) # End of hue spectrum
+    lower_red1 = np.array([0, 40, 60])  
+    upper_red1 = np.array([20, 255, 255])  
+    lower_red2 = np.array([150, 40, 60])   
+    upper_red2 = np.array([180, 255, 255]) 
     
     # Create masks
     mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
@@ -794,19 +685,19 @@ def perform_ocr(img_path, font_path=None, output_dir='sample_output'):
     try:
         ocr = PaddleOCR(
             lang='en',
-            use_angle_cls=True,       # Detect text at different angles
+            use_angle_cls=True,          # Detect text at different angles
             rec_algorithm='SVTR_LCNet',  # More advanced recognition algorithm
-            det_algorithm='DB',     # Enhanced detection algorithm
-            det_db_thresh=0.2,        # Lower threshold for better detection of faint text
-            det_db_box_thresh=0.25,   # Lower box threshold for detecting unclear boundaries
-            det_db_unclip_ratio=2.0,  # Higher ratio to better group characters in handwriting
-            use_dilation=True,        # Help connect broken character strokes
-            use_gpu=True,             # Use GPU if available for better performance
-            enable_mkldnn=True,       # Enable Intel acceleration if available
-            rec_batch_num=6,          # Increased batch size for recognition
-            max_batch_size=12,        # Higher batch size for processing
-            drop_score=0.4,           # Lower confidence threshold to catch more potential text
-            det_limit_side_len=960    # Higher resolution limit for better detail capture
+            det_algorithm='DB',          # Enhanced detection algorithm
+            det_db_thresh=0.2,           # Lower threshold for better detection of faint text
+            det_db_box_thresh=0.25,      # Lower box threshold for detecting unclear boundaries
+            det_db_unclip_ratio=2.0,     # Higher ratio to better group characters in handwriting
+            use_dilation=True,           # Help connect broken character strokes
+            use_gpu=True,                # Use GPU if available for better performance
+            enable_mkldnn=True,          # Enable Intel acceleration if available
+            rec_batch_num=6,             # Increased batch size for recognition
+            max_batch_size=12,           # Higher batch size for processing
+            drop_score=0.4,              # Lower confidence threshold to catch more potential text
+            det_limit_side_len=960       # Higher resolution limit for better detail capture
         )
         result = ocr.ocr(img_path, cls=False)
     except Exception as e:
@@ -825,9 +716,6 @@ def perform_ocr(img_path, font_path=None, output_dir='sample_output'):
         boxes = [line[0] for line in result[0]]
         txts = [line[1][0] for line in result[0]]
         scores = [line[1][1] for line in result[0]]
-
-        # if not any(char.isdigit() for char in str(txts)):
-        #     txts = []
 
         # Save visualization if font is provided
         if font_path and os.path.exists(font_path):

@@ -2,6 +2,7 @@ from frag_helper import SegmentAnythingPipeline
 import os 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 def fragmentation_to_outline(input_path, output_path):
     """
@@ -11,13 +12,10 @@ def fragmentation_to_outline(input_path, output_path):
         input_path: Path to the input image file
         output_path: Path where the output image with outlines will be saved
     """
-    # input_name = os.path.splitext(os.path.basename(input_path))[0]
-    # output_path = f'output/res_{input_name}.png'
-    
     pipeline = SegmentAnythingPipeline()
     pipeline.process_image(input_path, output_path)
 
-def fragmentation_to_blackwhite(input_path, output_path=None, line_thickness=1):
+def fragmentation_to_blackwhite(input_path, output_path=None, line_thickness=3):
     """
     Convert an image with colored outlines to a black and white outline drawing.
     
@@ -39,10 +37,6 @@ def fragmentation_to_blackwhite(input_path, output_path=None, line_thickness=1):
     if image is None:
         raise ValueError(f"Could not read image from {input_path}")
     
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # For images with red outlines:
     # Extract the red channel which will have stronger values where the lines are
     b, g, r = cv2.split(image)
     
@@ -50,23 +44,17 @@ def fragmentation_to_blackwhite(input_path, output_path=None, line_thickness=1):
     height, width = image.shape[:2]
     white_canvas = np.ones((height, width), dtype=np.uint8) * 255
     
-    # Method 1: Edge detection on the grayscale image
-    edges = cv2.Canny(gray, 50, 150)
-    
-    # Method 2: Detect red outlines
-    red_mask = ((r > g + 50) & (r > b + 50)).astype(np.uint8) * 255
-    
-    # Combine both methods
-    combined_edges = cv2.bitwise_or(edges, red_mask)
+    # Detect red outlines
+    red_mask = ((r > 220) & (g < 35) & (b < 35)).astype(np.uint8) * 255
     
     # Dilate to make lines more visible if needed
     if line_thickness > 1:
         kernel = np.ones((line_thickness, line_thickness), np.uint8)
-        combined_edges = cv2.dilate(combined_edges, kernel, iterations=1)
+        red_mask = cv2.dilate(red_mask, kernel, iterations=1)
     
     # Create the final image: white background with black lines
     result = white_canvas.copy()
-    result[combined_edges > 0] = 0
+    result[red_mask > 0] = 0
     
     # Save the result
     cv2.imwrite(output_path, result)
@@ -75,10 +63,11 @@ def fragmentation_to_blackwhite(input_path, output_path=None, line_thickness=1):
     return output_path
 
 # Example usage
-if __name__ == "__main__":
-    img_path = "input_frag/big.jpg"
-    output = "output_frag/res_big.jpg"
-    output2 = "output_frag/res2_big.jpg"
-    # fragmentation_to_outline(img_path, output)
-    fragmentation_to_blackwhite(input_path=output, output_path=output2)
+# if __name__ == "__main__":
+#     img_path = "input_frag/big.jpg"
+#     output = "output_frag/res_big.jpg"
+#     output2 = "output_frag/res2_big.jpg"
+#     fragmentation_to_outline(img_path, output)
+#     fragmentation_to_blackwhite(input_path=output, output_path=output2)
+
     
