@@ -20,14 +20,23 @@ import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
 import Help from './pages/Help/Help'
 import {DepthAverageProvider} from './context/DepthAverageContext';
+import { FormProvider } from './context/FragmentationContext';
 import NetInfo from '@react-native-community/netinfo';
 import {syncLocalDataWithBackend} from './database/services/syncService';
 import './global.css';
+import FragmentationForm6 from './pages/fragmentation-form/fragmentation-form6';
+import { dbService } from './database/services/dbService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const syncTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+      (async () => {
+        await dbService.init();
+      })();
+    }, []);
 
   const triggerSync = () => {
     
@@ -62,119 +71,247 @@ export default function App() {
   return (
     <NavigationContainer>
       <DepthAverageProvider>
-        <Stack.Navigator
-          initialRouteName="Homepage"
-          screenOptions={{headerShown: false}}>
-          <Stack.Screen name="Homepage" component={Homepage} />
+        <FormProvider>
+          <Stack.Navigator
+            initialRouteName="Homepage"
+            screenOptions={{headerShown: false}}>
+            <Stack.Screen name="Homepage" component={Homepage} />
 
-          <Stack.Screen name="AddOrHistory">
-            {(
-              props: NativeStackScreenProps<RootStackParamList, 'AddOrHistory'>,
-            ) => <ScreenWrapper component={AddOrHistory} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="AddOrHistory">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'AddOrHistory'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={AddOrHistory}
+                  customBackAction={() => props.navigation.navigate('Homepage')}
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="Help">
-            {(props: NativeStackScreenProps<RootStackParamList, 'Help'>) => (
-              <ScreenWrapper component={Help} {...props} />
-            )}
-          </Stack.Screen>
+            <Stack.Screen name="Help">
+              {(props: NativeStackScreenProps<RootStackParamList, 'Help'>) => (
+                <ScreenWrapper component={Help} {...props} />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="DepthAverageUpload">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'DepthAverageUpload'
-              >,
-            ) => <ScreenWrapper component={DepthAverageUpload} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="DepthAverageUpload">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'DepthAverageUpload'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={DepthAverageUpload}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'DepthAverage',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FormDA1">
-            {(props: NativeStackScreenProps<RootStackParamList, 'FormDA1'>) => (
-              <ScreenWrapper component={FormDA1} {...props} />
-            )}
-          </Stack.Screen>
+            <Stack.Screen name="FormDA1">
+              {(
+                props: NativeStackScreenProps<RootStackParamList, 'FormDA1'>,
+              ) => (
+                <ScreenWrapper
+                  component={FormDA1}
+                  customBackAction={() =>
+                    props.navigation.navigate('DepthAverageUpload')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FormDA2">
-            {(props: NativeStackScreenProps<RootStackParamList, 'FormDA2'>) => (
-              <ScreenWrapper component={FormDA2} {...props} />
-            )}
-          </Stack.Screen>
+            <Stack.Screen name="FormDA2">
+              {(
+                props: NativeStackScreenProps<RootStackParamList, 'FormDA2'>,
+              ) => (
+                <ScreenWrapper
+                  component={FormDA2}
+                  customBackAction={() => props.navigation.navigate('FormDA1')}
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FormDA3">
-            {(props: NativeStackScreenProps<RootStackParamList, 'FormDA3'>) => (
-              <ScreenWrapper component={FormDA3} {...props} />
-            )}
-          </Stack.Screen>
+            <Stack.Screen name="FormDA3">
+              {(
+                props: NativeStackScreenProps<RootStackParamList, 'FormDA3'>,
+              ) => (
+                <ScreenWrapper
+                  component={FormDA3}
+                  customBackAction={() => props.navigation.navigate('FormDA2')}
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="DAHistory">
-            {(
-              props: NativeStackScreenProps<RootStackParamList, 'DAHistory'>,
-            ) => <ScreenWrapper component={DAHistory} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="DAHistory">
+              {(
+                props: NativeStackScreenProps<RootStackParamList, 'DAHistory'>,
+              ) => (
+                <ScreenWrapper
+                  component={DAHistory}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'FragmentasiForm1',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationForm1">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationForm1'
-              >,
-            ) => <ScreenWrapper component={FragmentationForm1} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm1">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm1'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm1}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'FragmentasiForm1',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationForm2">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationForm2'
-              >,
-            ) => <ScreenWrapper component={FragmentationForm2} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm2">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm2'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm2}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm1')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationForm3">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationForm3'
-              >,
-            ) => <ScreenWrapper component={FragmentationForm3} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm3">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm3'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm3}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm2')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationForm4">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationForm4'
-              >,
-            ) => <ScreenWrapper component={FragmentationForm4} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm4">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm4'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm4}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm3')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationForm5">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationForm5'
-              >,
-            ) => <ScreenWrapper component={FragmentationForm5} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm5">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm5'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm5}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm4')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationResult">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationResult'
-              >,
-            ) => <ScreenWrapper component={FragmentationResult} {...props} />}
-          </Stack.Screen>
+            <Stack.Screen name="FragmentationForm6">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationForm6'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationForm6}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm5')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
 
-          <Stack.Screen name="FragmentationHistory">
-            {(
-              props: NativeStackScreenProps<
-                RootStackParamList,
-                'FragmentationHistory'
-              >,
-            ) => <ScreenWrapper component={FragmentationHistory} {...props} />}
-          </Stack.Screen>
-        </Stack.Navigator>
+            <Stack.Screen name="FragmentationResult">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationResult'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationResult}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationForm6')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+
+            <Stack.Screen name="FragmentationHistory">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationHistory'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationHistory}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'FragmentasiForm1',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+          </Stack.Navigator>
+        </FormProvider>
       </DepthAverageProvider>
     </NavigationContainer>
   );

@@ -26,6 +26,7 @@ type DepthAverageContextType = {
   setFormData: (data: Partial<FormDataType>) => void;
   saveToDatabase: () => void;
   loadData: () => Promise<DepthAverageData[]>;
+  resetForm: () => void;
 };
 
 const defaultFormData: FormDataType = {
@@ -42,6 +43,7 @@ export const DepthAverageContext = createContext<DepthAverageContextType>({
   setFormData: () => {},
   saveToDatabase: () => {},
   loadData: async () => Promise.resolve([]),
+  resetForm: () => {},
 });
 
 export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
@@ -57,7 +59,7 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
 
   const saveToDatabase = async () => {
     try {
-      await sqliteService.saveData('DepthAverage',formData);
+      await sqliteService.saveData('DepthAverage', formData);
       console.log('Data saved locally');
       await sqliteService.debugGetAllData();
       console.log('tes');
@@ -84,9 +86,14 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     }
   };
 
+  // Reset the form to its default state.
+  const resetForm = () => {
+    setFormDataState(defaultFormData);
+  };
+
   return (
     <DepthAverageContext.Provider
-      value={{formData, setFormData, saveToDatabase, loadData}}>
+      value={{formData, setFormData, saveToDatabase, loadData, resetForm}}>
       {children}
     </DepthAverageContext.Provider>
   );
