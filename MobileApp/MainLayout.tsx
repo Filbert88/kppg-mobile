@@ -6,11 +6,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 const MainLayout: React.FC<{
   children: ReactNode;
   navigation: NativeStackNavigationProp<any>;
-}> = ({children, navigation}) => {
+  onBackPress: () => void;
+}> = ({children, navigation, onBackPress}) => {
   return (
     <SafeAreaView style={{flex: 1, backgroundColor: '#D9D9D9'}}>
       <HeaderLayout
-        onBackPress={() => navigation.goBack()}
+        onBackPress={onBackPress}
         icon1Source={require('./public/assets/bdm.png')}
         icon2Source={require('./public/assets/kpp.png')}
       />

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,14 +8,20 @@ import {
   ScrollView,
   Modal,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import {FormContext} from '../../context/FragmentationContext';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 // Our advanced editing UI
-import EditingApp from './EditingApp.tsx';
+import EditingApp from './EditingApp';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+
+// Import your SQLite service singleton (adjust the path as needed)
+import {dbService} from '../../database/services/dbService';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -24,50 +30,76 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function FragmentationForm4() {
   const navigation = useNavigation<NavigationProp>();
-  // We'll store multiple image URIs in an array:
-  const [images, setImages] = useState<string[]>([
-    // Start with the default image
-    'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/6/63/Biho_Takashi._Bat_Before_the_Moon%2C_ca._1910.jpg',
-  ]);
+  const {formData, updateForm} = useContext(FormContext);
+  const images = formData.imageUris;
 
-  // The index of the image currently being edited (or -1 if none)
+  // Local state for which image is being edited.
   const [editingIndex, setEditingIndex] = useState<number>(-1);
 
-  // The user might pick from local gallery – optional
+  // Connectivity state: isOnline is true if connected to the Internet.
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsOnline(state.isConnected ?? false);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // The user might pick from local gallery – optional.
   const handleAddImage = async () => {
     const result = await launchImageLibrary({mediaType: 'photo'});
     if (result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) {
-        setImages(prev => [...prev, uri]);
+        updateForm({imageUris: [...images, uri]});
       }
     }
   };
 
-  // Called when user taps "Edit" on an image
+  // Called when user taps "Edit" on an image.
   const handleEditImage = (index: number) => {
     setEditingIndex(index);
   };
 
-  // The user closed the editing app with a new "resultUri"
-  // so we replace the old image at "editingIndex" with the new one
+  // When the user finishes editing an image, update the corresponding URI.
   const handleSaveEdited = (resultUri: string) => {
     if (editingIndex < 0) return;
-    setImages(prev => {
-      const newArr = [...prev];
-      newArr[editingIndex] = resultUri; // replace old
-      return newArr;
-    });
+    const newImages = images.map((imgUri, idx) =>
+      idx === editingIndex ? resultUri : imgUri,
+    );
+    updateForm({imageUris: newImages});
     setEditingIndex(-1);
   };
+
+  // Offline "Save Local" button action.
+  // This calls the SQLite service to save the fragmentation data locally.
+  // After saving, navigates to the FragmentationHistory screen.
+  const handleSaveLocal = async () => {
+    try {
+      // Save the current form data to the local SQLite database.
+      // It is assumed that dbService.saveFragmentationData accepts a data object
+      // matching your FragmentationData structure.
+      await dbService.init();
+      await dbService.saveOrUpdateFragmentationData(formData);
+      Alert.alert('Success', 'Data saved locally.');
+      navigation.navigate('FragmentationHistory');
+    } catch (error) {
+      console.error('Error saving data locally:', error);
+      Alert.alert('Error', 'Failed to save data locally.');
+    }
+  };
+
+  // Online "Next" button action.
+  // For example, if online, you might continue to the next form in the workflow.
   const handleNext = () => {
     if (images.length === 0) {
-      return; // No images? Don't navigate
+      return; // No images? Don't navigate.
     }
-    navigation.navigate('FragmentationForm5', {images});
+    navigation.navigate('FragmentationForm5');
   };
-  // If editingIndex >=0, we show the EditingApp in a modal or separate screen
+
   const isEditing = editingIndex >= 0;
 
   return (
@@ -77,7 +109,6 @@ export default function FragmentationForm4() {
         {images.map((uri, idx) => (
           <View key={idx} style={styles.imageWrapper}>
             <Image source={{uri}} style={styles.image} resizeMode="contain" />
-            {/* Edit button in top-left */}
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => handleEditImage(idx)}>
@@ -86,7 +117,7 @@ export default function FragmentationForm4() {
           </View>
         ))}
 
-        {/* Add image button if we want user to pick more images */}
+        {/* Add image button */}
         <TouchableOpacity style={styles.addButton} onPress={handleAddImage}>
           <Text style={styles.addButtonText}>+ Add Image</Text>
         </TouchableOpacity>
@@ -94,30 +125,34 @@ export default function FragmentationForm4() {
 
       {/* Fixed bottom button */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={images.length === 0}
-          style={[
-            styles.nextButton,
-            images.length === 0 && {backgroundColor: 'gray', opacity: 0.6},
-          ]}>
-          <Text style={styles.nextButtonText}>Next</Text>
-        </TouchableOpacity>
+        {isOnline ? (
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={images.length === 0}
+            style={[
+              styles.nextButton,
+              images.length === 0 && {backgroundColor: 'gray', opacity: 0.6},
+            ]}>
+            <Text style={styles.nextButtonText}>Next</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={handleSaveLocal}
+            style={[styles.nextButton, {backgroundColor: 'orange'}]}>
+            <Text style={styles.nextButtonText}>Save Locally</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* If editingIndex >=0, show the EditingApp in a modal */}
+      {/* If editingIndex >= 0, show the EditingApp modal */}
       <Modal visible={isEditing} animationType="slide">
-        {/* We pass images[editingIndex] to the editor, plus an onClose that returns the final URI */}
         {isEditing && (
           <EditingApp
             initialImage={images[editingIndex]}
             onClose={(resultUri: string | null) => {
-              // If user canceled or didn't produce a new image, resultUri might be null
-              // If they produced a new image, we get that
               if (resultUri) {
                 handleSaveEdited(resultUri);
               } else {
-                // user canceled => no changes
                 setEditingIndex(-1);
               }
             }}
@@ -169,14 +204,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     backgroundColor: '#fff',
   },
-
   nextButton: {
     backgroundColor: 'green',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
   },
-
   nextButtonText: {
     color: '#fff',
     fontWeight: 'bold',

@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import { FormContext } from '../../context/FragmentationContext';
+import {FormContext} from '../../context/FragmentationContext';
 
 // Our advanced editing UI
 import EditingApp from './EditingApp.tsx';
@@ -20,22 +20,22 @@ import {RootStackParamList} from '../../types/navigation';
 
 type FragmentationForm5RouteProp = RouteProp<
   RootStackParamList,
-  'FragmentationForm5'
+  'FragmentationForm6'
 >;
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'FragmentationForm5'
+  'FragmentationForm6'
 >;
 
-export default function FragmentationForm5() {
+export default function FragmentationForm6() {
   const route = useRoute<FragmentationForm5RouteProp>();
   const navigation = useNavigation<NavigationProp>();
-  const { formData, updateForm } = useContext(FormContext);
-    // Gambar disimpan di formData.imageUris (tipe: string[])
+  const {formData, updateForm} = useContext(FormContext);
+  // Gambar disimpan di formData.imageUris (tipe: string[])
   const images = formData.imageUris;
-//   const {images: initialImages} = route.params;
-//   // We'll store multiple image URIs in an array:
-//   const [images, setImages] = useState<string[]>(initialImages ?? []);
+  //   const {images: initialImages} = route.params;
+  //   // We'll store multiple image URIs in an array:
+  //   const [images, setImages] = useState<string[]>(initialImages ?? []);
 
   // The index of the image currently being edited (or -1 if none)
   const [editingIndex, setEditingIndex] = useState<number>(-1);
@@ -48,12 +48,12 @@ export default function FragmentationForm5() {
   // The user closed the editing app with a new "resultUri"
   // so we replace the old image at "editingIndex" with the new one
   const handleSaveEdited = (resultUri: string) => {
-     if (editingIndex < 0) return;
-        const newImages = images.map((imgUri, idx) =>
-          idx === editingIndex ? resultUri : imgUri
-        );
-        updateForm({ imageUris: newImages });
-        setEditingIndex(-1);
+    if (editingIndex < 0) return;
+    const newImages = images.map((imgUri, idx) =>
+      idx === editingIndex ? resultUri : imgUri,
+    );
+    updateForm({imageUris: newImages});
+    setEditingIndex(-1);
   };
 
   // If editingIndex >=0, we show the EditingApp in a modal or separate screen
@@ -82,7 +82,7 @@ export default function FragmentationForm5() {
           disabled={!isFormValid}
           onPress={() => {
             if (isFormValid) {
-              navigation.navigate('FragmentationForm6');
+              navigation.navigate('FragmentationResult');
             }
           }}
           style={[

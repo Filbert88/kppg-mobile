@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -11,15 +11,16 @@ import { ChevronDown } from 'react-native-feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
-
+import { FormContext} from '../../context/FragmentationContext';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm2'>;
 
 export default function FragmentationForm2() {
   const navigation = useNavigation<NavigationProp>();
-
-  const [litologi, setLitologi] = useState('');
-  const [ammoniumNitrate, setAmmoniumNitrate] = useState('');
-  const [volumeBlasting, setVolumeBlasting] = useState('');
+    const { formData, updateForm } = useContext(FormContext);
+    const { litologi, ammoniumNitrate, volumeBlasting } = formData;
+//   const [litologi, setLitologi] = useState('');
+//   const [ammoniumNitrate, setAmmoniumNitrate] = useState('');
+//   const [volumeBlasting, setVolumeBlasting] = useState('');
 
   const isFormValid =
     litologi.trim() !== '' &&
@@ -40,7 +41,7 @@ export default function FragmentationForm2() {
               <TextInput
                 placeholder="Masukkan jenis..."
                 value={litologi}
-                onChangeText={setLitologi}
+                onChangeText={text => updateForm({ litologi: text })}
                 placeholderTextColor="#9CA3AF"
                 className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
               />
@@ -53,7 +54,7 @@ export default function FragmentationForm2() {
                 <TextInput
                   placeholder="Masukkan jumlah..."
                   value={ammoniumNitrate}
-                  onChangeText={setAmmoniumNitrate}
+                  onChangeText={text => updateForm({ ammoniumNitrate: text })}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                   className="flex-1 text-black"
@@ -68,7 +69,7 @@ export default function FragmentationForm2() {
                 <TextInput
                   placeholder="Masukkan volume..."
                   value={volumeBlasting}
-                  onChangeText={setVolumeBlasting}
+                  onChangeText={text => updateForm({ volumeBlasting: text })}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                   className="flex-1 text-black"
