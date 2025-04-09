@@ -8,15 +8,7 @@ import {
   Image,
 } from 'react-native';
 import {MapPin, Calendar, BarChart} from 'react-native-feather';
-import {DepthAverageContext} from '../../context/DepthAverageContext';
-
-type DepthAverageData = {
-  id: string;
-  location: string;
-  date: string;
-  average: string;
-  image?: string;
-};
+import {DepthAverageContext, DepthAverageData} from '../../context/DepthAverageContext';
 
 const EnhancedDepthAverageCard = ({
   data,

@@ -1,11 +1,12 @@
-import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, Image, Alert} from 'react-native';
-import {launchImageLibrary} from 'react-native-image-picker';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
-import {ArrowRight} from 'react-native-feather';
-import {requestPhotoPermission} from '../../components/requestPhotoPermission';
+import React, { useState, useContext } from 'react';
+import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+import { ArrowRight } from 'react-native-feather';
+import { requestPhotoPermission } from '../../components/requestPhotoPermission';
+import { DepthAverageContext } from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -14,6 +15,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 const DepthAverageUpload = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { setFormData } = useContext(DepthAverageContext);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   const handleImagePicker = async () => {
@@ -37,6 +39,59 @@ const DepthAverageUpload = () => {
     }
   };
 
+  const handleNext = async () => {
+    if (!imageUri) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageUri,
+        name: 'image.jpg',
+        type: 'image/jpeg',
+      } as any); 
+
+      const uploadResponse = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) throw new Error('Upload failed');
+      const uploadResult = await uploadResponse.json();
+      const imageUrl = uploadResult.url;
+
+      setFormData({ imageUri: imageUrl });
+
+      const ocrResponse = await fetch('http://10.0.2.2:5180/api/ocr', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!ocrResponse.ok) throw new Error('OCR failed');
+      const { ocr_result } = await ocrResponse.json();
+
+      const kedalaman: Record<string, string> = {};
+      const sorted = Object.entries(ocr_result)
+        .map(([k, v]) => [parseInt(k), v] as [number, string])
+        .sort(([a], [b]) => a - b);
+
+      sorted.forEach(([_, val], i) => {
+        const key = `kedalaman${i + 1}`;
+        const cleanVal = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+        kedalaman[key] = isNaN(cleanVal) ? '' : cleanVal.toString();
+      });
+
+      setFormData({
+        jumlahLubang: sorted.length.toString(),
+        kedalaman,
+      });
+
+      navigation.navigate('FormDA1');
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Gagal mengunggah atau memproses gambar.');
+    }
+  };
+
   const isFormValid = imageUri !== null;
 
   return (
@@ -44,12 +99,13 @@ const DepthAverageUpload = () => {
       <TouchableOpacity
         className="w-full max-w-md h-[400px] border border-gray-400 bg-white rounded-lg flex justify-center items-center"
         onPress={handleImagePicker}
-        style={{width: '90%'}}>
+        style={{ width: '90%' }}
+      >
         {imageUri ? (
           <View className="w-full h-full">
             <Image
-              source={{uri: imageUri}}
-              style={{width: '100%', height: '100%', borderRadius: 12}}
+              source={{ uri: imageUri }}
+              style={{ width: '100%', height: '100%', borderRadius: 12 }}
               resizeMode="contain"
             />
           </View>
@@ -81,11 +137,8 @@ const DepthAverageUpload = () => {
           className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
             isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
           }`}
-          onPress={() => {
-            if (isFormValid) {
-              navigation.navigate('FormDA1');
-            }
-          }}>
+          onPress={handleNext}
+        >
           <Text className="text-white font-semibold mr-2">Next</Text>
           <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>

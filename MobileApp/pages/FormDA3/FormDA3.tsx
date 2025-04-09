@@ -29,12 +29,13 @@ const FormDA3 = () => {
       ).toFixed(2)
     : 'N/A';
 
-  useEffect(() => {
-    if (averageValue !== formData.average) {
-      setFormData({ average: averageValue });
-      setCalculatedAverage(averageValue);
-    }
-  }, [averageValue, formData.average, setFormData]);
+    useEffect(() => {
+      if (averageValue !== 'N/A') {
+        setFormData({ average: averageValue });
+        setCalculatedAverage(averageValue);
+      }
+    }, [averageValue]);
+    
 
   const handleSaveAndNavigate = async () => {
     try {

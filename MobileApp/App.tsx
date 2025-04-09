@@ -18,28 +18,28 @@ import FragmentationForm3 from './pages/fragmentation-form/fragmentation-form3';
 import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
-import Help from './pages/Help/Help'
+import DatePriority from './pages/DatePriority/DatePriority';
+import Help from './pages/Help/Help';
 import {DepthAverageProvider} from './context/DepthAverageContext';
-import { FormProvider } from './context/FragmentationContext';
+import {FormProvider} from './context/FragmentationContext';
 import NetInfo from '@react-native-community/netinfo';
 import {syncLocalDataWithBackend} from './database/services/syncService';
 import './global.css';
 import FragmentationForm6 from './pages/fragmentation-form/fragmentation-form6';
-import { dbService } from './database/services/dbService';
+import {dbService} from './database/services/dbService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const syncTimeout = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-      (async () => {
-        await dbService.init();
-      })();
-    }, []);
+  useEffect(() => {
+    (async () => {
+      await dbService.init();
+    })();
+  }, []);
 
   const triggerSync = () => {
-    
     if (syncTimeout.current) {
       clearTimeout(syncTimeout.current);
     }
@@ -108,8 +108,26 @@ export default function App() {
                 <ScreenWrapper
                   component={DepthAverageUpload}
                   customBackAction={() =>
-                    props.navigation.navigate('AddOrHistory', {
+                    props.navigation.navigate('DatePriority', {
                       type: 'DepthAverage',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="DatePriority">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'DatePriority'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={DatePriority}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: props.route.params.type,
                     })
                   }
                   {...props}

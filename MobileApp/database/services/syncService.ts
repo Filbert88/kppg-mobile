@@ -35,10 +35,11 @@ export const syncLocalDataWithBackend = async () => {
             imageUri: data.imageUri ?? 'default_uri',
             jumlahLubang: data.jumlahLubang || 'N/A',
             lokasi: data.lokasi || 'Unknown',
+            prioritas: data.prioritas,
             tanggal: data.tanggal ? new Date(data.tanggal).toISOString() : new Date().toISOString(),
             kedalaman: data.kedalaman || '{}',
             average: data.average || '0',
-            synced: data.synced ?? 0,
+            synced: 1,
           }));
 
           try {

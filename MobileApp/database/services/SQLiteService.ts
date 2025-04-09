@@ -1,5 +1,5 @@
 import SQLite, {SQLiteDatabase} from 'react-native-sqlite-storage';
-import { FragmentationData } from '../../context/FragmentationContext';
+import {FragmentationData} from '../../context/FragmentationContext';
 
 SQLite.enablePromise(true);
 
@@ -34,6 +34,16 @@ export default class SQLiteService {
     }
   }
 
+  async dropDepthAverageDataTable() {
+    if (!this.db) return;
+    try {
+      await this.db.executeSql('DROP TABLE IF EXISTS DepthAverage;');
+      console.log('FragmentationData table dropped successfully.');
+    } catch (error) {
+      console.error('Failed to drop FragmentationData table:', error);
+    }
+  }
+
   async debugGetAllData() {
     if (!this.db) return;
     try {
@@ -52,6 +62,7 @@ export default class SQLiteService {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       imageUri TEXT,
       jumlahLubang TEXT,
+      prioritas INTEGER,
       lokasi TEXT,
       tanggal TEXT,
       kedalaman TEXT,
@@ -86,7 +97,6 @@ export default class SQLiteService {
           fragmentationImageId INTEGER,
           result1 TEXT,
           result2 TEXT,
-          result3 TEXT,
           measurement TEXT,  -- JSON string
           synced INTEGER DEFAULT 0,
           FOREIGN KEY (fragmentationImageId) REFERENCES FragmentationImages(id) ON DELETE CASCADE
@@ -256,8 +266,8 @@ export default class SQLiteService {
 
     switch (model) {
       case 'DepthAverage':
-        query = `INSERT INTO DepthAverage (imageUri, jumlahLubang, lokasi, tanggal, kedalaman, average, synced)
-                 VALUES (?, ?, ?, ?, ?, ?, 0)`;
+        query = `INSERT INTO DepthAverage (imageUri, jumlahLubang, lokasi, tanggal, kedalaman, average, prioritas, synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0)`;
         params = [
           data.imageUri,
           data.jumlahLubang,
@@ -265,6 +275,7 @@ export default class SQLiteService {
           data.tanggal,
           JSON.stringify(data.kedalaman),
           data.average,
+          data.prioritas, 
         ];
         break;
 
