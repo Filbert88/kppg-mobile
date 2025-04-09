@@ -14,7 +14,7 @@ namespace aspnet.Controllers
             _env = env;
         }
 
-        [HttpPost("analyze")]
+        [HttpPost]
         public async Task<IActionResult> Analyze(IFormFile file)
         {
             if (file == null || file.Length == 0)

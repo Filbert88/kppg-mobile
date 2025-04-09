@@ -8,5 +8,8 @@ namespace aspnet.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<DepthAverage> DepthAverages { get; set; }
+        public DbSet<FragmentationData> FragmentationDatas { get; set; }
+        public DbSet<FragmentationImage> FragmentationImages { get; set; }
+        public DbSet<FragmentationImageResult> FragmentationImageResults { get; set; }
     }
 }
