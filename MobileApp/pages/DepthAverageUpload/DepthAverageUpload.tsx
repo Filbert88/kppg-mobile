@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ const DepthAverageUpload = () => {
   const navigation = useNavigation<NavigationProp>();
   const { setFormData } = useContext(DepthAverageContext);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleImagePicker = async () => {
     const hasPermission = await requestPhotoPermission();
@@ -43,6 +44,8 @@ const DepthAverageUpload = () => {
     if (!imageUri) return;
 
     try {
+      setIsLoading(true);
+
       const formData = new FormData();
       formData.append('file', {
         uri: imageUri,
@@ -89,6 +92,8 @@ const DepthAverageUpload = () => {
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Gagal mengunggah atau memproses gambar.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -100,6 +105,7 @@ const DepthAverageUpload = () => {
         className="w-full max-w-md h-[400px] border border-gray-400 bg-white rounded-lg flex justify-center items-center"
         onPress={handleImagePicker}
         style={{ width: '90%' }}
+        disabled={isLoading}
       >
         {imageUri ? (
           <View className="w-full h-full">
@@ -133,16 +139,37 @@ const DepthAverageUpload = () => {
 
       <View className="absolute bottom-5 right-5 mb-4">
         <TouchableOpacity
-          disabled={!isFormValid}
+          disabled={!isFormValid || isLoading}
           className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
-            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+            isFormValid && !isLoading ? 'bg-green-700' : 'bg-gray-400 opacity-60'
           }`}
           onPress={handleNext}
         >
-          <Text className="text-white font-semibold mr-2">Next</Text>
-          <ArrowRight width={18} height={18} color="white" />
+          {isLoading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Text className="text-white font-semibold mr-2">Next</Text>
+              <ArrowRight width={18} height={18} color="white" />
+            </>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <View 
+          className="absolute inset-0 bg-black/50 flex justify-center items-center"
+          style={{ zIndex: 1000 }}
+        >
+          <View className="bg-white p-6 rounded-xl items-center">
+            <ActivityIndicator size="large" color="#16a34a" />
+            <Text className="mt-4 text-gray-700 font-medium text-base">
+              Memproses gambar...
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

@@ -1,4 +1,5 @@
 import React, {useContext, useState, useEffect} from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import {
   View,
   Text,
@@ -16,6 +17,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {DepthAverageContext} from '../../context/DepthAverageContext';
 import {FormContext} from '../../context/FragmentationContext';
+import { dbService } from '../../database/services/dbService';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -54,11 +56,44 @@ const DatePriority = () => {
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      const formattedDate = selectedDate.toISOString().split('T')[0];
-      setFormData({...formData, tanggal: formattedDate});
-    }
+        const formattedDate = selectedDate.toISOString().split('T')[0];
+        setFormData({ tanggal: formattedDate });
+        fetchNextPriority(formattedDate); 
+      }      
   };
 
+  const fetchNextPriority = async (date: string) => {
+    const isOnline = (await NetInfo.fetch()).isConnected;
+  
+    if (isOnline) {
+      const endpoint =
+        type === 'DepthAverage'
+          ? `http://10.0.2.2:5180/api/DepthAverage/next-priority?tanggal=${date}`
+          : `http://10.0.2.2:5180/api/FragmentationData/next-priority?tanggal=${date}`;
+  
+      try {
+        const response = await fetch(endpoint);
+        const nextPriority = await response.json();
+        console.log(nextPriority)
+
+        setFormData({ prioritas: nextPriority });
+      } catch (error) {
+        console.error('Failed to fetch next priority from API:', error);
+      }
+    } else {
+      const localData =
+        type === 'DepthAverage'
+          ? await dbService.getAllData()
+          : await dbService.getFragmentationData();
+  
+      const maxPriority = localData
+        .filter((d: any) => d.tanggal === date)
+        .reduce((max: number, curr: any) => Math.max(max, curr.prioritas ?? 0), 0);
+  
+      setFormData({ prioritas: maxPriority + 1 });
+    }
+  };
+  
   const isFormValid = formData.tanggal?.trim() !== '' && formData.prioritas > 0;
 
   return (
