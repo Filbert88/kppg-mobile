@@ -10,6 +10,7 @@ import ImageUploadedFrag from "./image-uploaded-frag";
 import GraphScreen from "./graph-screen";
 import SummaryScreen from "./summary-screen";
 import DatePriority from "../date-priority";
+import DiggingTimePage from "./digging-time";
 
 export type FragmentationFormData = {
   scale: string;
@@ -17,7 +18,7 @@ export type FragmentationFormData = {
   size: string;
   location: string;
   date: string;
-  priority: string; 
+  priority: string;
   rockType: string;
   ammoniumNitrate: string;
   blastingVolume: string;
@@ -63,11 +64,11 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     if (currentStep === 1) {
       setActiveScreen("home");
     } else if (currentStep === 8) {
-      setActiveScreen("home"); 
+      setActiveScreen("home");
     } else {
       setCurrentStep((prev) => prev - 1);
     }
-  };  
+  };
 
   const handleSave = () => {
     console.log("Form data saved:", formData);
@@ -83,7 +84,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     </button>
   );
 
-  console.log(formData)
+  console.log(formData);
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -99,7 +100,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             }}
           />
         );
-      case 2: 
+      case 2:
         return (
           <DatePriority
             date={formData.date}
@@ -109,7 +110,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onNext={handleNext}
             formType="fragmentation"
             label="Tanggal Fragmentasi"
-            nextLabel="Next" 
+            nextLabel="Next"
           />
         );
       case 3:
@@ -149,16 +150,19 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         );
 
       case 7:
-        return (
-          <ImageUploadedFrag
-            onNext={handleNext}
-          />
-        );
+        return <ImageUploadedFrag onNext={handleNext} />;
 
       case 8:
-        return <GraphScreen formData={formData} onSave={handleSave} />;
-
+        return (
+          <GraphScreen
+            formData={formData}
+            onSave={handleSave}
+            onDiggingTimeClick={() => setCurrentStep(9)}
+          />
+        );
       case 9:
+        return <DiggingTimePage />;
+      case 10:
         return (
           <SummaryScreen
             formData={formData}
