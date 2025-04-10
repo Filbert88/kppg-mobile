@@ -8,6 +8,7 @@ import AverageScreen from "./average-screen";
 import SummaryScreen from "./summary-screen";
 import ActionScreenDA from "./action-da";
 import DatePriority from "../date-priority";
+import { fetchNextPriority } from "@/lib/function";
 
 type DepthAverageFormData = {
   numberOfHoles: number;
@@ -36,7 +37,6 @@ export default function DepthAverageForm({
     depths: [],
     average: "22.5 cm",
   });
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const updateFormData = (field: keyof DepthAverageFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -59,79 +59,7 @@ export default function DepthAverageForm({
     });
   };
 
-  const processOcr = async (file: File) => {
-    const formDataOcr = new FormData();
-    formDataOcr.append("file", file);
-
-    try {
-      const response = await fetch("http://localhost:5180/api/ocr", {
-        method: "POST",
-        body: formDataOcr,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch OCR result");
-      }
-
-      const result = (await response.json()) as {
-        ocr_result: Record<string, any>;
-      };
-
-      const ocrResult = result.ocr_result;
-      const entries = Object.entries(ocrResult).map(([key, value]) => [
-        Number(key),
-        value,
-      ]);
-
-      entries.sort((a, b) => a[0] - b[0]);
-      const newDepths = entries.map((entry) => entry[1]);
-
-      updateFormData("numberOfHoles", entries.length);
-      updateFormData("depths", newDepths);
-
-      console.log("OCR processed:", {
-        numberOfHoles: entries.length,
-        depths: newDepths,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error("Error processing OCR:", error.message);
-      } else {
-        console.error("Error processing OCR:", String(error));
-      }
-    }
-  };
-
   const handleNext = async () => {
-    if (currentStep === 2 && uploadedFile) {
-      try {
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
-
-        const uploadResponse = await fetch(
-          "http://localhost:5180/api/Upload/upload",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        if (!uploadResponse.ok) {
-          throw new Error("Upload failed");
-        }
-
-        const uploadResult = await uploadResponse.json();
-        const imageUrl = uploadResult.url;
-        updateFormData("image", imageUrl);
-
-        await processOcr(uploadedFile);
-      } catch (error) {
-        console.error("Image upload or OCR error:", error);
-        alert("Gagal mengunggah atau memproses gambar.");
-        return;
-      }
-    }
-
     if (currentStep === 4) {
       const depths = formData.depths.filter((d) => d.trim() !== "");
       if (depths.length > 0) {
@@ -149,17 +77,73 @@ export default function DepthAverageForm({
   const handleBack = () => {
     if (currentStep === 0) {
       setActiveScreen("home");
+    } else if (currentStep === 6) {
+      setCurrentStep(0);
     } else {
       setCurrentStep((prev) => prev - 1);
     }
   };
 
   const handleSave = async () => {
-    console.log("Depth Average data saved:", formData);
+    const payload = {
+      jumlahLubang: formData.numberOfHoles.toString(),
+      lokasi: formData.location,
+      tanggal: formData.date,
+      prioritas: Number(formData.priority),
+      kedalaman: JSON.stringify(
+        formData.depths.reduce((acc, val, index) => {
+          acc[`kedalaman${index + 1}`] = val;
+          return acc;
+        }, {} as Record<string, string>)
+      ),
+      average: formData.average.replace(" cm", ""),
+      imageUri: formData.image,
+      synced: 1,
+    };
+
     try {
-      setActiveScreen("home");
+      const response = await fetch("http://localhost:5180/api/DepthAverage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([payload]),
+      });
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          const errorData = await response.json();
+          const nextPriority = Math.max(...errorData.existingPriorities) + 1;
+          alert(
+            `Priority ${formData.priority} already exists for ${formData.date}. Auto-updating to ${nextPriority}.`
+          );
+
+          payload.prioritas = nextPriority;
+
+          const retry = await fetch("http://localhost:5180/api/DepthAverage", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify([payload]),
+          });
+
+          if (retry.ok) {
+            console.log("Conflict resolved. Data saved with new priority.");
+            setActiveScreen("home");
+          } else {
+            throw new Error("Retry failed to save data.");
+          }
+        } else {
+          throw new Error("Failed to save Depth Average data.");
+        }
+      } else {
+        console.log("Data saved successfully");
+        setActiveScreen("home");
+      }
     } catch (error) {
-      console.error("Error saving data:", error);
+      console.error("Error saving Depth Average data:", error);
+      alert("Failed to save data.");
     }
   };
 
@@ -169,15 +153,21 @@ export default function DepthAverageForm({
         return (
           <ActionScreenDA
             onTambahClick={() => setCurrentStep(1)}
-            onRiwayatClick={() => setCurrentStep(5)}
+            onRiwayatClick={() => setCurrentStep(6)}
           />
         );
       case 1:
         return (
           <DatePriority
             date={formData.date}
-            onDateChange={(value) => updateFormData("date", value)}
             priority={formData.priority}
+            onDateChange={async (value) => {
+              updateFormData("date", value);
+              const next = await fetchNextPriority(value, "depthAverage");
+              if (next !== null) {
+                updateFormData("priority", next.toString());
+              }
+            }}
             onPriorityChange={(value) => updateFormData("priority", value)}
             onNext={handleNext}
             formType="depthAverage"
@@ -188,7 +178,11 @@ export default function DepthAverageForm({
         return (
           <ImageUploadScreen
             image={formData.image}
-            onImageSelect={(file) => setUploadedFile(file)}
+            onImageSelect={(_, imageUrl, depths) => {
+              updateFormData("image", imageUrl);
+              updateFormData("numberOfHoles", depths.length);
+              updateFormData("depths", depths);
+            }}
             onNext={handleNext}
           />
         );
@@ -214,7 +208,7 @@ export default function DepthAverageForm({
       case 5:
         return <AverageScreen average={formData.average} onSave={handleSave} />;
       case 6:
-        return <SummaryScreen formData={formData} onSave={handleSave} />;
+        return <SummaryScreen />;
       default:
         return null;
     }
