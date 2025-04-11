@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, forwardRef } from "react";
-import HybridContainer from "./HybridContainer";
+import HybridContainer, { HybridContainerRef } from "./HybridContainer";
 import { Tool } from "./canvas";
 
 interface ImageContainerProps {
@@ -11,6 +11,21 @@ interface ImageContainerProps {
   setActiveTool: (tool: Tool) => void;
   lineThickness: number;
   setDisablePan: (disable: boolean) => void;
+  hybridContainerRef?: React.Ref<HybridContainerRef>;
+  onHybridRefReady?: (hybridRef: HybridContainerRef | null) => void;
+}
+
+function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+  return (value: T) => {
+    refs.forEach((ref) => {
+      if (typeof ref === "function") {
+        ref(value);
+      } else if (ref != null) {
+        // Asumsikan ref adalah React.MutableRefObject
+        (ref as React.MutableRefObject<T | null>).current = value;
+      }
+    });
+  };
 }
 
 const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
@@ -23,6 +38,8 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       setActiveTool,
       lineThickness,
       setDisablePan,
+      hybridContainerRef,
+      onHybridRefReady,
     },
     ref
   ) => {
@@ -39,12 +56,17 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       img.onload = () => {
         const naturalWidth = img.naturalWidth;
         const naturalHeight = img.naturalHeight;
-        // Define maximum display dimensions
+
         const maxWidth = 800;
         const maxHeight = 600;
+        const minWidth = 300;
+
+        const aspectRatio = naturalWidth / naturalHeight;
+
         let displayWidth = naturalWidth;
         let displayHeight = naturalHeight;
-        // Calculate scale factor if the image is larger than the maximum allowed
+
+        // First, constrain to max size if too large
         if (naturalWidth > maxWidth || naturalHeight > maxHeight) {
           const widthScale = maxWidth / naturalWidth;
           const heightScale = maxHeight / naturalHeight;
@@ -52,51 +74,103 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
           displayWidth = naturalWidth * scale;
           displayHeight = naturalHeight * scale;
         }
-        setContainerSize({ width: displayWidth, height: displayHeight });
+
+        // Then, enforce min width *preserving aspect ratio*
+        if (displayWidth < minWidth) {
+          displayWidth = minWidth;
+          displayHeight = minWidth / aspectRatio;
+        }
+
+        setContainerSize({
+          width: displayWidth,
+          height: displayHeight,
+        });
+
+        console.log("Final image container size:", displayWidth, displayHeight);
       };
       img.src = backgroundImage;
     }, [backgroundImage]);
 
+    useEffect(() => {
+      // Jika hybridContainerRef sudah tersedia, panggil callback onHybridRefReady
+      console.log("triggere");
+      if (!onHybridRefReady) return;
+
+      console.log("triggere");
+      if (
+        hybridContainerRef &&
+        typeof hybridContainerRef !== "function" &&
+        hybridContainerRef.current
+      ) {
+        console.log("Href ready");
+        onHybridRefReady(hybridContainerRef.current);
+      }
+    }, [hybridContainerRef]);
+
+    // Hanya render ketika containerSize sudah di-set (tidak 0)
+    if (containerSize.width === 0 || containerSize.height === 0) {
+      return <div>Loading image...</div>;
+    }
+
     return (
       <div
-        ref={ref}
         style={{
-          position: "relative",
-          width: containerSize.width,
-          height: containerSize.height,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "transparent",
+          width: 800,
+          height: 600,
         }}
       >
-        <img
-          src={backgroundImage}
-          alt="Background"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            position: "absolute",
-            top: 0,
-            left: 0,
-          }}
-        />
         <div
+          ref={ref}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
+            position: "relative",
+            width: containerSize.width,
+            height: containerSize.height,
           }}
         >
-          <HybridContainer
-            width={containerSize.width}
-            height={containerSize.height}
-            activeTool={activeTool}
-            setActiveTool={setActiveTool}
-            shapeType={shapeType}
-            selectedColor={color}
-            lineThickness={lineThickness}
-            setDisablePan={setDisablePan}
+          <img
+            src={backgroundImage}
+            alt="Background"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
           />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <HybridContainer
+              ref={mergeRefs(hybridContainerRef, (hybridRef) => {
+                if (hybridRef) {
+                  console.log("HybridContainer sudah siap");
+                  if (onHybridRefReady) {
+                    onHybridRefReady(hybridRef);
+                  }
+                }
+              })}
+              width={containerSize.width}
+              height={containerSize.height}
+              activeTool={activeTool}
+              setActiveTool={setActiveTool}
+              shapeType={shapeType}
+              selectedColor={color}
+              lineThickness={lineThickness}
+              setDisablePan={setDisablePan}
+            />
+          </div>
         </div>
       </div>
     );
