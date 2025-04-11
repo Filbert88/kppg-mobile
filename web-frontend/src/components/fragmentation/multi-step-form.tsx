@@ -6,7 +6,7 @@ import BasicInfoForm from "./basic-info-form";
 import MaterialForm from "./material-form";
 import PowderFactorForm from "./powder-factor-form";
 import ImageUploadForm, { ImageUploadFormRef } from "./image-upload-form";
-import ImageUploadedFrag from "./image-uploaded-frag";
+import ImageUploadedFrag, { ImageUploadFragRef } from "./image-uploaded-frag";
 import GraphScreen from "./graph-screen";
 import SummaryScreen from "./summary-screen";
 import DatePriority from "../date-priority";
@@ -25,6 +25,8 @@ export type FragmentationFormData = {
   powderFactor: string;
   images: string[];
   editingStates: Record<string, HybridContainerState>;
+  imagesFrag: string[];
+  editingFragStates: Record<string, HybridContainerState>;
 };
 
 interface MultiStepFormProps {
@@ -49,6 +51,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     powderFactor: "25",
     images: [],
     editingStates: {},
+    imagesFrag: [],
+    editingFragStates: {},
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -63,12 +67,15 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
   };
 
   const imageUploadFormRef = useRef<ImageUploadFormRef>(null);
-
+  const imageUploadFragRef = useRef<ImageUploadFragRef>(null);
   function handleBack() {
     // 1) Kalau step == 6, panggil childRef.current?.saveEditingState()
     if (currentStep === 6) {
-      console.log("da", imageUploadFormRef.current)
       imageUploadFormRef.current?.saveEditingState();
+    }
+
+    if (currentStep === 7) {
+      imageUploadFragRef.current?.saveEditingState();
     }
     // 2) Baru ganti step
     if (currentStep === 1) {
@@ -163,6 +170,10 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       case 7:
         return (
           <ImageUploadedFrag
+            key={currentStep}
+            ref={imageUploadFormRef}
+            formData={formData}
+            updateFormData={updateFormData}
             onNext={handleNext}
           />
         );
