@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ActionScreen from "./action-screen";
 import BasicInfoForm from "./basic-info-form";
 import MaterialForm from "./material-form";
 import PowderFactorForm from "./powder-factor-form";
-import ImageUploadForm from "./image-upload-form";
-import ImageUploadedFrag from "./image-uploaded-frag";
+import ImageUploadForm, { ImageUploadFormRef } from "./image-upload-form";
+import ImageUploadedFrag, { ImageUploadFragRef } from "./image-uploaded-frag";
 import GraphScreen from "./graph-screen";
 import SummaryScreen from "./summary-screen";
 import DatePriority from "../date-priority";
+import { HybridContainerState } from "./HybridContainer";
 
 export type FragmentationFormData = {
   scale: string;
@@ -17,12 +18,15 @@ export type FragmentationFormData = {
   size: string;
   location: string;
   date: string;
-  priority: string; 
+  priority: string;
   rockType: string;
   ammoniumNitrate: string;
   blastingVolume: string;
   powderFactor: string;
   images: string[];
+  editingStates: Record<string, HybridContainerState>;
+  imagesFrag: string[];
+  editingFragStates: Record<string, HybridContainerState>;
 };
 
 interface MultiStepFormProps {
@@ -46,6 +50,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     blastingVolume: "",
     powderFactor: "25",
     images: [],
+    editingStates: {},
+    imagesFrag: [],
+    editingFragStates: {},
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -59,15 +66,27 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     setCurrentStep((prev) => prev + 1);
   };
 
-  const handleBack = () => {
+  const imageUploadFormRef = useRef<ImageUploadFormRef>(null);
+  const imageUploadFragRef = useRef<ImageUploadFragRef>(null);
+  function handleBack() {
+    // 1) Kalau step == 6, panggil childRef.current?.saveEditingState()
+    if (currentStep === 6) {
+      imageUploadFormRef.current?.saveEditingState();
+    }
+
+    if (currentStep === 7) {
+      imageUploadFragRef.current?.saveEditingState();
+    }
+    // 2) Baru ganti step
     if (currentStep === 1) {
       setActiveScreen("home");
     } else if (currentStep === 8) {
-      setActiveScreen("home"); 
+      setActiveScreen("home");
     } else {
       setCurrentStep((prev) => prev - 1);
     }
-  };  
+  }
+
 
   const handleSave = () => {
     console.log("Form data saved:", formData);
@@ -82,8 +101,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       Back
     </button>
   );
-
-  console.log(formData)
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -142,6 +159,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       case 6:
         return (
           <ImageUploadForm
+            key={currentStep}
+            ref={imageUploadFormRef}
             formData={formData}
             updateFormData={updateFormData}
             onNext={handleNext}
@@ -151,6 +170,10 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       case 7:
         return (
           <ImageUploadedFrag
+            key={currentStep}
+            ref={imageUploadFormRef}
+            formData={formData}
+            updateFormData={updateFormData}
             onNext={handleNext}
           />
         );
