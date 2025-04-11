@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, forwardRef } from "react";
-import HybridContainer from "./HybridContainer";
+import HybridContainer, { HybridContainerRef } from "./HybridContainer";
 import { Tool } from "./canvas";
 
 interface ImageContainerProps {
@@ -11,6 +11,21 @@ interface ImageContainerProps {
   setActiveTool: (tool: Tool) => void;
   lineThickness: number;
   setDisablePan: (disable: boolean) => void;
+  hybridContainerRef?: React.Ref<HybridContainerRef>;
+  onHybridRefReady?: (hybridRef: HybridContainerRef | null) => void;
+}
+
+function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+  return (value: T) => {
+    refs.forEach((ref) => {
+      if (typeof ref === "function") {
+        ref(value);
+      } else if (ref != null) {
+        // Asumsikan ref adalah React.MutableRefObject
+        (ref as React.MutableRefObject<T | null>).current = value;
+      }
+    });
+  };
 }
 
 const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
@@ -23,6 +38,8 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       setActiveTool,
       lineThickness,
       setDisablePan,
+      hybridContainerRef,
+      onHybridRefReady,
     },
     ref
   ) => {
@@ -53,9 +70,32 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
           displayHeight = naturalHeight * scale;
         }
         setContainerSize({ width: displayWidth, height: displayHeight });
+
+        console.log("Image conaunter ", displayWidth);
       };
       img.src = backgroundImage;
     }, [backgroundImage]);
+
+    useEffect(() => {
+      // Jika hybridContainerRef sudah tersedia, panggil callback onHybridRefReady
+      console.log("triggere")
+      if (!onHybridRefReady) return;
+
+       console.log("triggere");
+      if (
+        hybridContainerRef &&
+        typeof hybridContainerRef !== "function" &&
+        hybridContainerRef.current
+      ) {
+        console.log("Href ready")
+        onHybridRefReady(hybridContainerRef.current);
+      }
+    }, [hybridContainerRef]);
+
+    // Hanya render ketika containerSize sudah di-set (tidak 0)
+    if (containerSize.width === 0 || containerSize.height === 0) {
+      return <div>Loading image...</div>;
+    }
 
     return (
       <div
@@ -88,6 +128,14 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
           }}
         >
           <HybridContainer
+            ref={mergeRefs(hybridContainerRef, (hybridRef) => {
+              if (hybridRef) {
+                console.log("HybridContainer sudah siap");
+                if (onHybridRefReady) {
+                  onHybridRefReady(hybridRef);
+                }
+              }
+            })}
             width={containerSize.width}
             height={containerSize.height}
             activeTool={activeTool}
