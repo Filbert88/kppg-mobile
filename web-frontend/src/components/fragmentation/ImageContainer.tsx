@@ -56,12 +56,17 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       img.onload = () => {
         const naturalWidth = img.naturalWidth;
         const naturalHeight = img.naturalHeight;
-        // Define maximum display dimensions
+
         const maxWidth = 800;
         const maxHeight = 600;
+        const minWidth = 300;
+
+        const aspectRatio = naturalWidth / naturalHeight;
+
         let displayWidth = naturalWidth;
         let displayHeight = naturalHeight;
-        // Calculate scale factor if the image is larger than the maximum allowed
+
+        // First, constrain to max size if too large
         if (naturalWidth > maxWidth || naturalHeight > maxHeight) {
           const widthScale = maxWidth / naturalWidth;
           const heightScale = maxHeight / naturalHeight;
@@ -69,25 +74,35 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
           displayWidth = naturalWidth * scale;
           displayHeight = naturalHeight * scale;
         }
-        setContainerSize({ width: displayWidth, height: displayHeight });
 
-        console.log("Image conaunter ", displayWidth);
+        // Then, enforce min width *preserving aspect ratio*
+        if (displayWidth < minWidth) {
+          displayWidth = minWidth;
+          displayHeight = minWidth / aspectRatio;
+        }
+
+        setContainerSize({
+          width: displayWidth,
+          height: displayHeight,
+        });
+
+        console.log("Final image container size:", displayWidth, displayHeight);
       };
       img.src = backgroundImage;
     }, [backgroundImage]);
 
     useEffect(() => {
       // Jika hybridContainerRef sudah tersedia, panggil callback onHybridRefReady
-      console.log("triggere")
+      console.log("triggere");
       if (!onHybridRefReady) return;
 
-       console.log("triggere");
+      console.log("triggere");
       if (
         hybridContainerRef &&
         typeof hybridContainerRef !== "function" &&
         hybridContainerRef.current
       ) {
-        console.log("Href ready")
+        console.log("Href ready");
         onHybridRefReady(hybridContainerRef.current);
       }
     }, [hybridContainerRef]);
@@ -99,52 +114,63 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
 
     return (
       <div
-        ref={ref}
         style={{
-          position: "relative",
-          width: containerSize.width,
-          height: containerSize.height,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "transparent",
+          width: 800,
+          height: 600,
         }}
       >
-        <img
-          src={backgroundImage}
-          alt="Background"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            position: "absolute",
-            top: 0,
-            left: 0,
-          }}
-        />
         <div
+          ref={ref}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
+            position: "relative",
+            width: containerSize.width,
+            height: containerSize.height,
           }}
         >
-          <HybridContainer
-            ref={mergeRefs(hybridContainerRef, (hybridRef) => {
-              if (hybridRef) {
-                console.log("HybridContainer sudah siap");
-                if (onHybridRefReady) {
-                  onHybridRefReady(hybridRef);
-                }
-              }
-            })}
-            width={containerSize.width}
-            height={containerSize.height}
-            activeTool={activeTool}
-            setActiveTool={setActiveTool}
-            shapeType={shapeType}
-            selectedColor={color}
-            lineThickness={lineThickness}
-            setDisablePan={setDisablePan}
+          <img
+            src={backgroundImage}
+            alt="Background"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
           />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <HybridContainer
+              ref={mergeRefs(hybridContainerRef, (hybridRef) => {
+                if (hybridRef) {
+                  console.log("HybridContainer sudah siap");
+                  if (onHybridRefReady) {
+                    onHybridRefReady(hybridRef);
+                  }
+                }
+              })}
+              width={containerSize.width}
+              height={containerSize.height}
+              activeTool={activeTool}
+              setActiveTool={setActiveTool}
+              shapeType={shapeType}
+              selectedColor={color}
+              lineThickness={lineThickness}
+              setDisablePan={setDisablePan}
+            />
+          </div>
         </div>
       </div>
     );

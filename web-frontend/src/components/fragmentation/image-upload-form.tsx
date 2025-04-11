@@ -20,8 +20,8 @@ import {
   Slash,
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import Cropper from "react-easy-crop";
-import { Area } from "react-easy-crop";
+import Cropper from "react-cropper";
+import "cropperjs/dist/cropper.css";
 import html2canvas from "html2canvas";
 
 // Modal components
@@ -63,7 +63,7 @@ function rotateSize(width: number, height: number, rotation: number) {
 
 async function getCroppedImg(
   imageSrc: string,
-  croppedAreaPixels: Area,
+  croppedAreaPixels: { x: number; y: number; width: number; height: number },
   rotation = 0,
   flip = { horizontal: false, vertical: false }
 ): Promise<string | null> {
@@ -156,10 +156,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
     const [editingStates, setEditingStates] = useState<{
       [key: string]: HybridContainerState;
-    }>(() => {
-      // pada mount, ambil dari formData.editingStates
-      return formData.editingStates || {};
-    });
+    }>(() => formData.editingStates || {});
 
     // Canvas editing states
     const [activeTool, setActiveTool] = useState<Tool>("none");
@@ -170,37 +167,37 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const [showShapePicker, setShowShapePicker] = useState(false);
     const [showThicknessPicker, setShowThicknessPicker] = useState(false);
     const [showCropModal, setShowCropModal] = useState(false);
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [cropZoom, setCropZoom] = useState(1);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(
-      null
-    );
-    const [disablePan, setDisablePan] = useState(false);
+        const [disablePan, setDisablePan] = useState(false);
 
-    // Refs for TransformWrapper and the container (for html2canvas capture)
+    // Now, for react cropper we'll create a ref.
+    const cropperRef = useRef<HTMLImageElement | any>(null);
+
+    // Refs for TransformWrapper and container capture
     const transformWrapperRef = useRef<any>(null);
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const hybridContainerRef = useRef<HybridContainerRef>(null);
 
     useEffect(() => {
-      console.log("use effect 1")
+      console.log("use effect 1");
       if (!selectedImage && formData.images.length > 0) {
         const latestImage = formData.images[0];
         setSelectedImage(latestImage);
         setBgImage(latestImage);
-        console.log("masuk use effect 1" , editingStates[latestImage])
+        console.log("masuk use effect 1", editingStates[latestImage]);
         if (editingStates[latestImage] && hybridContainerRef.current) {
-          console.log("Panggil se Editing state di use effect 1")
-          hybridContainerRef.current.setEditingState(editingStates[latestImage]);
+          console.log("Panggil Editing state di use effect 1");
+          hybridContainerRef.current.setEditingState(
+            editingStates[latestImage]
+          );
         }
       }
     }, [selectedImage, formData.images]);
 
     useEffect(() => {
       // Jika sudah ada bgImage + editingStates-nya, panggil setEditingState
-      console.log("use effect 2")
+      console.log("use effect 2");
       if (bgImage && editingStates[bgImage] && hybridContainerRef.current) {
-        console.log("masuk use effect 2")
+        console.log("masuk use effect 2");
         hybridContainerRef.current.setEditingState(editingStates[bgImage]);
       }
     }, [bgImage, editingStates]);
@@ -219,20 +216,14 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             [selectedImage]: currentState,
           });
         }
-
-        // 2) Baca file => DataURL
+        // Read file as DataURL
         const reader = new FileReader();
         reader.onload = (event) => {
           const newImageUrl = (event.target?.result as string) || "";
-
-          // 3) Masukkan image ke formData.images
           const updatedImages = [...formData.images, newImageUrl];
           updateFormData("images", updatedImages);
-
-          // 4) Lalu panggil switchImage(newImageUrl)
+          // Switch image will set selectedImage, setBgImage, and load/reset state as needed.
           switchImage(newImageUrl);
-          // (switchImage akan setSelectedImage, setBgImage,
-          //  lalu load / reset state sesuai newImageUrl)
         };
         reader.readAsDataURL(file);
       }
@@ -263,26 +254,27 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       } else if (tool === "line") {
         setShowThicknessPicker(true);
       } else if (tool === "crop") {
+        // Show crop modal using react-cropper
         setShowCropModal(true);
       }
     }
 
-    const onCropComplete = useCallback(
-      (croppedArea: Area, croppedAreaPixels: Area) => {
-        setCroppedAreaPixels(croppedAreaPixels);
-      },
-      []
-    );
-
+    // For React Cropper, no need for onCropComplete callback.
     async function handleCropDone() {
-      try {
-        if (!croppedAreaPixels || !bgImage) return;
-        const croppedImage = await getCroppedImg(bgImage, croppedAreaPixels);
-        if (croppedImage != null) {
-          setBgImage(croppedImage);
+      if (cropperRef.current) {
+        // Get the cropper instance and then get the cropped canvas.
+        const cropper = cropperRef.current.cropper;
+        const croppedCanvas = cropper.getCroppedCanvas();
+        if (croppedCanvas) {
+          const croppedImageUrl = croppedCanvas.toDataURL("image/png");
+          const newImages = formData.images.map((img) =>
+            img === selectedImage ? croppedImageUrl : img
+          );
+          updateFormData("images", newImages);
+          setBgImage(croppedImageUrl);
+          setSelectedImage(croppedImageUrl)
+          
         }
-      } catch (e) {
-        console.error(e);
       }
       setShowCropModal(false);
       setActiveTool("none");
@@ -298,40 +290,32 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       if (selectedImage && hybridContainerRef.current) {
         const state = hybridContainerRef.current.getEditingState();
         console.log(state);
-
-        setEditingStates((prev) => ({
-          ...prev,
-          [selectedImage]: state,
-        }));
+        setEditingStates((prev) => ({ ...prev, [selectedImage]: state }));
       }
     }
 
-    // Switch to a new image from the sidebar. Save current image state and load new state if it exists.
+    // Switch image from the sidebar: save current editing state and load state if it exists.
     function switchImage(newImage: string) {
-      // Save current editing state.
       saveCurrentEditingState();
-      // Set the new image as selected and background.
       setSelectedImage(newImage);
       setBgImage(newImage);
-      // If we have saved editing state for the new image, load it.
       if (editingStates[newImage] && hybridContainerRef.current) {
         hybridContainerRef.current.setEditingState(editingStates[newImage]);
       } else if (hybridContainerRef.current) {
         hybridContainerRef.current.setEditingState({
-          canvasData: "", // pixelCanvas kosong
-          shapes: [], // shapes kosong
-          lines: [], // lines kosong
+          canvasData: "",
+          shapes: [],
+          lines: [],
         });
       }
     }
 
-
-    // Expose method ke parent via useImperativeHandle
+    // Expose method to parent via useImperativeHandle
     useImperativeHandle(ref, () => ({
       saveEditingState() {
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
-          console.log(currentState)
+          console.log(currentState);
           const newStates = { ...editingStates, [selectedImage]: currentState };
           setEditingStates(newStates);
           updateFormData("editingStates", newStates);
@@ -342,8 +326,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     /**
      * handleNext:
      * We use html2canvas to capture the container that holds the ImageContainer.
-     * To capture the image at its original (natural) size, we remove any CSS scaling (like maxWidth)
-     * so that the container renders at the natural dimensions.
+     * This is done at natural size by removing any CSS scaling, so the capture is done at the natural dimensions.
      */
     const handleNext = async () => {
       if (!imageContainerRef.current) {
@@ -359,7 +342,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           }));
         }
         updateFormData("editingStates", editingStates);
-        // Capture the container using html2canvas.
         const canvas = await html2canvas(imageContainerRef.current, {
           useCORS: true,
           logging: false,
@@ -388,9 +370,8 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     };
 
     function handleHybridRefReady(hRef: HybridContainerRef | null) {
-
       if (bgImage && editingStates[bgImage] && hRef) {
-        console.log("handle hybrid dev dipanggil")
+        console.log("handle hybrid dev dipanggil");
         hRef.setEditingState(editingStates[bgImage]);
       }
     }
@@ -482,12 +463,10 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             </div>
           )}
 
-          {/* Container to be captured by html2canvas.
-          We remove any maxWidth constraints so the container is rendered at the natural size.
-      */}
+          {/* Container captured by html2canvas */}
           <div
             ref={imageContainerRef}
-            className="flex border border-gray-300 rounded-md bg-white justify-center"
+            className="flex border border-gray-300 rounded-md justify-center"
             style={{ width: "fit-content", height: "fit-content" }}
           >
             {bgImage ? (
@@ -544,23 +523,23 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             </label>
           </div>
 
-          {/* Crop Modal */}
+          {/* Crop Modal using React Cropper */}
           {showCropModal && bgImage && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
               <div
                 className="relative bg-white rounded shadow-lg overflow-hidden"
                 style={{ width: "80vw", height: "80vh" }}
               >
-                <div className="absolute inset-0 z-10">
-                  <Cropper
-                    image={bgImage}
-                    crop={crop}
-                    zoom={cropZoom}
-                    onCropChange={setCrop}
-                    onZoomChange={setCropZoom}
-                    onCropComplete={onCropComplete}
-                  />
-                </div>
+                <Cropper
+                  src={bgImage}
+                  style={{ height: "100%", width: "100%" }}
+                  // Optionally set an aspect ratio here; remove or change as needed.
+                  aspectRatio={600 / 400}
+                  guides={true}
+                  responsive={true}
+                  checkOrientation={false}
+                  ref={cropperRef}
+                />
                 <div className="absolute top-4 right-4 z-20 flex space-x-2">
                   <Button variant="secondary" onClick={handleCropCancel}>
                     Cancel
@@ -619,4 +598,5 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     );
   }
 );
+
 export default ImageUploadForm;
