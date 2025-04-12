@@ -1,11 +1,10 @@
 import React, {createContext, useState, ReactNode, useEffect} from 'react';
-import SQLiteService from '../database/services/SQLiteService';
+import NetInfo from '@react-native-community/netinfo';
+import {dbService} from '../database/services/dbService';
+import {Alert} from 'react-native';
 
-const sqliteService = new SQLiteService();
-sqliteService.init();
-
-type DepthAverageData = {
-  id: string;
+export type DepthAverageData = {
+  id: number;
   location: string;
   date: string;
   average: string;
@@ -13,35 +12,39 @@ type DepthAverageData = {
 };
 
 type FormDataType = {
+  id: number | null;
   imageUri: string | null;
   jumlahLubang: string;
   lokasi: string;
   tanggal: string;
   kedalaman: Record<string, string>;
   average: string;
+  prioritas: number;
 };
 
 type DepthAverageContextType = {
   formData: FormDataType;
   setFormData: (data: Partial<FormDataType>) => void;
-  saveToDatabase: () => void;
+  saveToDatabase: () => Promise<boolean>;
   loadData: () => Promise<DepthAverageData[]>;
   resetForm: () => void;
 };
 
 const defaultFormData: FormDataType = {
+  id: NaN,
   imageUri: null,
   jumlahLubang: '',
   lokasi: '',
   tanggal: '',
   kedalaman: {},
   average: '',
+  prioritas: 0,
 };
 
 export const DepthAverageContext = createContext<DepthAverageContextType>({
   formData: defaultFormData,
   setFormData: () => {},
-  saveToDatabase: () => {},
+  saveToDatabase: async () => false,
   loadData: async () => Promise.resolve([]),
   resetForm: () => {},
 });
@@ -57,31 +60,133 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     setFormDataState(prev => ({...prev, ...data}));
   };
 
-  const saveToDatabase = async () => {
+  const saveToDatabase = async (): Promise<boolean> => {
     try {
-      await sqliteService.saveData('DepthAverage', formData);
-      console.log('Data saved locally');
-      await sqliteService.debugGetAllData();
-      console.log('tes');
+      const state = await NetInfo.fetch();
+
+      if (state.isConnected) {
+        const response = await fetch('http://10.0.2.2:5180/api/DepthAverage', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify([
+            {
+              imageUri: formData.imageUri,
+              jumlahLubang: formData.jumlahLubang,
+              prioritas: formData.prioritas,
+              lokasi: formData.lokasi,
+              kedalaman: JSON.stringify(formData.kedalaman),
+              average: formData.average,
+              tanggal: formData.tanggal,
+              synced: 1,
+            },
+          ]),
+        });
+
+        if (!response.ok) {
+          if (response.status === 409) {
+            const errorData = await response.json();
+            const nextPriority = Math.max(...errorData.existingPriorities) + 1;
+
+            return new Promise(resolve => {
+              Alert.alert(
+                'Priority Conflict',
+                `Priority ${formData.prioritas} is already used on ${formData.tanggal}.\nWe’ll update it to the next available: ${nextPriority}`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: async () => {
+                      const updatedFormData = {
+                        ...formData,
+                        prioritas: nextPriority,
+                        kedalaman: JSON.stringify(formData.kedalaman),
+                        synced: 1,
+                      };
+
+                      const {id, ...dataWithoutId} = updatedFormData;
+                      const cleanData = isNaN(id as number)
+                        ? dataWithoutId
+                        : updatedFormData;
+
+                      try {
+                        const retry = await fetch(
+                          'http://10.0.2.2:5180/api/DepthAverage',
+                          {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify([cleanData]),
+                          },
+                        );
+
+                        if (retry.ok) {
+                          setFormData({prioritas: nextPriority});
+                          resolve(true); // ✅ Success
+                        } else {
+                          console.error('Retry failed');
+                          resolve(false);
+                        }
+                      } catch (err) {
+                        console.error('Retry error:', err);
+                        resolve(false);
+                      }
+                    },
+                  },
+                ],
+              );
+            });
+          }
+
+          throw new Error('Failed to upload to server');
+        }
+
+        console.log('Data sent to API');
+      } else {
+        await dbService.saveData('DepthAverage', formData);
+        console.log('Saved locally (offline)');
+      }
+
+      await dbService.debugGetAllData();
+      return true;
     } catch (error) {
       console.error('Failed to save data:', error);
+      return false;
     }
   };
 
   const loadData = async (): Promise<DepthAverageData[]> => {
-    try {
-      const allData = await sqliteService.getAllData();
-      console.log('Loaded Data:', allData);
+    const netInfo = await NetInfo.fetch();
 
+    if (netInfo.isConnected) {
+      console.log('fetch history from real api');
+      try {
+        const response = await fetch('http://10.0.2.2:5180/api/DepthAverage');
+        const json = await response.json();
+
+        return json.map((item: any) => ({
+          id: item.id,
+          location: item.lokasi,
+          date: item.tanggal.split('T')[0],
+          average: `${item.average} cm`,
+          image: item.imageUri,
+          prioritas: item.prioritas,
+        }));
+      } catch (error) {
+        console.error('Failed to fetch data from API:', error);
+      }
+    }
+
+    try {
+      console.log('fetch history from sqlite');
+      const allData = await dbService.getAllData();
       return allData.map((item: any) => ({
-        id: item.id.toString(),
+        id: item.id,
         location: item.lokasi,
         date: item.tanggal,
         average: `${item.average} cm`,
         image: item.imageUri,
+        prioritas: item.prioritas,
       }));
     } catch (error) {
-      console.error('Failed to load depth average data:', error);
+      console.error('Failed to fetch data from SQLite:', error);
       return [];
     }
   };

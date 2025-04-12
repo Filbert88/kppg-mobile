@@ -15,6 +15,9 @@ namespace aspnet.Models
         public string JumlahLubang { get; set; } = "N/A";
 
         [Required]
+        public int Prioritas { get; set; } = 0;
+
+        [Required]
         public string Lokasi { get; set; } = "Unknown";
 
         [Required]
@@ -26,7 +29,6 @@ namespace aspnet.Models
         public DateTime Tanggal { get; set; } = DateTime.Now;
 
         [Required]
-        [Range(0, 1)]
         public int Synced { get; set; } = 0;
     }
 }

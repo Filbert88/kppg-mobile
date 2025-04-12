@@ -1,11 +1,9 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { Plus, Clock } from 'react-native-feather';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FormContext } from '../../context/FragmentationContext';
-import { DepthAverageContext } from '../../context/DepthAverageContext';
 
 type AddOrHistoryRouteProp = RouteProp<RootStackParamList, 'AddOrHistory'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddOrHistory'>;
@@ -15,19 +13,8 @@ const AddOrHistory = () => {
   const navigation = useNavigation<NavigationProp>();
   const { type } = route.params;
 
-    const {resetForm: resetFragmentationForm} = useContext(FormContext);
-    const {resetForm: resetDepthForm} = useContext(DepthAverageContext);
-
   const handleTambahPress = () => {
-    if (type === 'FragmentasiForm1') {
-      // Reset the Fragmentation form context.
-      resetFragmentationForm();
-      navigation.navigate('FragmentationForm1');
-    } else if (type === 'DepthAverage') {
-      // Reset the Depth Average context.
-      resetDepthForm();
-      navigation.navigate('DepthAverageUpload');
-    }
+    navigation.navigate('DatePriority', { type });
   };
 
   const handleRiwayatPress = () => {

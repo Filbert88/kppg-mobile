@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,17 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { Save, Percent } from 'react-native-feather';
-import { DepthAverageContext } from '../../context/DepthAverageContext';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
+import {Save, Percent} from 'react-native-feather';
+import {DepthAverageContext} from '../../context/DepthAverageContext';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA3'>;
 
 const FormDA3 = () => {
-  const { formData, setFormData, saveToDatabase } = useContext(DepthAverageContext);
+  const {formData, setFormData, saveToDatabase} =
+    useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [calculatedAverage, setCalculatedAverage] = useState<string>('N/A');
 
@@ -30,16 +31,18 @@ const FormDA3 = () => {
     : 'N/A';
 
   useEffect(() => {
-    if (averageValue !== formData.average) {
-      setFormData({ average: averageValue });
+    if (averageValue !== 'N/A') {
+      setFormData({average: averageValue});
       setCalculatedAverage(averageValue);
     }
-  }, [averageValue, formData.average, setFormData]);
+  }, [averageValue]);
 
   const handleSaveAndNavigate = async () => {
     try {
-      await saveToDatabase();
-      navigation.navigate('DAHistory');
+      const success = await saveToDatabase();
+      if (success) {
+        navigation.navigate('DAHistory');
+      }
     } catch (error) {
       console.error('Failed to save data:', error);
     }
@@ -75,8 +78,7 @@ const FormDA3 = () => {
           onPress={handleSaveAndNavigate}
           className={`px-6 py-3 rounded-lg shadow-md ml-auto flex-row items-center ${
             isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
-          }`}
-        >
+          }`}>
           <Text className="text-white font-bold mr-2">Simpan</Text>
           <Save width={20} height={20} color="white" />
         </TouchableOpacity>

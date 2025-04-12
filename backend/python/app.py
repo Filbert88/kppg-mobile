@@ -23,10 +23,13 @@ def ocr_endpoint():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400
 
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
+    unique_id = str(uuid.uuid4())
+    temp_filename = f"temp_image_{unique_id}.jpg"
     unique_id = str(uuid.uuid4())
     temp_filename = f"temp_image_{unique_id}.jpg"
     file.save(temp_filename)

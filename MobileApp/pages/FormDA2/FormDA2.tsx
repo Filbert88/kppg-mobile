@@ -24,11 +24,12 @@ const FormDA2 = () => {
   const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
 
   const handleChange = (field: string, value: string) => {
-    if (/^\d*\.?\d*$/.test(value)) {
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    if (/^\d*\.?\d*$/.test(cleaned)) {
       setFormData({
         kedalaman: {
           ...formData.kedalaman,
-          [field]: value,
+          [field]: cleaned,
         },
       });
     }

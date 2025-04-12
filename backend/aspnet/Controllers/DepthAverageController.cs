@@ -44,6 +44,24 @@ namespace aspnet.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            foreach (var newItem in depthAverages)
+            {
+                bool exists = await _context.DepthAverages
+                    .AnyAsync(d => d.Tanggal.Date == newItem.Tanggal.Date && d.Prioritas == newItem.Prioritas);
+
+                if (exists)
+                {
+                    return Conflict(new
+                    {
+                        message = $"Priority {newItem.Prioritas} on {newItem.Tanggal:yyyy-MM-dd} already exists.",
+                        existingPriorities = await _context.DepthAverages
+                            .Where(d => d.Tanggal.Date == newItem.Tanggal.Date)
+                            .Select(d => d.Prioritas)
+                            .ToListAsync()
+                    });
+                }
+            }
+
             _context.DepthAverages.AddRange(depthAverages);
             await _context.SaveChangesAsync();
 
@@ -86,6 +104,17 @@ namespace aspnet.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        // GET: api/DepthAverage/next-priority?tanggal=2025-04-10
+        [HttpGet("next-priority")]  
+        public async Task<IActionResult> GetNextPriority([FromQuery] DateTime tanggal)
+        {
+            var maxPriority = await _context.DepthAverages
+                .Where(d => d.Tanggal.Date == tanggal.Date)
+                .MaxAsync(d => (int?)d.Prioritas) ?? 0;
+
+            return Ok(maxPriority + 1);
         }
 
         private async Task<bool> DepthAverageExists(int id)

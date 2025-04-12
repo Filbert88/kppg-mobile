@@ -6,9 +6,10 @@ import { FragmentationFormData } from "./multi-step-form";
 interface GraphScreenProps {
   formData: FragmentationFormData;
   onSave: () => void; // Replaces onNext
+  onDiggingTimeClick: () => void;
 }
 
-export default function GraphScreen({ formData, onSave }: GraphScreenProps) {
+export default function GraphScreen({ formData, onSave, onDiggingTimeClick }: GraphScreenProps) {
   return (
     <div className="flex-1 flex flex-col p-6 w-full h-full mt-8 pb-24 relative">
       <div className="flex-1 space-y-6">
@@ -48,6 +49,15 @@ export default function GraphScreen({ formData, onSave }: GraphScreenProps) {
             </table>
           </div>
         </div>
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <Button
+          onClick={onDiggingTimeClick}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg"
+        >
+          Tambah Digging Time
+        </Button>
       </div>
 
       <div className="absolute bottom-8 right-4">

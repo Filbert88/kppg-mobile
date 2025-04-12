@@ -8,12 +8,13 @@ import AverageScreen from "./average-screen";
 import SummaryScreen from "./summary-screen";
 import ActionScreenDA from "./action-da";
 import DatePriority from "../date-priority";
+import { fetchNextPriority } from "@/lib/function";
 
 type DepthAverageFormData = {
   numberOfHoles: number;
   location: string;
   date: string;
-  priority: string; 
+  priority: string;
   image: string | null;
   depths: string[];
   average: string;
@@ -26,12 +27,12 @@ export default function DepthAverageForm({
     React.SetStateAction<"home" | "fragmentation" | "depthAverage">
   >;
 }) {
-  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for ActionScreenDA
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<DepthAverageFormData>({
     numberOfHoles: 0,
     location: "",
     date: "",
-    priority : "",
+    priority: "",
     image: null,
     depths: [],
     average: "22.5 cm",
@@ -50,7 +51,6 @@ export default function DepthAverageForm({
     }));
   };
 
-  // Update a specific depth by index
   const updateDepth = (index: number, value: string) => {
     setFormData((prev) => {
       const newDepths = [...prev.depths];
@@ -59,20 +59,16 @@ export default function DepthAverageForm({
     });
   };
 
-  const handleNext = () => {
-    // If leaving depth measurement step, calculate average
-    if (currentStep === 3) {
-      const depths = formData.depths.filter((d) => d !== "");
+  const handleNext = async () => {
+    if (currentStep === 4) {
+      const depths = formData.depths.filter((d) => d.trim() !== "");
       if (depths.length > 0) {
         const sum = depths.reduce(
-          (acc, curr) => acc + Number.parseFloat(curr || "0"),
+          (acc, curr) => acc + (Number.parseFloat(curr) || 0),
           0
         );
         const avg = sum / depths.length;
-        setFormData((prev) => ({
-          ...prev,
-          average: `${avg.toFixed(1)} cm`,
-        }));
+        updateFormData("average", `${avg.toFixed(1)} cm`);
       }
     }
     setCurrentStep((prev) => prev + 1);
@@ -81,42 +77,75 @@ export default function DepthAverageForm({
   const handleBack = () => {
     if (currentStep === 0) {
       setActiveScreen("home");
+    } else if (currentStep === 6) {
+      setCurrentStep(0);
     } else {
       setCurrentStep((prev) => prev - 1);
     }
   };
 
   const handleSave = async () => {
-    console.log("Depth Average data saved:", formData);
+    const payload = {
+      jumlahLubang: formData.numberOfHoles.toString(),
+      lokasi: formData.location,
+      tanggal: formData.date,
+      prioritas: Number(formData.priority),
+      kedalaman: JSON.stringify(
+        formData.depths.reduce((acc, val, index) => {
+          acc[`kedalaman${index + 1}`] = val;
+          return acc;
+        }, {} as Record<string, string>)
+      ),
+      average: formData.average.replace(" cm", ""),
+      imageUri: formData.image,
+      synced: 1,
+    };
+
     try {
-      // const res = await fetch("/api/depth-average", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
-      // if (res.ok) {
-      //   setActiveScreen("home");
-      // } else {
-      //   console.error("Error saving data");
-      // }
-      setActiveScreen("home");
+      const response = await fetch("http://localhost:5180/api/DepthAverage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([payload]),
+      });
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          const errorData = await response.json();
+          const nextPriority = Math.max(...errorData.existingPriorities) + 1;
+          alert(
+            `Priority ${formData.priority} already exists for ${formData.date}. Auto-updating to ${nextPriority}.`
+          );
+
+          payload.prioritas = nextPriority;
+
+          const retry = await fetch("http://localhost:5180/api/DepthAverage", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify([payload]),
+          });
+
+          if (retry.ok) {
+            console.log("Conflict resolved. Data saved with new priority.");
+            setActiveScreen("home");
+          } else {
+            throw new Error("Retry failed to save data.");
+          }
+        } else {
+          throw new Error("Failed to save Depth Average data.");
+        }
+      } else {
+        console.log("Data saved successfully");
+        setActiveScreen("home");
+      }
     } catch (error) {
-      console.error("Error saving data:", error);
+      console.error("Error saving Depth Average data:", error);
+      alert("Failed to save data.");
     }
   };
-
-  const renderBackButton = () => {
-    return (
-      <button
-        onClick={handleBack}
-        className="absolute left-0 top-0 bg-green-800 text-white px-4 py-2 font-medium rounded-lg"
-      >
-        Back
-      </button>
-    );
-  };
-
-  console.log("da", formData);
 
   const renderStep = () => {
     switch (currentStep) {
@@ -124,15 +153,21 @@ export default function DepthAverageForm({
         return (
           <ActionScreenDA
             onTambahClick={() => setCurrentStep(1)}
-            onRiwayatClick={() => setCurrentStep(5)}
+            onRiwayatClick={() => setCurrentStep(6)}
           />
         );
       case 1:
         return (
           <DatePriority
             date={formData.date}
-            onDateChange={(value) => updateFormData("date", value)}
-            priority={formData.priority} // Make sure your formData includes a 'priority' field.
+            priority={formData.priority}
+            onDateChange={async (value) => {
+              updateFormData("date", value);
+              const next = await fetchNextPriority(value, "depthAverage");
+              if (next !== null) {
+                updateFormData("priority", next.toString());
+              }
+            }}
             onPriorityChange={(value) => updateFormData("priority", value)}
             onNext={handleNext}
             formType="depthAverage"
@@ -143,7 +178,11 @@ export default function DepthAverageForm({
         return (
           <ImageUploadScreen
             image={formData.image}
-            onImageUpload={(img) => updateFormData("image", img)}
+            onImageSelect={(_, imageUrl, depths) => {
+              updateFormData("image", imageUrl);
+              updateFormData("numberOfHoles", depths.length);
+              updateFormData("depths", depths);
+            }}
             onNext={handleNext}
           />
         );
@@ -153,7 +192,7 @@ export default function DepthAverageForm({
             numberOfHoles={formData.numberOfHoles.toString()}
             location={formData.location}
             date={formData.date}
-            onUpdateNumberOfHoles={updateNumberOfHoles}
+            onUpdateNumberOfHoles={(value) => updateNumberOfHoles(value)}
             onUpdateLocation={(value) => updateFormData("location", value)}
             onNext={handleNext}
           />
@@ -169,7 +208,7 @@ export default function DepthAverageForm({
       case 5:
         return <AverageScreen average={formData.average} onSave={handleSave} />;
       case 6:
-        return <SummaryScreen formData={formData} onSave={handleSave} />;
+        return <SummaryScreen />;
       default:
         return null;
     }
@@ -177,7 +216,12 @@ export default function DepthAverageForm({
 
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-5xl relative h-full">
-      {renderBackButton()}
+      <button
+        onClick={handleBack}
+        className="absolute left-0 top-0 bg-green-800 text-white px-4 py-2 font-medium rounded-lg"
+      >
+        Back
+      </button>
       {renderStep()}
     </div>
   );

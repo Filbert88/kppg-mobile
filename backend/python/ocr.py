@@ -1,4 +1,4 @@
-from ocr_helper import ocr_pipeline, parse, parse_and_merge, write_to_json
+from OCR_Helper import ocr_pipeline, parse, parse_and_merge, write_to_json
 import shutil
 import os 
 from pathlib import Path
