@@ -1,12 +1,20 @@
-import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
-import { ArrowRight } from 'react-native-feather';
+import { ArrowRight, Save } from 'react-native-feather';
 import { requestPhotoPermission } from '../../components/requestPhotoPermission';
 import { DepthAverageContext } from '../../context/DepthAverageContext';
+import NetInfo from '@react-native-community/netinfo';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -15,9 +23,18 @@ type NavigationProp = NativeStackNavigationProp<
 
 const DepthAverageUpload = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { setFormData } = useContext(DepthAverageContext);
+  const { setFormData, saveToDatabase } = useContext(DepthAverageContext);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(!!state.isConnected);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleImagePicker = async () => {
     const hasPermission = await requestPhotoPermission();
@@ -40,7 +57,7 @@ const DepthAverageUpload = () => {
     }
   };
 
-  const handleNext = async () => {
+  const handleNextOnline = async () => {
     if (!imageUri) return;
 
     try {
@@ -51,7 +68,7 @@ const DepthAverageUpload = () => {
         uri: imageUri,
         name: 'image.jpg',
         type: 'image/jpeg',
-      } as any); 
+      } as any);
 
       const uploadResponse = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
         method: 'POST',
@@ -61,7 +78,7 @@ const DepthAverageUpload = () => {
       if (!uploadResponse.ok) throw new Error('Upload failed');
       const uploadResult = await uploadResponse.json();
       const imageUrl = uploadResult.url;
-
+      console.log("upload from dotnet: ",imageUrl)
       setFormData({ imageUri: imageUrl });
 
       const ocrResponse = await fetch('http://10.0.2.2:5180/api/ocr', {
@@ -97,6 +114,22 @@ const DepthAverageUpload = () => {
     }
   };
 
+  const handleSaveOffline = async () => {
+    if (!imageUri) return;
+  
+    setFormData({ imageUri }); // still useful for consistency
+  
+    const success = await saveToDatabase({ imageUri }); // <== inject it here
+  
+    if (success) {
+      Alert.alert('Berhasil', 'Data disimpan secara offline.');
+      navigation.goBack();
+    } else {
+      Alert.alert('Gagal', 'Gagal menyimpan data secara offline.');
+    }
+  };  
+
+  console.log(imageUri)
   const isFormValid = imageUri !== null;
 
   return (
@@ -140,28 +173,30 @@ const DepthAverageUpload = () => {
       <View className="absolute bottom-5 right-5 mb-4">
         <TouchableOpacity
           disabled={!isFormValid || isLoading}
+          onPress={isConnected ? handleNextOnline : handleSaveOffline}
           className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
             isFormValid && !isLoading ? 'bg-green-700' : 'bg-gray-400 opacity-60'
           }`}
-          onPress={handleNext}
         >
           {isLoading ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
             <>
-              <Text className="text-white font-semibold mr-2">Next</Text>
-              <ArrowRight width={18} height={18} color="white" />
+              <Text className="text-white font-semibold mr-2">
+                {isConnected ? 'Next' : 'Save Locally'}
+              </Text>
+              {isConnected ? (
+                <ArrowRight width={18} height={18} color="white" />
+              ) : (
+                <Save width={18} height={18} color="white" />
+              )}
             </>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Loading Overlay */}
       {isLoading && (
-        <View 
-          className="absolute inset-0 bg-black/50 flex justify-center items-center"
-          style={{ zIndex: 1000 }}
-        >
+        <View className="absolute inset-0 bg-black/50 flex justify-center items-center z-50">
           <View className="bg-white p-6 rounded-xl items-center">
             <ActivityIndicator size="large" color="#16a34a" />
             <Text className="mt-4 text-gray-700 font-medium text-base">
