@@ -4,7 +4,6 @@ import {
   useState,
   useEffect,
   useRef,
-  useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -36,108 +35,6 @@ import { HybridContainerRef, HybridContainerState } from "./HybridContainer";
 export interface ImageUploadFormRef {
   saveEditingState: () => void;
 }
-// --- Helper functions for cropping (unchanged) ---
-function createImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous");
-    image.src = url;
-  });
-}
-
-function getRadianAngle(degreeValue: number): number {
-  return (degreeValue * Math.PI) / 180;
-}
-
-function rotateSize(width: number, height: number, rotation: number) {
-  const rotRad = getRadianAngle(rotation);
-  return {
-    width:
-      Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
-    height:
-      Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
-  };
-}
-
-async function getCroppedImg(
-  imageSrc: string,
-  croppedAreaPixels: { x: number; y: number; width: number; height: number },
-  rotation = 0,
-  flip = { horizontal: false, vertical: false }
-): Promise<string | null> {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const rotRad = rotation * (Math.PI / 180);
-  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-    image.width,
-    image.height,
-    rotation
-  );
-  canvas.width = bBoxWidth;
-  canvas.height = bBoxHeight;
-  ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-  ctx.rotate(rotRad);
-  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
-  ctx.translate(-image.width / 2, -image.height / 2);
-  ctx.drawImage(image, 0, 0);
-  const croppedCanvas = document.createElement("canvas");
-  const croppedCtx = croppedCanvas.getContext("2d");
-  if (!croppedCtx) return null;
-  croppedCanvas.width = croppedAreaPixels.width;
-  croppedCanvas.height = croppedAreaPixels.height;
-  croppedCtx.drawImage(
-    canvas,
-    croppedAreaPixels.x,
-    croppedAreaPixels.y,
-    croppedAreaPixels.width,
-    croppedAreaPixels.height,
-    0,
-    0,
-    croppedAreaPixels.width,
-    croppedAreaPixels.height
-  );
-  return new Promise((resolve, reject) => {
-    croppedCanvas.toBlob((blob) => {
-      if (blob) {
-        resolve(URL.createObjectURL(blob));
-      } else {
-        reject(new Error("Canvas is empty"));
-      }
-    }, "image/png");
-  });
-}
-
-// Helper: Convert a data URL to a Blob.
-function dataURLtoBlob(dataurl: string): Blob {
-  const arr = dataurl.split(",");
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  if (!mimeMatch) throw new Error("Invalid data URL");
-  const mime = mimeMatch[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-}
-
-// --- Types for tools and shapes ---
-export type Tool =
-  | "none"
-  | "draw"
-  | "erase"
-  | "fill"
-  | "crop"
-  | "shapes"
-  | "line"
-  | "zoomIn"
-  | "zoomOut";
-export type ShapeType = "rect" | "circle";
 
 interface ImageUploadFormProps {
   formData: {
@@ -153,24 +50,33 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     // Image states
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [bgImage, setBgImage] = useState<string | null>(null);
-
     const [editingStates, setEditingStates] = useState<{
       [key: string]: HybridContainerState;
     }>(() => formData.editingStates || {});
 
-    // Canvas editing states
-    const [activeTool, setActiveTool] = useState<Tool>("none");
+    // Canvas editing states and tool selection
+    const [activeTool, setActiveTool] = useState<
+      | "none"
+      | "draw"
+      | "erase"
+      | "fill"
+      | "crop"
+      | "shapes"
+      | "line"
+      | "zoomIn"
+      | "zoomOut"
+    >("none");
     const [chosenColor, setChosenColor] = useState("#000000");
     const [lineThickness, setLineThickness] = useState<number>(3);
-    const [shapeType, setShapeType] = useState<ShapeType>("rect");
+    const [shapeType, setShapeType] = useState<"rect" | "circle">("rect");
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [showShapePicker, setShowShapePicker] = useState(false);
     const [showThicknessPicker, setShowThicknessPicker] = useState(false);
     const [showCropModal, setShowCropModal] = useState(false);
     const [disablePan, setDisablePan] = useState(false);
 
-    // Now, for react cropper we'll create a ref.
-    const cropperRef = useRef<HTMLImageElement | any>(null);
+    // React Cropper ref.
+    const cropperRef = useRef<any>(null);
 
     // Refs for TransformWrapper and container capture
     const transformWrapperRef = useRef<any>(null);
@@ -178,14 +84,11 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const hybridContainerRef = useRef<HybridContainerRef>(null);
 
     useEffect(() => {
-      console.log("use effect 1");
       if (!selectedImage && formData.images.length > 0) {
         const latestImage = formData.images[0];
         setSelectedImage(latestImage);
         setBgImage(latestImage);
-        console.log("masuk use effect 1", editingStates[latestImage]);
         if (editingStates[latestImage] && hybridContainerRef.current) {
-          console.log("Panggil Editing state di use effect 1");
           hybridContainerRef.current.setEditingState(
             editingStates[latestImage]
           );
@@ -194,10 +97,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     }, [selectedImage, formData.images]);
 
     useEffect(() => {
-      // Jika sudah ada bgImage + editingStates-nya, panggil setEditingState
-      console.log("use effect 2");
       if (bgImage && editingStates[bgImage] && hybridContainerRef.current) {
-        console.log("masuk use effect 2");
         hybridContainerRef.current.setEditingState(editingStates[bgImage]);
       }
     }, [bgImage, editingStates]);
@@ -205,6 +105,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
+        // Save the state of the current image first (if any)
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
           setEditingStates((prev) => ({
@@ -216,13 +117,11 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             [selectedImage]: currentState,
           });
         }
-        // Read file as DataURL
         const reader = new FileReader();
         reader.onload = (event) => {
           const newImageUrl = (event.target?.result as string) || "";
           const updatedImages = [...formData.images, newImageUrl];
           updateFormData("images", updatedImages);
-          // Switch image will set selectedImage, setBgImage, and load/reset state as needed.
           switchImage(newImageUrl);
         };
         reader.readAsDataURL(file);
@@ -231,7 +130,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
     const isFormValid = formData.images.length > 0;
 
-    function handleToolSelect(tool: Tool) {
+    function handleToolSelect(tool: typeof activeTool) {
       if (tool === "zoomIn") {
         transformWrapperRef.current?.zoomIn();
         setActiveTool("none");
@@ -254,15 +153,13 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       } else if (tool === "line" || tool === "erase") {
         setShowThicknessPicker(true);
       } else if (tool === "crop") {
-        // Show crop modal using react-cropper
         setShowCropModal(true);
       }
     }
 
-    // For React Cropper, no need for onCropComplete callback.
+    // Crop functions
     async function handleCropDone() {
       if (cropperRef.current) {
-        // Get the cropper instance and then get the cropped canvas.
         const cropper = cropperRef.current.cropper;
         const croppedCanvas = cropper.getCroppedCanvas();
         if (croppedCanvas) {
@@ -284,16 +181,15 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       setActiveTool("none");
     }
 
-    // Save the editing state for the current image
+    // Save current editing state
     function saveCurrentEditingState() {
       if (selectedImage && hybridContainerRef.current) {
         const state = hybridContainerRef.current.getEditingState();
-        console.log(state);
         setEditingStates((prev) => ({ ...prev, [selectedImage]: state }));
       }
     }
 
-    // Switch image from the sidebar: save current editing state and load state if it exists.
+    // Switch current image
     function switchImage(newImage: string) {
       saveCurrentEditingState();
       setSelectedImage(newImage);
@@ -314,7 +210,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       saveEditingState() {
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
-          console.log(currentState);
           const newStates = { ...editingStates, [selectedImage]: currentState };
           setEditingStates(newStates);
           updateFormData("editingStates", newStates);
@@ -324,8 +219,8 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
     /**
      * handleNext:
-     * We use html2canvas to capture the container that holds the ImageContainer.
-     * This is done at natural size by removing any CSS scaling, so the capture is done at the natural dimensions.
+     * Capture the current image editing container using html2canvas,
+     * create a File from the resulting image, upload it, and call the multi-fragment API.
      */
     const handleNext = async () => {
       if (!imageContainerRef.current) {
@@ -341,6 +236,8 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           }));
         }
         updateFormData("editingStates", editingStates);
+
+        // Capture the edited canvas
         const canvas = await html2canvas(imageContainerRef.current, {
           useCORS: true,
           logging: false,
@@ -348,36 +245,69 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         const finalDataUrl = canvas.toDataURL("image/png");
         const blob = dataURLtoBlob(finalDataUrl);
         const file = new File([blob], "editedImage.png", { type: blob.type });
+        // 1. Upload the image to your upload service.
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
-        const response = await fetch(
+        const uploadResponse = await fetch(
           "http://localhost:5180/api/Upload/upload",
           {
             method: "POST",
             body: formDataUpload,
           }
         );
-        if (!response.ok) {
-          throw new Error("Upload failed with status " + response.status);
+        if (!uploadResponse.ok) {
+          throw new Error("Upload failed with status " + uploadResponse.status);
         }
-        const result = await response.json();
-        console.log("Upload service returned URL:", result.url);
+        const uploadResult = await uploadResponse.json();
+        console.log("Uploaded image URL:", uploadResult.url);
+        // 2. Call the multi-fragment API with the file.
+        const formDataFragment = new FormData();
+        formDataFragment.append("files", file); // send as a file collection
+        const fragmentResponse = await fetch(
+          "http://localhost:5180/api/Fragmentation/multi-fragment",
+          {
+            method: "POST",
+            body: formDataFragment,
+          }
+        );
+        if (!fragmentResponse.ok) {
+          throw new Error(
+            "Fragmentation failed with status " + fragmentResponse.status
+          );
+        }
+        const fragResult = await fragmentResponse.json();
+        console.log("Fragmentation result:", fragResult);
+        // Proceed to the next step.
         onNext();
       } catch (error) {
-        console.error("Error capturing and uploading image:", error);
+        console.error("Error in handleNext:", error);
       }
     };
 
     function handleHybridRefReady(hRef: HybridContainerRef | null) {
       if (bgImage && editingStates[bgImage] && hRef) {
-        console.log("handle hybrid dev dipanggil");
         hRef.setEditingState(editingStates[bgImage]);
       }
     }
 
+    // Helper to convert data URL to Blob.
+    function dataURLtoBlob(dataurl: string): Blob {
+      const arr = dataurl.split(",");
+      const mimeMatch = arr[0].match(/:(.*?);/);
+      if (!mimeMatch) throw new Error("Invalid data URL");
+      const mime = mimeMatch[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    }
+
     return (
       <div className="flex h-full">
-        {/* Sidebar for images */}
+        {/* Sidebar for image thumbnails */}
         <div className="w-1/5 border-r border-gray-300 p-4 overflow-y-auto pt-20">
           {formData.images.map((img, idx) => (
             <div
@@ -461,8 +391,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
               </button>
             </div>
           )}
-
-          {/* Container captured by html2canvas */}
+          {/* Image container captured by html2canvas */}
           <div
             ref={imageContainerRef}
             className="flex border border-gray-300 rounded-md justify-center"
@@ -522,7 +451,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             </label>
           </div>
 
-          {/* Crop Modal using React Cropper */}
+          {/* Crop Modal */}
           {showCropModal && bgImage && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
               <div
@@ -532,7 +461,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                 <Cropper
                   src={bgImage}
                   style={{ height: "100%", width: "100%" }}
-                  // Optionally set an aspect ratio here; remove or change as needed.
                   aspectRatio={600 / 400}
                   guides={true}
                   responsive={true}
@@ -559,7 +487,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                 } else {
                   setChosenColor(newColor);
                 }
-
                 setShowColorPicker(false);
               }}
             />
@@ -573,7 +500,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                 } else {
                   setShapeType(selectedShape);
                 }
-
                 setShowShapePicker(false);
               }}
             />
@@ -587,7 +513,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                 } else {
                   setLineThickness(newThickness);
                 }
-
                 setShowThicknessPicker(false);
               }}
             />

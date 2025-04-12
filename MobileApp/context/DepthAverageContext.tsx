@@ -25,7 +25,7 @@ type FormDataType = {
 type DepthAverageContextType = {
   formData: FormDataType;
   setFormData: (data: Partial<FormDataType>) => void;
-  saveToDatabase: () => Promise<boolean>;
+  saveToDatabase: (overrideData?: Partial<FormDataType>) => Promise<boolean>;
   loadData: () => Promise<DepthAverageData[]>;
   resetForm: () => void;
 };
@@ -60,7 +60,8 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     setFormDataState(prev => ({...prev, ...data}));
   };
 
-  const saveToDatabase = async (): Promise<boolean> => {
+  const saveToDatabase = async (overrideData?: Partial<FormDataType>): Promise<boolean> => {
+    const data = overrideData ? { ...formData, ...overrideData } : formData;
     try {
       const state = await NetInfo.fetch();
 
@@ -140,7 +141,11 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
 
         console.log('Data sent to API');
       } else {
-        await dbService.saveData('DepthAverage', formData);
+        await dbService.saveData('DepthAverage', {
+          imageUri: data.imageUri,
+          tanggal: data.tanggal,
+          prioritas: data.prioritas,
+        });
         console.log('Saved locally (offline)');
       }
 

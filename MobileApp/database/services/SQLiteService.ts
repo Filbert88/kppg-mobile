@@ -269,13 +269,13 @@ export default class SQLiteService {
         query = `INSERT INTO DepthAverage (imageUri, jumlahLubang, lokasi, tanggal, kedalaman, average, prioritas, synced)
            VALUES (?, ?, ?, ?, ?, ?, ?, 0)`;
         params = [
-          data.imageUri,
-          data.jumlahLubang,
-          data.lokasi,
-          data.tanggal,
-          JSON.stringify(data.kedalaman),
-          data.average,
-          data.prioritas, 
+          data.imageUri || null,
+          data.jumlahLubang || null,
+          data.lokasi || null,
+          data.tanggal || null,
+          data.kedalaman ? JSON.stringify(data.kedalaman) : null,
+          data.average || null,
+          data.prioritas || 0,
         ];
         break;
 
