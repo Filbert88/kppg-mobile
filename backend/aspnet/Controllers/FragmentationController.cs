@@ -103,62 +103,88 @@ namespace aspnet.Controllers
             return await _context.FragmentationDatas.AnyAsync(e => e.Id == id);
         }
 
-        // POST: api/Fragmentation/fragment
-        // This function remains largely unchanged. It calls an external Python service to process an image.
-        [HttpPost("fragment")]
-        public async Task<IActionResult> Fragment(IFormFile file)
+        // POST: api/Fragmentation/multi-fragment
+        [HttpPost("multi-fragment")]
+        public async Task<IActionResult> MultiFragment(List<IFormFile> files)
         {
-            if (file == null || file.Length == 0)
+            if (files == null || files.Count == 0)
+                return BadRequest("No files uploaded.");
+
+            var results = new List<object>();
+            foreach (var file in files)
             {
-                return BadRequest("No file uploaded.");
-            }
+                var inputFileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+                var inputPath = Path.Combine(_env.WebRootPath, "Images", inputFileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(inputPath)!);
+                await using (var stream = new FileStream(inputPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
 
-            var inputFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            var imagesFolder = Path.Combine(_env.WebRootPath, "Images");
-            Directory.CreateDirectory(imagesFolder); 
-
-            var inputPath = Path.Combine(imagesFolder, inputFileName);
-            using (var stream = new FileStream(inputPath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            // URL of your Python fragmentation service.
-            var pythonUrl = "http://localhost:5000/fragment";
-            byte[] fragmentedImageBytes;
-
-            using (var httpClient = _clientFactory.CreateClient())
-            {
                 using var form = new MultipartFormDataContent();
-                using var fileContent = new StreamContent(System.IO.File.OpenRead(inputPath));
-                fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                using var imageContent = new StreamContent(System.IO.File.OpenRead(inputPath));
+                imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                form.Add(imageContent, "file", inputFileName);
 
-                form.Add(fileContent, "file", inputFileName);
-
-                var response = await httpClient.PostAsync(pythonUrl, form);
+                var client = _clientFactory.CreateClient();
+                var response = await client.PostAsync("http://localhost:5000/fragmentation-red-outline", form);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return StatusCode((int)response.StatusCode,
-                        "Error calling Python fragmentation service.");
+                    results.Add(new
+                    {
+                        filename = inputFileName,
+                        error = $"Python API error: {response.StatusCode}"
+                    });
+                    continue;
                 }
 
-                fragmentedImageBytes = await response.Content.ReadAsByteArrayAsync();
+                var responseData = await response.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(responseData); // you can strongly type this
+
+                results.Add(new
+                {
+                    filename = inputFileName,
+                    result = parsed
+                });
+
+                // Optionally delete the temporary file
+                System.IO.File.Delete(inputPath);
             }
 
-            var outputFileName = $"fragmented_{inputFileName}.png";
-            var outputPath = Path.Combine(imagesFolder, outputFileName);
-            await System.IO.File.WriteAllBytesAsync(outputPath, fragmentedImageBytes);
+            return Ok(results);
+        }
 
-            var relativePath = $"/Images/{outputFileName}";
-            return Ok(new 
-            { 
-                message = "Fragmentation successful",
-                segmentedImagePath = relativePath
-            });
+        // POST: api/Fragmentation/fragmentation-analysis
+        [HttpPost("fragmentation-analysis")]
+        public async Task<IActionResult> RunFragmentationAnalysis(IFormFile file, [FromForm] double A, [FromForm] double K, [FromForm] double Q, [FromForm] double E, [FromForm] double n, [FromForm] double conversion)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
 
-            // Optionally, you could return the raw file directly:
-            // return PhysicalFile(outputPath, "image/png");
+            var client = _clientFactory.CreateClient();
+
+            using var content = new MultipartFormDataContent();
+            using var fileStream = file.OpenReadStream();
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+
+            content.Add(fileContent, "file", file.FileName);
+            content.Add(new StringContent(A.ToString()), "A");
+            content.Add(new StringContent(K.ToString()), "K");
+            content.Add(new StringContent(Q.ToString()), "Q");
+            content.Add(new StringContent(E.ToString()), "E");
+            content.Add(new StringContent(n.ToString()), "n");
+            content.Add(new StringContent(conversion.ToString()), "conversion");
+
+            var pythonUrl = "http://localhost:5000/fragmentation-analysis";
+            var response = await client.PostAsync(pythonUrl, content);
+
+            if (!response.IsSuccessStatusCode)
+                return StatusCode((int)response.StatusCode, "Failed to call Python fragmentation analysis service.");
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            return Content(jsonResponse, "application/json");
         }
     }
 }

@@ -13,6 +13,7 @@ import DatePriority from "../date-priority";
 import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
 
+// Added fragmentationResults field for storing analysis data.
 export type FragmentationFormData = {
   scale: string;
   option: string;
@@ -28,6 +29,7 @@ export type FragmentationFormData = {
   editingStates: Record<string, HybridContainerState>;
   imagesFrag: string[];
   editingFragStates: Record<string, HybridContainerState>;
+  fragmentationResults: any[]; // New field to hold the fragmentation analysis results.
 };
 
 interface MultiStepFormProps {
@@ -54,6 +56,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     editingStates: {},
     imagesFrag: [],
     editingFragStates: {},
+    fragmentationResults: [],
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -70,7 +73,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
   const imageUploadFormRef = useRef<ImageUploadFormRef>(null);
   const imageUploadFragRef = useRef<ImageUploadFragRef>(null);
   function handleBack() {
-    // 1) Kalau step == 6, panggil childRef.current?.saveEditingState()
+    // If we are on a step where an image editor is open, save its editing state first.
     if (currentStep === 6) {
       imageUploadFormRef.current?.saveEditingState();
     }
@@ -78,11 +81,11 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     if (currentStep === 7) {
       imageUploadFragRef.current?.saveEditingState();
     }
-    // 2) Baru ganti step
+
+    // Change the step or return to "home" if at the beginning or end.
     if (currentStep === 1) {
       setActiveScreen("home");
     } else if (currentStep === 8) {
-      setActiveScreen("home");
       setActiveScreen("home");
     } else {
       setCurrentStep((prev) => prev - 1);
@@ -140,7 +143,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onNext={handleNext}
           />
         );
-
       case 4:
         return (
           <MaterialForm
@@ -149,7 +151,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onNext={handleNext}
           />
         );
-
       case 5:
         return (
           <PowderFactorForm
@@ -158,7 +159,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onNext={handleNext}
           />
         );
-
       case 6:
         return (
           <ImageUploadForm
@@ -169,18 +169,16 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onNext={handleNext}
           />
         );
-
       case 7:
         return (
           <ImageUploadedFrag
             key={currentStep}
-            ref={imageUploadFormRef}
+            ref={imageUploadFragRef}
             formData={formData}
             updateFormData={updateFormData}
             onNext={handleNext}
           />
         );
-
       case 8:
         return (
           <GraphScreen
@@ -199,7 +197,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             onSave={handleSave}
           />
         );
-
       default:
         return null;
     }

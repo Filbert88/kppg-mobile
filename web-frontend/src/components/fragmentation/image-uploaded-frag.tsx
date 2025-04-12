@@ -4,7 +4,6 @@ import {
   useState,
   useEffect,
   useRef,
-  useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -21,7 +20,7 @@ import {
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
-import "cropperjs/dist/cropper.css"; // Import Cropper.css from cropperjs
+import "cropperjs/dist/cropper.css";
 import html2canvas from "html2canvas";
 
 // Modal components
@@ -29,11 +28,10 @@ import ColorPickerModal from "./modal/ColorPickerModal";
 import ShapePickerModal from "./modal/ShapePickerModal";
 import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 
-// Image container for canvas drawing (ref forwarded down to PixelCanvas)
+// Image container for canvas drawing
 import ImageContainer from "./ImageContainer";
 import { HybridContainerRef, HybridContainerState } from "./HybridContainer";
 
-// --- Types for tools and shapes ---
 export type Tool =
   | "none"
   | "draw"
@@ -46,11 +44,11 @@ export type Tool =
   | "zoomOut";
 export type ShapeType = "rect" | "circle";
 
-// --- Props interface for Fragmented Image Upload ---
 interface ImageUploadedFragProps {
   formData: {
     imagesFrag: string[];
     editingFragStates: Record<string, HybridContainerState>;
+    // fragmentationResults field is updated via updateFormData.
   };
   updateFormData: (field: string, value: any) => void;
   onNext: () => void;
@@ -60,55 +58,34 @@ export interface ImageUploadFragRef {
   saveEditingState: () => void;
 }
 
-function dataURLtoBlob(dataurl: string): Blob {
-  const arr = dataurl.split(",");
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  if (!mimeMatch) throw new Error("Invalid data URL");
-  const mime = mimeMatch[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-}
-
 const ImageUploadedFrag = forwardRef<
   ImageUploadFragRef,
   ImageUploadedFragProps
 >(({ formData, updateFormData, onNext }, ref) => {
-  // Image states – note we use imagesFrag here
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [bgImage, setBgImage] = useState<string | null>(null);
   const [disablePan, setDisablePan] = useState(false);
 
-  // Use editingFragStates from formData
   const [editingStates, setEditingStates] = useState<{
     [key: string]: HybridContainerState;
   }>(() => formData.editingFragStates || {});
 
-  // Canvas editing states
   const [activeTool, setActiveTool] = useState<Tool>("none");
   const [chosenColor, setChosenColor] = useState("#000000");
   const [lineThickness, setLineThickness] = useState<number>(3);
   const [shapeType, setShapeType] = useState<ShapeType>("rect");
 
-  // Modal toggles
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
 
-  // For React Cropper (crop modal)
   const cropperRef = useRef<any>(null);
 
-  // Refs for TransformWrapper and container capture
   const transformWrapperRef = useRef<any>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const hybridContainerRef = useRef<HybridContainerRef>(null);
 
-  // On mount, set the first image if available
   useEffect(() => {
     if (!selectedImage && formData.imagesFrag.length > 0) {
       const latestImage = formData.imagesFrag[0];
@@ -121,7 +98,6 @@ const ImageUploadedFrag = forwardRef<
   }, [selectedImage, formData.imagesFrag]);
 
   useEffect(() => {
-    // When bgImage or its editing state changes, update HybridContainer
     if (bgImage && editingStates[bgImage] && hybridContainerRef.current) {
       hybridContainerRef.current.setEditingState(editingStates[bgImage]);
     }
@@ -146,7 +122,6 @@ const ImageUploadedFrag = forwardRef<
         const newImageUrl = (event.target?.result as string) || "";
         const updatedImages = [...formData.imagesFrag, newImageUrl];
         updateFormData("imagesFrag", updatedImages);
-        // Switch image will set selectedImage, setBgImage and load/reset state.
         switchImage(newImageUrl);
       };
       reader.readAsDataURL(file);
@@ -182,14 +157,12 @@ const ImageUploadedFrag = forwardRef<
     }
   }
 
-  // handleCropDone using React Cropper:
   async function handleCropDone() {
     if (cropperRef.current) {
       const cropper = cropperRef.current.cropper;
       const croppedCanvas = cropper.getCroppedCanvas();
       if (croppedCanvas) {
         const croppedImageUrl = croppedCanvas.toDataURL("image/png");
-        // Update the form data: replace the image that is being cropped with the cropped image.
         const newImages = formData.imagesFrag.map((img) =>
           img === selectedImage ? croppedImageUrl : img
         );
@@ -207,7 +180,6 @@ const ImageUploadedFrag = forwardRef<
     setActiveTool("none");
   }
 
-  // Save current editing state
   function saveCurrentEditingState() {
     if (selectedImage && hybridContainerRef.current) {
       const state = hybridContainerRef.current.getEditingState();
@@ -215,7 +187,6 @@ const ImageUploadedFrag = forwardRef<
     }
   }
 
-  // Switch image from the sidebar
   function switchImage(newImage: string) {
     saveCurrentEditingState();
     setSelectedImage(newImage);
@@ -231,7 +202,6 @@ const ImageUploadedFrag = forwardRef<
     }
   }
 
-  // Expose method to parent via useImperativeHandle
   useImperativeHandle(ref, () => ({
     saveEditingState() {
       if (selectedImage && hybridContainerRef.current) {
@@ -245,8 +215,9 @@ const ImageUploadedFrag = forwardRef<
 
   /**
    * handleNext:
-   * We use html2canvas to capture the container that holds ImageContainer.
-   * The container is captured at its natural dimensions.
+   * Loop over all images in imagesFrag, convert each base64 image to a File,
+   * and call the fragmentation analysis API.
+   * The API parameters are currently hard-coded—replace with your actual values or form data.
    */
   const handleNext = async () => {
     if (!imageContainerRef.current) {
@@ -262,36 +233,65 @@ const ImageUploadedFrag = forwardRef<
         }));
       }
       updateFormData("editingFragStates", editingStates);
-      const canvas = await html2canvas(imageContainerRef.current, {
-        useCORS: true,
-        logging: false,
-      });
-      const finalDataUrl = canvas.toDataURL("image/png");
-      const blob = dataURLtoBlob(finalDataUrl);
-      const file = new File([blob], "editedImage.png", { type: blob.type });
-      const formDataUpload = new FormData();
-      formDataUpload.append("file", file);
-      const response = await fetch("http://localhost:5180/api/Upload/upload", {
-        method: "POST",
-        body: formDataUpload,
-      });
-      if (!response.ok) {
-        throw new Error("Upload failed with status " + response.status);
+
+      const fragResults: any[] = [];
+      // Loop over each fragmented image.
+      for (const img of formData.imagesFrag) {
+        // Convert the base64 string to a Blob and then to a File.
+        const blob = dataURLtoBlob(img);
+        const file = new File([blob], "editedImage.png", { type: blob.type });
+        const formDataAnalysis = new FormData();
+        formDataAnalysis.append("file", file);
+        // Use default values for analysis parameters.
+        formDataAnalysis.append("A", "1.0");
+        formDataAnalysis.append("K", "1.0");
+        formDataAnalysis.append("Q", "1.0");
+        formDataAnalysis.append("E", "1.0");
+        formDataAnalysis.append("n", "1.0");
+        formDataAnalysis.append("conversion", "1.0");
+
+        const analysisResponse = await fetch(
+          "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
+          {
+            method: "POST",
+            body: formDataAnalysis,
+          }
+        );
+        if (!analysisResponse.ok) {
+          throw new Error(
+            "Fragmentation analysis failed with status " +
+              analysisResponse.status
+          );
+        }
+        const analysisResult = await analysisResponse.json();
+        fragResults.push({ image: img, result: analysisResult });
       }
-      const result = await response.json();
-      console.log("Upload service returned URL:", result.url);
+      // Save the collected fragmentation results into formData.
+      updateFormData("fragmentationResults", fragResults);
       onNext();
     } catch (error) {
-      console.error("Error capturing and uploading image:", error);
+      console.error("Error during fragmentation analysis:", error);
     }
   };
 
-  // (Optional) Callback for HybridContainer reference ready
   function handleHybridRefReady(hRef: HybridContainerRef | null) {
     if (bgImage && editingStates[bgImage] && hRef) {
-      console.log("handle hybrid ref dipanggil");
       hRef.setEditingState(editingStates[bgImage]);
     }
+  }
+
+  function dataURLtoBlob(dataurl: string): Blob {
+    const arr = dataurl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) throw new Error("Invalid data URL");
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
   }
 
   return (
@@ -370,7 +370,6 @@ const ImageUploadedFrag = forwardRef<
           </div>
         )}
 
-        {/* Container captured by html2canvas */}
         <div
           ref={imageContainerRef}
           className="flex border border-gray-300 rounded-md bg-white justify-center"
@@ -429,7 +428,7 @@ const ImageUploadedFrag = forwardRef<
           </label>
         </div>
 
-        {/* Crop Modal using React Cropper */}
+        {/* Crop Modal */}
         {showCropModal && bgImage && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div
@@ -439,7 +438,6 @@ const ImageUploadedFrag = forwardRef<
               <Cropper
                 src={bgImage}
                 style={{ height: "100%", width: "100%" }}
-                // Optionally set an aspect ratio (remove or change if needed)
                 aspectRatio={600 / 400}
                 guides={true}
                 responsive={true}
@@ -456,50 +454,46 @@ const ImageUploadedFrag = forwardRef<
           </div>
         )}
 
- {/* Other Modals */}
-          {showColorPicker && (
-            <ColorPickerModal
-              initialColor={chosenColor}
-              onClose={(newColor: string | null) => {
-                if (newColor === null) {
-                  setActiveTool("none");
-                } else {
-                  setChosenColor(newColor);
-                }
-
-                setShowColorPicker(false);
-              }}
-            />
-          )}
-          {showShapePicker && (
-            <ShapePickerModal
-              defaultShape={shapeType}
-              onClose={(selectedShape: "rect" | "circle" | null) => {
-                if (selectedShape === null) {
-                  setActiveTool("none");
-                } else {
-                  setShapeType(selectedShape);
-                }
-
-                setShowShapePicker(false);
-              }}
-            />
-          )}
-          {showThicknessPicker && (
-            <ThicknessPickerModal
-              initialThickness={lineThickness}
-              onClose={(newThickness: number | null) => {
-                if (newThickness === null) {
-                  setActiveTool("none");
-                } else {
-                  setLineThickness(newThickness);
-                }
-
-                setShowThicknessPicker(false);
-              }}
-            />
-          )}
-
+        {/* Other Modals */}
+        {showColorPicker && (
+          <ColorPickerModal
+            initialColor={chosenColor}
+            onClose={(newColor: string | null) => {
+              if (newColor === null) {
+                setActiveTool("none");
+              } else {
+                setChosenColor(newColor);
+              }
+              setShowColorPicker(false);
+            }}
+          />
+        )}
+        {showShapePicker && (
+          <ShapePickerModal
+            defaultShape={shapeType}
+            onClose={(selectedShape: "rect" | "circle" | null) => {
+              if (selectedShape === null) {
+                setActiveTool("none");
+              } else {
+                setShapeType(selectedShape);
+              }
+              setShowShapePicker(false);
+            }}
+          />
+        )}
+        {showThicknessPicker && (
+          <ThicknessPickerModal
+            initialThickness={lineThickness}
+            onClose={(newThickness: number | null) => {
+              if (newThickness === null) {
+                setActiveTool("none");
+              } else {
+                setLineThickness(newThickness);
+              }
+              setShowThicknessPicker(false);
+            }}
+          />
+        )}
 
         {/* Next Button */}
         <div className="mt-6 flex justify-end absolute bottom-0 right-0">
