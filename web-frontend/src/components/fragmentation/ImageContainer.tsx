@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, forwardRef, useRef } from "react";
 import HybridContainer, { HybridContainerRef } from "./HybridContainer";
 import { Tool } from "./canvas";
 
@@ -43,6 +43,7 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
     },
     ref
   ) => {
+    const hasHybridRefTriggered = useRef(false);
     const [containerSize, setContainerSize] = useState<{
       width: number;
       height: number;
@@ -91,27 +92,26 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
       img.src = backgroundImage;
     }, [backgroundImage]);
 
-    useEffect(() => {
-      // Jika hybridContainerRef sudah tersedia, panggil callback onHybridRefReady
-      console.log("triggere");
-      if (!onHybridRefReady) return;
+    // useEffect(() => {
+    //   // Jika hybridContainerRef sudah tersedia, panggil callback onHybridRefReady
+    //   console.log("triggere");
+    //   if (!onHybridRefReady) return;
 
-      console.log("triggere");
-      if (
-        hybridContainerRef &&
-        typeof hybridContainerRef !== "function" &&
-        hybridContainerRef.current
-      ) {
-        console.log("Href ready");
-        onHybridRefReady(hybridContainerRef.current);
-      }
-    }, [hybridContainerRef]);
+    //   if (
+    //     hybridContainerRef &&
+    //     typeof hybridContainerRef !== "function" &&
+    //     hybridContainerRef.current
+    //   ) {
+    //     console.log("Href ready");
+    //     onHybridRefReady(hybridContainerRef.current);
+    //   }
+    // }, []);
 
     // Hanya render ketika containerSize sudah di-set (tidak 0)
     if (containerSize.width === 0 || containerSize.height === 0) {
       return <div>Loading image...</div>;
     }
-
+    
     return (
       <div
         style={{
@@ -154,11 +154,13 @@ const ImageContainer = forwardRef<HTMLDivElement, ImageContainerProps>(
           >
             <HybridContainer
               ref={mergeRefs(hybridContainerRef, (hybridRef) => {
-                if (hybridRef) {
+                if (hybridRef && !hasHybridRefTriggered.current) {
                   console.log("HybridContainer sudah siap");
                   if (onHybridRefReady) {
+                    console.log("masuk");
                     onHybridRefReady(hybridRef);
                   }
+                  hasHybridRefTriggered.current = true;
                 }
               })}
               width={containerSize.width}

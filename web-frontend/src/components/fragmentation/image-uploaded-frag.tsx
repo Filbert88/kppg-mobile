@@ -175,7 +175,7 @@ const ImageUploadedFrag = forwardRef<
       setShowColorPicker(true);
     } else if (tool === "shapes") {
       setShowShapePicker(true);
-    } else if (tool === "line") {
+    } else if (tool === "line" || tool === "erase") {
       setShowThicknessPicker(true);
     } else if (tool === "crop") {
       setShowCropModal(true);
@@ -456,34 +456,50 @@ const ImageUploadedFrag = forwardRef<
           </div>
         )}
 
-        {/* Other Modals */}
-        {showColorPicker && (
-          <ColorPickerModal
-            initialColor={chosenColor}
-            onClose={(newColor: string) => {
-              setChosenColor(newColor);
-              setShowColorPicker(false);
-            }}
-          />
-        )}
-        {showShapePicker && (
-          <ShapePickerModal
-            defaultShape={shapeType}
-            onClose={(selectedShape: ShapeType) => {
-              setShapeType(selectedShape);
-              setShowShapePicker(false);
-            }}
-          />
-        )}
-        {showThicknessPicker && (
-          <ThicknessPickerModal
-            initialThickness={lineThickness}
-            onClose={(newThickness: number) => {
-              setLineThickness(newThickness);
-              setShowThicknessPicker(false);
-            }}
-          />
-        )}
+ {/* Other Modals */}
+          {showColorPicker && (
+            <ColorPickerModal
+              initialColor={chosenColor}
+              onClose={(newColor: string | null) => {
+                if (newColor === null) {
+                  setActiveTool("none");
+                } else {
+                  setChosenColor(newColor);
+                }
+
+                setShowColorPicker(false);
+              }}
+            />
+          )}
+          {showShapePicker && (
+            <ShapePickerModal
+              defaultShape={shapeType}
+              onClose={(selectedShape: "rect" | "circle" | null) => {
+                if (selectedShape === null) {
+                  setActiveTool("none");
+                } else {
+                  setShapeType(selectedShape);
+                }
+
+                setShowShapePicker(false);
+              }}
+            />
+          )}
+          {showThicknessPicker && (
+            <ThicknessPickerModal
+              initialThickness={lineThickness}
+              onClose={(newThickness: number | null) => {
+                if (newThickness === null) {
+                  setActiveTool("none");
+                } else {
+                  setLineThickness(newThickness);
+                }
+
+                setShowThicknessPicker(false);
+              }}
+            />
+          )}
+
 
         {/* Next Button */}
         <div className="mt-6 flex justify-end absolute bottom-0 right-0">
