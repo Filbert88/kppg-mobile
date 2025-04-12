@@ -167,7 +167,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const [showShapePicker, setShowShapePicker] = useState(false);
     const [showThicknessPicker, setShowThicknessPicker] = useState(false);
     const [showCropModal, setShowCropModal] = useState(false);
-        const [disablePan, setDisablePan] = useState(false);
+    const [disablePan, setDisablePan] = useState(false);
 
     // Now, for react cropper we'll create a ref.
     const cropperRef = useRef<HTMLImageElement | any>(null);
@@ -251,7 +251,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         setShowColorPicker(true);
       } else if (tool === "shapes") {
         setShowShapePicker(true);
-      } else if (tool === "line") {
+      } else if (tool === "line" || tool === "erase") {
         setShowThicknessPicker(true);
       } else if (tool === "crop") {
         // Show crop modal using react-cropper
@@ -272,8 +272,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           );
           updateFormData("images", newImages);
           setBgImage(croppedImageUrl);
-          setSelectedImage(croppedImageUrl)
-          
+          setSelectedImage(croppedImageUrl);
         }
       }
       setShowCropModal(false);
@@ -554,8 +553,13 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           {showColorPicker && (
             <ColorPickerModal
               initialColor={chosenColor}
-              onClose={(newColor: string) => {
-                setChosenColor(newColor);
+              onClose={(newColor: string | null) => {
+                if (newColor === null) {
+                  setActiveTool("none");
+                } else {
+                  setChosenColor(newColor);
+                }
+
                 setShowColorPicker(false);
               }}
             />
@@ -563,8 +567,13 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           {showShapePicker && (
             <ShapePickerModal
               defaultShape={shapeType}
-              onClose={(selectedShape: "rect" | "circle") => {
-                setShapeType(selectedShape);
+              onClose={(selectedShape: "rect" | "circle" | null) => {
+                if (selectedShape === null) {
+                  setActiveTool("none");
+                } else {
+                  setShapeType(selectedShape);
+                }
+
                 setShowShapePicker(false);
               }}
             />
@@ -572,8 +581,13 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           {showThicknessPicker && (
             <ThicknessPickerModal
               initialThickness={lineThickness}
-              onClose={(newThickness: number) => {
-                setLineThickness(newThickness);
+              onClose={(newThickness: number | null) => {
+                if (newThickness === null) {
+                  setActiveTool("none");
+                } else {
+                  setLineThickness(newThickness);
+                }
+
                 setShowThicknessPicker(false);
               }}
             />

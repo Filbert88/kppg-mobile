@@ -1,51 +1,66 @@
 "use client";
+
 import React from "react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 interface ThicknessPickerModalProps {
   initialThickness: number;
-  onClose: (thickness: number) => void;
+  onClose: (thickness: number | null) => void;
 }
+
 export default function ThicknessPickerModal({
   initialThickness,
   onClose,
 }: ThicknessPickerModalProps) {
   const [thickness, setThickness] = React.useState(initialThickness);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex:3
-      }}
-    >
-      <div
-        style={{ background: "white", padding: "1rem", borderRadius: "8px" }}
-      >
-        <h2>Pick Line Thickness</h2>
-        <input
-          type="range"
-          min={1}
-          max={20}
-          value={thickness}
-          onChange={(e) => setThickness(Number(e.target.value))}
-        />
-        <p>{thickness}px</p>
-        <div style={{ marginTop: "1rem", textAlign: "right" }}>
-          <button
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-30">
+      <Card className="w-full max-w-md border-green-500 border-2 shadow-lg">
+        <CardHeader className="bg-green-500 text-white">
+          <CardTitle className="text-xl font-semibold">
+            Pick Line Thickness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <Slider
+              defaultValue={[thickness]}
+              max={20}
+              min={1}
+              step={1}
+              onValueChange={(value) => setThickness(value[0])}
+              className="py-4"
+            />
+            <div className="bg-green-100 text-green-800 font-medium text-center py-2 rounded-md">
+              {thickness}px
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2 bg-gray-50 p-4">
+          <Button
+            variant="outline"
+            onClick={() => onClose(null)}
+            className="border-green-500 text-green-700 hover:bg-green-50"
+          >
+            Cancel
+          </Button>
+          <Button
             onClick={() => onClose(thickness)}
-            style={{ marginRight: "0.5rem" }}
+            className="bg-green-500 hover:bg-green-600 text-white"
           >
             OK
-          </button>
-          <button onClick={() => onClose(initialThickness)}>Cancel</button>
-        </div>
-      </div>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
