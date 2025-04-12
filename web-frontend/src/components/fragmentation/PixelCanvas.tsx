@@ -66,7 +66,7 @@ const PixelCanvasImpl = forwardRef<PixelCanvasRef, PixelCanvasProps>(
       console.log("Masuk use effect 2");
       if (!canvasRef.current) return;
       const oldDataURL = canvasRef.current.toDataURL();
-      console.log("INI OLD DATA ", oldDataURL);
+      console.log("INI OLD DATA ");
 
       // Update ukuran "internal" canvas
       setCanvasWidth(width);
@@ -83,7 +83,6 @@ const PixelCanvasImpl = forwardRef<PixelCanvasRef, PixelCanvasProps>(
         ctxRef.current = ctx;
         console.log("clear canvssas use effect 2");
         ctx.clearRect(0, 0, width, height);
-        console.log("load old url sebelumnya", oldDataURL);
         const img = new Image();
         img.src = oldDataURL;
         img.onload = () => {
@@ -153,7 +152,6 @@ const PixelCanvasImpl = forwardRef<PixelCanvasRef, PixelCanvasProps>(
           );
           return; // jangan lanjut memuat img
         }
-        console.log("load image ", dataUrl);
         const img = new Image();
 
 
@@ -173,14 +171,10 @@ const PixelCanvasImpl = forwardRef<PixelCanvasRef, PixelCanvasProps>(
           );
 
           // Sekarang ambil data URL
-          const newDataURL = canvasRef.current!.toDataURL();
-          console.log("Data URL setelah gambar tergambar", newDataURL);
         };
         img.src = dataUrl;
 
-        // Setelah gambar tergambar, barulah ambil data URL
-        const newDataURL = canvasRef.current!.toDataURL();
-        console.log("Data URL setelah gambar tergambar", newDataURL);
+
         img.onerror = (err) => {
           console.error("Error loading image from dataURL", err);
         };
