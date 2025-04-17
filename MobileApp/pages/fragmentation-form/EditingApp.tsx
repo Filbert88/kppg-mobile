@@ -20,7 +20,7 @@ interface EditingAppProps {
 }
 const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
   const [activeTool, setActiveTool] = useState<Tool>(null);
-  const [selectedColor, setSelectedColor] = useState<string>('#FF0000');
+  const [selectedColor, setSelectedColor] = useState<string>('#FFFFFF');
   const [selectedShapeType, setSelectedShapeType] = useState<string>('rect');
   const [lineThickness, setLineThickness] = useState<number>(4);
   const [eraseThickness, setEraseThickness] = useState<number>(8);

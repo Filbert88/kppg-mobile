@@ -92,6 +92,16 @@ namespace aspnet.Controllers
             return NoContent();
         }
 
+        // GET: api/DepthAverage/today?priority=…
+        [HttpGet("today")]
+        public async Task<IActionResult> GetToday([FromQuery] DateTime tanggal, [FromQuery] int priority)
+        {
+            var item = await _context.DepthAverages
+                .Where(d => d.Tanggal.Date == tanggal.Date && d.Prioritas == priority)
+                .FirstOrDefaultAsync();
+            return item == null ? NotFound() : Ok(item);
+        }
+
         // DELETE: api/DepthAverage/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)

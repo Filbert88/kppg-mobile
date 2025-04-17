@@ -19,4 +19,5 @@ export type RootStackParamList = {
   DAHistory: undefined;
   DepthAverageUpload: undefined;
   tes: undefined
+  DiggingTimePage: undefined;
 };

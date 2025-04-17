@@ -78,7 +78,7 @@ export default function FragmentationForm1() {
     } else if (result.assets && result.assets.length > 0) {
       const selectedImage = result.assets[0];
       updateForm({
-            imageUris: [
+            rawImageUris: [
               ...formData.imageUris,
               selectedImage.uri || '',
             ],
@@ -90,12 +90,12 @@ export default function FragmentationForm1() {
       ]);
     }
   };
-  const { imageUris, skala, pilihan, ukuran, lokasi, tanggal } = formData;
+  const { rawImageUris, skala, pilihan, ukuran, lokasi, tanggal } = formData;
 
   console.log("Form data ", formData)
 
   const isFormValid =
-    imageUris.length >= 1 &&
+    rawImageUris.length >= 1 &&
     skala.trim() !== '' &&
     pilihan.trim() !== '' &&
     ukuran.trim() !== '' &&
@@ -123,9 +123,9 @@ export default function FragmentationForm1() {
           <TouchableOpacity
             className="w-full aspect-[16/9] bg-white rounded-lg items-center justify-center border border-gray-300"
             onPress={handleImagePicker}>
-            {imageUris.length != 0 ? (
+            {rawImageUris.length != 0 ? (
               <Image
-                source={{uri: imageUris[0]}}
+                source={{uri: rawImageUris[0]}}
                 className="w-full h-full rounded-lg"
                 resizeMode="contain"
               />

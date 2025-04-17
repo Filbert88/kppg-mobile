@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import logging
+import matplotlib
+matplotlib.use('Agg')
 from flask import Flask, request, jsonify, send_file
 # Import the fragmentation functions from your module
 from frag import fragmentation_to_outline
@@ -19,13 +21,14 @@ import io
 import base64
 from final import compute_kuz_ram_data, extract_and_save_cutouts, combined_plot
 from matplotlib import pyplot as plt
+import requests
 
 def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: float, E: float, n: float, conversion: float):
     # Compute the Kuz-Ram data.
     kuzram_data = compute_kuz_ram_data(A, K, Q, E, n)
     
     # Create a unique output folder for cutouts.
-    unique_output = f"bw-cutout_{uuid.uuid4()}"
+    unique_output = os.path.join(os.getcwd(), f"bw-cutout_{uuid.uuid4()}")
     os.makedirs(unique_output, exist_ok=True)
     
     # Call extract_and_save_cutouts with the unique output directory.
@@ -65,13 +68,20 @@ def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: floa
     plt.savefig(buffer, format="png", dpi=300)
     plt.close()
     buffer.seek(0)
-    encoded_plot = base64.b64encode(buffer.read()).decode("utf-8")
+    upload_resp = requests.post(
+        "http://localhost:5180/api/Upload/upload",
+        files={"file": ("plot.png", buffer, "image/png")}
+    )
+    upload_resp.raise_for_status()
+    plot_url = upload_resp.json()["url"]
     
     # Delete only the unique output folder (bw-cutout_{uuid}) after processing.
     shutil.rmtree(unique_output, ignore_errors=True)
     
     return {
         "kuzram": {
+            "sizes": kuzram_data["sizes"].tolist(),
+            "distribution": kuzram_data["distribution"].tolist(),
             "X50": kuzram_data["X50"],
             "P10": kuzram_data["P10"],
             "P20": kuzram_data["P20"],
@@ -81,7 +91,7 @@ def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: floa
             "percentage_above_60": kuzram_data["percentage_above_60"]
         },
         "threshold_percentages": threshold_percentages,
-        "plot_image_base64": encoded_plot
+        "plot_image_base64": plot_url
     }
 
 app = Flask(__name__)
