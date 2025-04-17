@@ -182,7 +182,7 @@ export default function App() {
                   component={DAHistory}
                   customBackAction={() =>
                     props.navigation.navigate('AddOrHistory', {
-                      type: 'FragmentasiForm1',
+                      type: 'DepthAverage',
                     })
                   }
                   {...props}
