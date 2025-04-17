@@ -31,16 +31,13 @@ import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 // Image container for canvas drawing (ref forwarded down to PixelCanvas)
 import ImageContainer from "./ImageContainer";
 import { HybridContainerRef, HybridContainerState } from "./HybridContainer";
-
+import { FragmentationFormData } from "./multi-step-form";
 export interface ImageUploadFormRef {
   saveEditingState: () => void;
 }
 
 interface ImageUploadFormProps {
-  formData: {
-    images: string[];
-    editingStates: Record<string, HybridContainerState>;
-  };
+  formData: FragmentationFormData;
   updateFormData: (field: string, value: any) => void;
   onNext: () => void;
 }
@@ -228,6 +225,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         return;
       }
       try {
+        // (a) Save current editing state.
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
           setEditingStates((prev) => ({
@@ -237,15 +235,21 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         }
         updateFormData("editingStates", editingStates);
 
-        // Capture the edited canvas
+        // (b) Capture the canvas.
         const canvas = await html2canvas(imageContainerRef.current, {
           useCORS: true,
           logging: false,
         });
         const finalDataUrl = canvas.toDataURL("image/png");
+
+        // (c) Replace the local image with the new captured version (only one image).
+        updateFormData("images", [finalDataUrl]);
+
+        // (d) Convert finalDataUrl to a File.
         const blob = dataURLtoBlob(finalDataUrl);
         const file = new File([blob], "editedImage.png", { type: blob.type });
-        // 1. Upload the image to your upload service.
+
+        // (e) Upload the file to obtain a permanent URL.
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
         const uploadResponse = await fetch(
@@ -260,9 +264,13 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         }
         const uploadResult = await uploadResponse.json();
         console.log("Uploaded image URL:", uploadResult.url);
-        // 2. Call the multi-fragment API with the file.
+
+        // (f) Replace local images with the permanent URL.
+        updateFormData("images", [uploadResult.url]);
+
+        // (g) Call the multi-fragment API with the same file.
         const formDataFragment = new FormData();
-        formDataFragment.append("files", file); // send as a file collection
+        formDataFragment.append("files", file);
         const fragmentResponse = await fetch(
           "http://localhost:5180/api/Fragmentation/multi-fragment",
           {
@@ -277,7 +285,31 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         }
         const fragResult = await fragmentResponse.json();
         console.log("Fragmentation result:", fragResult);
-        // Proceed to the next step.
+
+        // (h) Parse the fragmentation result.
+        // Assume the result is an array of objects as:
+        // { filename: "...", result: { marker_properties: { conversion_factor: ... }, output_image: "..." } }
+        const newImagesFrag: string[] = [];
+        const newFragResults: Array<{
+          image: string;
+          conversionFactor: number;
+        }> = [];
+        fragResult.forEach((item: any) => {
+          let rawBase64 = item.result.output_image;
+          if (!rawBase64.startsWith("data:image")) {
+            rawBase64 = "data:image/jpeg;base64," + rawBase64;
+          }
+          const conversionFactor =
+            item.result.marker_properties?.conversion_factor || 1;
+          newImagesFrag.push(rawBase64);
+          newFragResults.push({ image: rawBase64, conversionFactor });
+        });
+
+        // (i) Replace formData.imagesFrag and fragmentationResults with new arrays.
+        updateFormData("imagesFrag", newImagesFrag);
+        updateFormData("fragmentationResults", newFragResults);
+
+        // Finally, move to the next step.
         onNext();
       } catch (error) {
         console.error("Error in handleNext:", error);

@@ -19,7 +19,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("LongRunningClient", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(50);
+});
 
 var app = builder.Build();
 

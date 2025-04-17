@@ -21,6 +21,8 @@ class SegmentAnythingPipeline:
         masks = mask_generator.generate(image)
         return masks
 
+        
+
     def save_segmentation_result(self, image, masks, output_path):
         # Create a black background image with white regions and black outlines
         height, width = image.shape[:2]
