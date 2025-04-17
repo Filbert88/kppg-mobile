@@ -42,6 +42,10 @@ namespace aspnet.Models
         [Required]
         public int Synced { get; set; } = 0;
 
+        public string? DiggingTime { get; set; } // ✅ NEW
+
+        public string? VideoUri { get; set; }
+
         // Navigation property for related images
         public ICollection<FragmentationImage> FragmentationImages { get; set; } = new List<FragmentationImage>();
     }

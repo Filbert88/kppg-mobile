@@ -20,11 +20,9 @@ namespace aspnet.Models
         public string? DiggingTime { get; set; }
         public string? VideoUri { get; set; }
 
-        // Main plot image (Kuz-Ram result chart)
-        public string PlotImageUrl { get; set; } = "";
+        public List<string> PlotImageUrls { get; set; } = new();  // instead of just one
+        public List<object> AnalysisJsonList { get; set; } = new(); // instead of just one
 
-        // Full JSON analysis object from Python (e.g., Kuz-Ram)
-        public object AnalysisJson { get; set; } = new();
 
         // Raw uploaded image URLs from image picker
         public List<string> UploadedImageUrls { get; set; } = new();

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace aspnet.Models
 {
@@ -17,6 +18,7 @@ namespace aspnet.Models
         [Required]
         public int Synced { get; set; } = 0;
 
+        [JsonIgnore]
         [ForeignKey("FragmentationDataId")]
         public FragmentationData? FragmentationData { get; set; }
 
