@@ -6,7 +6,7 @@ export const fetchNextPriority = async (
       const endpoint =
         formType === "depthAverage"
           ? `http://localhost:5180/api/DepthAverage/next-priority?tanggal=${date}`
-          : `http://localhost:5180/api/FragmentationData/next-priority?tanggal=${date}`;
+          : `http://localhost:5180/api/Fragmentation/next-priority?tanggal=${date}`;
   
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error("Failed to fetch");

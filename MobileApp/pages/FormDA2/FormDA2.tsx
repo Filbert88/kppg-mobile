@@ -51,6 +51,15 @@ const FormDA2 = () => {
     }`;
   };
 
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'DAHistoryIncomplete') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate back to DAHistoryIncomplete
+    } else {
+      navigation.navigate('DAHistory'); // Navigate back to DAHistory
+    }
+  };
+
   const renderDepthInput = (number: number, field: string) => (
     <View className="space-y-2.5" key={field}>
       <Text className="text-2xl font-bold text-black px-1 mb-1">
@@ -115,10 +124,7 @@ const FormDA2 = () => {
         {formData.isEdit && (
           <TouchableOpacity
             className="px-4 py-2 bg-red-200 rounded-lg"
-            onPress={() => {
-              resetForm();
-              navigation.navigate('DAHistory');
-            }}
+            onPress={handleCancelEdit}
           >
             <Text className="text-red-800 font-medium">Cancel Edit</Text>
           </TouchableOpacity>
