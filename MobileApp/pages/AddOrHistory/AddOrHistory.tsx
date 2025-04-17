@@ -51,8 +51,8 @@ const AddOrHistory = () => {
             className="bg-emerald-200 py-4 px-6 rounded-xl shadow-md active:bg-emerald-300 flex-row justify-center items-center"
             onPress={handleRiwayatPress}>
             <Clock width={20} height={20} color="#065f46" className="mr-2" />
-            <Text className="text-center text-emerald-800 font-bold text-lg">
-              Riwayat Hasil
+            <Text className="ml-2 text-center text-emerald-800 font-bold text-lg">
+              Riwayat
             </Text>
           </TouchableOpacity>
 
@@ -61,8 +61,8 @@ const AddOrHistory = () => {
             className="bg-emerald-200 py-4 px-6 rounded-xl shadow-md active:bg-emerald-300 flex-row justify-center items-center"
             onPress={handleHistoryBelumSelesaiPress}>
             <Clock width={20} height={20} color="#065f46" className="mr-2" />
-            <Text className="text-center text-emerald-800 font-bold text-lg">
-              History Belum Selesai
+            <Text className="ml-2 text-center text-emerald-800 font-bold text-lg">
+              Riwayat Belum Selesai
             </Text>
           </TouchableOpacity>
         </View>

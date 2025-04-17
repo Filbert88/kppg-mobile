@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, {useContext, useState} from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,22 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from 'react-native';
-import { ArrowRight, Edit2, Hash } from 'react-native-feather';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import { DepthAverageContext } from '../../context/DepthAverageContext';
+import {ArrowRight, Edit2, Hash} from 'react-native-feather';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {DepthAverageContext} from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA2'>;
 
 const FormDA2 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, setFormData, resetForm } = useContext(DepthAverageContext);
+  const {formData, setFormData, resetForm} = useContext(DepthAverageContext);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
@@ -101,7 +105,7 @@ const FormDA2 = () => {
     </View>
   );
 
-  const isFormValid = Array.from({ length: jumlahLubang }).every((_, i) => {
+  const isFormValid = Array.from({length: jumlahLubang}).every((_, i) => {
     const field = `kedalaman${i + 1}`;
     const value = formData.kedalaman?.[field];
     return value && value.trim() !== '';
@@ -111,33 +115,39 @@ const FormDA2 = () => {
     <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
 
-      <ScrollView className="flex-1 px-6 pt-8">
-        <View className="gap-6">
-          {Array.from({ length: jumlahLubang }, (_, i) =>
-            renderDepthInput(i + 1, `kedalaman${i + 1}`),
-          )}
-        </View>
-        <View className="h-20" />
-      </ScrollView>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{flex: 1}}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView className="flex-1 px-6 pt-8">
+            <View className="gap-6">
+              {Array.from({length: jumlahLubang}, (_, i) =>
+                renderDepthInput(i + 1, `kedalaman${i + 1}`),
+              )}
+            </View>
+            <View className="h-20" />
+          </ScrollView>
+        </TouchableWithoutFeedback>
 
-      <View className="flex-row justify-between p-6 mb-4"> 
-        {formData.isEdit && (
+        <View className="flex-row justify-between p-6 mb-4">
+          {formData.isEdit && (
+            <TouchableOpacity
+              className="px-4 py-2 bg-red-200 rounded-lg"
+              onPress={handleCancelEdit}>
+              <Text className="text-red-800 font-medium">Cancel Edit</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            className="px-4 py-2 bg-red-200 rounded-lg"
-            onPress={handleCancelEdit}
-          >
-            <Text className="text-red-800 font-medium">Cancel Edit</Text>
+            disabled={!isFormValid}
+            className={`px-6 py-3 rounded-lg flex-row items-center ${
+              isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
+            }`}
+            onPress={() => navigation.navigate('FormDA3')}>
+            <Text className="text-white font-bold mr-2">Next</Text>
+            <ArrowRight width={18} height={18} color="white" />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          disabled={!isFormValid}
-          className={`px-6 py-3 rounded-lg flex-row items-center ${isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'}`}
-          onPress={() => navigation.navigate('FormDA3')}
-        >
-          <Text className="text-white font-bold mr-2">Next</Text>
-          <ArrowRight width={18} height={18} color="white" />
-        </TouchableOpacity>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

@@ -226,7 +226,7 @@ export default function FragmentationForm5() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 

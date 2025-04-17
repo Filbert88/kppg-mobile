@@ -77,7 +77,7 @@ export default function FragmentationForm1() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 
@@ -292,39 +292,6 @@ export default function FragmentationForm1() {
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
-            </View>
-
-            {/* Tanggal */}
-            <View className="gap-1">
-              <Text className="text-black font-black mb-1">Tanggal</Text>
-              <TouchableOpacity
-                className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center"
-                onPress={() => setShowDatePicker(true)}>
-                <Text
-                  className={`text-black ${!tanggal ? 'text-gray-400' : ''}`}>
-                  {tanggal || 'Masukkan tanggal...'}
-                </Text>
-                <Edit stroke="#666" width={20} height={20} />
-              </TouchableOpacity>
-
-              {/* Show the actual native date picker */}
-              {showDatePicker && (
-                <DateTimePicker
-                  value={tanggal ? new Date(tanggal) : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios'); // keep open on iOS
-                    if (selectedDate) {
-                      const formatted = selectedDate
-                        .toISOString()
-                        .split('T')[0];
-                      updateForm({tanggal: formatted});
-                    }
-                  }}
-                  maximumDate={new Date()}
-                />
-              )}
             </View>
           </View>
 
