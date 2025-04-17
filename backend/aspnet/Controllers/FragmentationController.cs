@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using aspnet.Data;
 using aspnet.Models;
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace aspnet.Controllers
 {
@@ -111,44 +112,55 @@ namespace aspnet.Controllers
                 return BadRequest("No files uploaded.");
 
             var results = new List<object>();
+
             foreach (var file in files)
             {
+                // Generate a unique file name and determine the full path.
                 var inputFileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
                 var inputPath = Path.Combine(_env.WebRootPath, "Images", inputFileName);
                 Directory.CreateDirectory(Path.GetDirectoryName(inputPath)!);
-                await using (var stream = new FileStream(inputPath, FileMode.Create))
+
+                // Write the file to disk using a FileStream (ensuring exclusive access)
+                await using (var stream = new FileStream(inputPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     await file.CopyToAsync(stream);
                 }
 
+                // Read the file bytes into memory and then dispose of the file handle.
+                byte[] fileBytes = await System.IO.File.ReadAllBytesAsync(inputPath);
+
+                // Use a MemoryStream to add the file to the MultipartFormDataContent.
                 using var form = new MultipartFormDataContent();
-                using var imageContent = new StreamContent(System.IO.File.OpenRead(inputPath));
-                imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-                form.Add(imageContent, "file", inputFileName);
-
-                var client = _clientFactory.CreateClient();
-                var response = await client.PostAsync("http://localhost:5000/fragmentation-red-outline", form);
-
-                if (!response.IsSuccessStatusCode)
+                using (var ms = new MemoryStream(fileBytes))
                 {
-                    results.Add(new
+                    using var imageContent = new StreamContent(ms);
+                    imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                    form.Add(imageContent, "file", inputFileName);
+
+                    var client = _clientFactory.CreateClient("LongRunningClient");
+                    var response = await client.PostAsync("http://localhost:5000/fragmentation-red-outline", form);
+
+                    if (!response.IsSuccessStatusCode)
                     {
-                        filename = inputFileName,
-                        error = $"Python API error: {response.StatusCode}"
-                    });
-                    continue;
+                        results.Add(new
+                        {
+                            filename = inputFileName,
+                            error = $"Python API error: {response.StatusCode}"
+                        });
+                    }
+                    else
+                    {
+                        var responseData = await response.Content.ReadAsStringAsync();
+                        var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(responseData); // Consider using a strong type here
+                        results.Add(new
+                        {
+                            filename = inputFileName,
+                            result = parsed
+                        });
+                    }
                 }
 
-                var responseData = await response.Content.ReadAsStringAsync();
-                var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(responseData); // you can strongly type this
-
-                results.Add(new
-                {
-                    filename = inputFileName,
-                    result = parsed
-                });
-
-                // Optionally delete the temporary file
+                // Now that the file is no longer in use, delete it.
                 System.IO.File.Delete(inputPath);
             }
 
@@ -157,34 +169,48 @@ namespace aspnet.Controllers
 
         // POST: api/Fragmentation/fragmentation-analysis
         [HttpPost("fragmentation-analysis")]
-        public async Task<IActionResult> RunFragmentationAnalysis(IFormFile file, [FromForm] double A, [FromForm] double K, [FromForm] double Q, [FromForm] double E, [FromForm] double n, [FromForm] double conversion)
+        public async Task<IActionResult> RunFragmentationAnalysis(
+           List<IFormFile> files,
+           [FromForm] double A,
+           [FromForm] double K,
+           [FromForm] double Q,
+           [FromForm] double E,
+           [FromForm] double n,
+           [FromForm] double conversion)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
+            if (files == null || files.Count == 0)
+                return BadRequest("No files uploaded.");
 
-            var client = _clientFactory.CreateClient();
+            var client = _clientFactory.CreateClient("LongRunningClient");
+            var results = new List<object>();
 
-            using var content = new MultipartFormDataContent();
-            using var fileStream = file.OpenReadStream();
-            var fileContent = new StreamContent(fileStream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            // Process each uploaded file
+            foreach (var file in files)
+            {
+                using var content = new MultipartFormDataContent();
+                using var fileStream = file.OpenReadStream();
+                var fileContent = new StreamContent(fileStream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
 
-            content.Add(fileContent, "file", file.FileName);
-            content.Add(new StringContent(A.ToString()), "A");
-            content.Add(new StringContent(K.ToString()), "K");
-            content.Add(new StringContent(Q.ToString()), "Q");
-            content.Add(new StringContent(E.ToString()), "E");
-            content.Add(new StringContent(n.ToString()), "n");
-            content.Add(new StringContent(conversion.ToString()), "conversion");
+                content.Add(fileContent, "file", file.FileName);
+                content.Add(new StringContent(A.ToString()), "A");
+                content.Add(new StringContent(K.ToString()), "K");
+                content.Add(new StringContent(Q.ToString()), "Q");
+                content.Add(new StringContent(E.ToString()), "E");
+                content.Add(new StringContent(n.ToString()), "n");
+                content.Add(new StringContent(conversion.ToString()), "conversion");
 
-            var pythonUrl = "http://localhost:5000/fragmentation-analysis";
-            var response = await client.PostAsync(pythonUrl, content);
-
-            if (!response.IsSuccessStatusCode)
-                return StatusCode((int)response.StatusCode, "Failed to call Python fragmentation analysis service.");
-
-            var jsonResponse = await response.Content.ReadAsStringAsync();
-            return Content(jsonResponse, "application/json");
+                var response = await client.PostAsync("http://localhost:5000/fragmentation-analysis", content);
+                if (!response.IsSuccessStatusCode)
+                {
+                    results.Add(new { filename = file.FileName, error = $"Analysis failed with status {response.StatusCode}" });
+                    continue;
+                }
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var parsedResult = JsonSerializer.Deserialize<object>(jsonResponse);
+                results.Add(parsedResult);
+            }
+            return Ok(results);
         }
     }
 }

@@ -48,7 +48,15 @@ interface ImageUploadedFragProps {
   formData: {
     imagesFrag: string[];
     editingFragStates: Record<string, HybridContainerState>;
-    // fragmentationResults field is updated via updateFormData.
+    // fragmentationResults contains an object per image with its conversionFactor.
+    fragmentationResults: Array<{
+      image: string;
+      conversionFactor: number;
+      analysisResult?: any;
+    }>;
+    // Used to compute K = Q/V
+    ammoniumNitrate: string;
+    blastingVolume: string;
   };
   updateFormData: (field: string, value: any) => void;
   onNext: () => void;
@@ -58,6 +66,11 @@ export interface ImageUploadFragRef {
   saveEditingState: () => void;
 }
 
+function normalizeBase64Image(base64Str: string): string {
+  if (base64Str.startsWith("data:")) return base64Str;
+  return "data:image/jpeg;base64," + base64Str;
+}
+
 const ImageUploadedFrag = forwardRef<
   ImageUploadFragRef,
   ImageUploadedFragProps
@@ -65,34 +78,33 @@ const ImageUploadedFrag = forwardRef<
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [bgImage, setBgImage] = useState<string | null>(null);
   const [disablePan, setDisablePan] = useState(false);
-
-  const [editingStates, setEditingStates] = useState<{
-    [key: string]: HybridContainerState;
-  }>(() => formData.editingFragStates || {});
-
+  const [editingStates, setEditingStates] = useState<
+    Record<string, HybridContainerState>
+  >(() => formData.editingFragStates || {});
   const [activeTool, setActiveTool] = useState<Tool>("none");
   const [chosenColor, setChosenColor] = useState("#000000");
   const [lineThickness, setLineThickness] = useState<number>(3);
   const [shapeType, setShapeType] = useState<ShapeType>("rect");
-
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
 
   const cropperRef = useRef<any>(null);
-
   const transformWrapperRef = useRef<any>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const hybridContainerRef = useRef<HybridContainerRef>(null);
 
+  console.log("results: ", formData.fragmentationResults);
+  // When mounting, set the default selected image from imagesFrag.
   useEffect(() => {
     if (!selectedImage && formData.imagesFrag.length > 0) {
-      const latestImage = formData.imagesFrag[0];
-      setSelectedImage(latestImage);
-      setBgImage(latestImage);
-      if (editingStates[latestImage] && hybridContainerRef.current) {
-        hybridContainerRef.current.setEditingState(editingStates[latestImage]);
+      let img = formData.imagesFrag[0];
+      img = normalizeBase64Image(img);
+      setSelectedImage(img);
+      setBgImage(img);
+      if (editingStates[img] && hybridContainerRef.current) {
+        hybridContainerRef.current.setEditingState(editingStates[img]);
       }
     }
   }, [selectedImage, formData.imagesFrag]);
@@ -119,7 +131,8 @@ const ImageUploadedFrag = forwardRef<
       }
       const reader = new FileReader();
       reader.onload = (event) => {
-        const newImageUrl = (event.target?.result as string) || "";
+        let newImageUrl = (event.target?.result as string) || "";
+        newImageUrl = normalizeBase64Image(newImageUrl);
         const updatedImages = [...formData.imagesFrag, newImageUrl];
         updateFormData("imagesFrag", updatedImages);
         switchImage(newImageUrl);
@@ -189,10 +202,11 @@ const ImageUploadedFrag = forwardRef<
 
   function switchImage(newImage: string) {
     saveCurrentEditingState();
-    setSelectedImage(newImage);
-    setBgImage(newImage);
-    if (editingStates[newImage] && hybridContainerRef.current) {
-      hybridContainerRef.current.setEditingState(editingStates[newImage]);
+    const normalized = normalizeBase64Image(newImage);
+    setSelectedImage(normalized);
+    setBgImage(normalized);
+    if (editingStates[normalized] && hybridContainerRef.current) {
+      hybridContainerRef.current.setEditingState(editingStates[normalized]);
     } else if (hybridContainerRef.current) {
       hybridContainerRef.current.setEditingState({
         canvasData: "",
@@ -213,18 +227,17 @@ const ImageUploadedFrag = forwardRef<
     },
   }));
 
-  /**
-   * handleNext:
-   * Loop over all images in imagesFrag, convert each base64 image to a File,
-   * and call the fragmentation analysis API.
-   * The API parameters are currently hard-coded—replace with your actual values or form data.
-   */
+  // When the user clicks "Next", for every image in imagesFrag we call fragmentation-analysis.
+  // The payload uses fixed A = 5.955, E = 100, n = 1.851.
+  // K is computed as Q/V with Q = ammoniumNitrate and V = blastingVolume.
+  // The conversion factor is taken from fragmentationResults array at the same index.
   const handleNext = async () => {
     if (!imageContainerRef.current) {
       console.error("Image container not found.");
       return;
     }
     try {
+      // (a) Save editing state of selected image.
       if (selectedImage && hybridContainerRef.current) {
         const currentState = hybridContainerRef.current.getEditingState();
         setEditingStates((prev) => ({
@@ -234,40 +247,96 @@ const ImageUploadedFrag = forwardRef<
       }
       updateFormData("editingFragStates", editingStates);
 
-      const fragResults: any[] = [];
-      // Loop over each fragmented image.
-      for (const img of formData.imagesFrag) {
-        // Convert the base64 string to a Blob and then to a File.
-        const blob = dataURLtoBlob(img);
-        const file = new File([blob], "editedImage.png", { type: blob.type });
-        const formDataAnalysis = new FormData();
-        formDataAnalysis.append("file", file);
-        // Use default values for analysis parameters.
-        formDataAnalysis.append("A", "1.0");
-        formDataAnalysis.append("K", "1.0");
-        formDataAnalysis.append("Q", "1.0");
-        formDataAnalysis.append("E", "1.0");
-        formDataAnalysis.append("n", "1.0");
-        formDataAnalysis.append("conversion", "1.0");
+      // (b) Capture the currently displayed canvas.
+      const canvas = await html2canvas(imageContainerRef.current, {
+        useCORS: true,
+        logging: false,
+      });
+      const finalDataUrl = canvas.toDataURL("image/png");
 
-        const analysisResponse = await fetch(
-          "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
+      // Replace the selected image in imagesFrag with the new captured version.
+      const updatedImagesFrag = formData.imagesFrag.map((img) =>
+        img === selectedImage ? finalDataUrl : img
+      );
+      updateFormData("imagesFrag", updatedImagesFrag);
+
+      // (c) For each image (base64) in updatedImagesFrag, convert to File and upload.
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < updatedImagesFrag.length; i++) {
+        const img = updatedImagesFrag[i];
+        const blob = dataURLtoBlob(img);
+        const file = new File([blob], `editedImage_${i}.png`, {
+          type: blob.type,
+        });
+
+        const formDataUpload = new FormData();
+        formDataUpload.append("file", file);
+        const uploadResponse = await fetch(
+          "http://localhost:5180/api/Upload/upload",
           {
             method: "POST",
-            body: formDataAnalysis,
+            body: formDataUpload,
           }
         );
-        if (!analysisResponse.ok) {
-          throw new Error(
-            "Fragmentation analysis failed with status " +
-              analysisResponse.status
-          );
+        if (!uploadResponse.ok) {
+          throw new Error("Upload failed with status " + uploadResponse.status);
         }
-        const analysisResult = await analysisResponse.json();
-        fragResults.push({ image: img, result: analysisResult });
+        const uploadResult = await uploadResponse.json();
+        console.log("Uploaded image URL:", uploadResult.url);
+        uploadedUrls.push(uploadResult.url);
       }
-      // Save the collected fragmentation results into formData.
-      updateFormData("fragmentationResults", fragResults);
+      // (d) Now update imagesFrag with the permanent URLs.
+      updateFormData("imagesFrag", uploadedUrls);
+
+      // (e) For fragmentation-analysis, build one FormData by fetching each uploaded URL and converting to File.
+      const analysisFormData = new FormData();
+      for (let i = 0; i < uploadedUrls.length; i++) {
+        const url = uploadedUrls[i];
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const file = new File([blob], `finalImage_${i}.png`, {
+          type: blob.type,
+        });
+        console.log("files", file)
+        analysisFormData.append("files", file);
+      }
+
+      // (f) Compute parameters (K = Q/V)
+      const Q = parseFloat(formData.ammoniumNitrate) || 0;
+      const V = parseFloat(formData.blastingVolume) || 1;
+      const K = Q / V;
+      analysisFormData.append("A", "5.955");
+      analysisFormData.append("K", K.toString());
+      analysisFormData.append("Q", formData.ammoniumNitrate);
+      analysisFormData.append("E", "100");
+      analysisFormData.append("n", "1.851");
+
+      // For conversion – if per image conversions are not individually supported,
+      // we send one value (e.g., use the first conversion factor).
+      const conversion =
+        formData.fragmentationResults[0]?.conversionFactor || 1;
+      analysisFormData.append("conversion", conversion.toString());
+
+      // (g) Call the fragmentation-analysis endpoint with all the files.
+      const analysisResponse = await fetch(
+        "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
+        {
+          method: "POST",
+          body: analysisFormData,
+        }
+      );
+      if (!analysisResponse.ok) {
+        throw new Error(
+          "Fragmentation analysis failed with status " + analysisResponse.status
+        );
+      }
+      const analysisResults = await analysisResponse.json();
+      console.log("Analysis results:", analysisResults);
+
+      // (h) Save the analysis results in the formData. The array order should match.
+      updateFormData("finalAnalysisResults", analysisResults);
+
+      // Move on to the next step.
       onNext();
     } catch (error) {
       console.error("Error during fragmentation analysis:", error);
@@ -307,7 +376,7 @@ const ImageUploadedFrag = forwardRef<
             onClick={() => switchImage(img)}
           >
             <img
-              src={img}
+              src={normalizeBase64Image(img)}
               alt={`Thumbnail ${idx}`}
               className="w-full object-contain"
             />
@@ -321,31 +390,41 @@ const ImageUploadedFrag = forwardRef<
           <div className="flex justify-center space-x-2 py-2 border-b border-gray-300 mt-4">
             <button
               onClick={() => handleToolSelect("draw")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "draw" ? "bg-blue-200" : ""
+              }`}
             >
               <Pen className="w-5 h-5" />
             </button>
             <button
               onClick={() => handleToolSelect("erase")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "erase" ? "bg-blue-200" : ""
+              }`}
             >
               <Eraser className="w-5 h-5" />
             </button>
             <button
               onClick={() => handleToolSelect("shapes")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "shapes" ? "bg-blue-200" : ""
+              }`}
             >
               <ShapesIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => handleToolSelect("fill")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "fill" ? "bg-blue-200" : ""
+              }`}
             >
               <PaintBucket className="w-5 h-5" />
             </button>
             <button
               onClick={() => handleToolSelect("crop")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "crop" ? "bg-blue-200" : ""
+              }`}
             >
               <CropIcon className="w-5 h-5" />
             </button>
@@ -363,7 +442,9 @@ const ImageUploadedFrag = forwardRef<
             </button>
             <button
               onClick={() => handleToolSelect("line")}
-              className="p-2 rounded-md"
+              className={`p-2 rounded-md ${
+                activeTool === "line" ? "bg-blue-200" : ""
+              }`}
             >
               <Slash className="w-5 h-5" />
             </button>

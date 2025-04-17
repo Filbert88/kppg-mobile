@@ -13,7 +13,7 @@ import DatePriority from "../date-priority";
 import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
 
-// Added fragmentationResults field for storing analysis data.
+// The full form data type used throughout the multi-step process.
 export type FragmentationFormData = {
   scale: string;
   option: string;
@@ -25,11 +25,16 @@ export type FragmentationFormData = {
   ammoniumNitrate: string;
   blastingVolume: string;
   powderFactor: string;
-  images: string[];
+  images: string[]; // images from the first upload (ImageUploadForm)
   editingStates: Record<string, HybridContainerState>;
-  imagesFrag: string[];
+  imagesFrag: string[]; // output images (in base64) from the red-outline fragmentation API
   editingFragStates: Record<string, HybridContainerState>;
-  fragmentationResults: any[]; // New field to hold the fragmentation analysis results.
+  fragmentationResults: Array<{
+    image: string;
+    conversionFactor: number;
+    analysisResult?: any;
+  }>;
+  finalAnalysisResults: any[]; // Analysis results after calling fragmentation-analysis API
 };
 
 interface MultiStepFormProps {
@@ -57,6 +62,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     imagesFrag: [],
     editingFragStates: {},
     fragmentationResults: [],
+    finalAnalysisResults: [],
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -66,26 +72,22 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     }));
   };
 
+  console.log("formdata", formData);
   const handleNext = () => {
     setCurrentStep((prev) => prev + 1);
   };
 
   const imageUploadFormRef = useRef<ImageUploadFormRef>(null);
   const imageUploadFragRef = useRef<ImageUploadFragRef>(null);
+
   function handleBack() {
-    // If we are on a step where an image editor is open, save its editing state first.
     if (currentStep === 6) {
       imageUploadFormRef.current?.saveEditingState();
     }
-
     if (currentStep === 7) {
       imageUploadFragRef.current?.saveEditingState();
     }
-
-    // Change the step or return to "home" if at the beginning or end.
-    if (currentStep === 1) {
-      setActiveScreen("home");
-    } else if (currentStep === 8) {
+    if (currentStep === 1 || currentStep === 8) {
       setActiveScreen("home");
     } else {
       setCurrentStep((prev) => prev - 1);
@@ -106,7 +108,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     </button>
   );
 
-  console.log(formData);
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -183,6 +184,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         return (
           <GraphScreen
             formData={formData}
+            updateFormData={updateFormData}
             onSave={handleSave}
             onDiggingTimeClick={() => setCurrentStep(9)}
           />

@@ -12,9 +12,77 @@ import uuid
 import cv2
 import numpy as np
 import time
+import shutil  
 # Import the marker extraction functions
 from object_detector import extract_marker_properties
+import io
 import base64
+from final import compute_kuz_ram_data, extract_and_save_cutouts, combined_plot
+from matplotlib import pyplot as plt
+
+def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: float, E: float, n: float, conversion: float):
+    # Compute the Kuz-Ram data.
+    kuzram_data = compute_kuz_ram_data(A, K, Q, E, n)
+    
+    # Create a unique output folder for cutouts.
+    unique_output = f"bw-cutout_{uuid.uuid4()}"
+    os.makedirs(unique_output, exist_ok=True)
+    
+    # Call extract_and_save_cutouts with the unique output directory.
+    _, _, longest_sides_pixels, threshold_percentages = extract_and_save_cutouts(image_path, conversion, output_dir=unique_output)
+    
+    # === Generate the combined plot ===
+    plt.figure(figsize=(10, 8))
+    sizes = kuzram_data["sizes"]
+    distribution = kuzram_data["distribution"]
+    plt.plot(sizes, distribution, label=f"Kuz-Ram Distribution\nX50 = {kuzram_data['X50']:.2f} cm", linestyle='-', color='blue')
+    
+    if kuzram_data["P10"] is not None:
+        plt.axvline(kuzram_data["P10"], color='green', linestyle='--', label=f'P10 = {kuzram_data["P10"]:.2f} cm')
+    if kuzram_data["P20"] is not None:
+        plt.axvline(kuzram_data["P20"], color='cyan', linestyle='--', label=f'P20 = {kuzram_data["P20"]:.2f} cm')
+    if kuzram_data["P80"] is not None:
+        plt.axvline(kuzram_data["P80"], color='purple', linestyle='--', label=f'P80 = {kuzram_data["P80"]:.2f} cm')
+    if kuzram_data["P90"] is not None:
+        plt.axvline(kuzram_data["P90"], color='orange', linestyle='--', label=f'P90 = {kuzram_data["P90"]:.2f} cm')
+    plt.axvline(kuzram_data["X50"], color='magenta', linestyle='-.', label=f'X50 = {kuzram_data["X50"]:.2f} cm')
+    
+    if len(longest_sides_pixels) > 1:
+        measurements_cm = [m * conversion for m in longest_sides_pixels[1:]]
+        sorted_meas = np.sort(measurements_cm)
+        n_points = len(sorted_meas)
+        cumulative_percentage = np.arange(1, n_points + 1) / n_points * 100
+        plt.plot(sorted_meas, cumulative_percentage, marker='o', linestyle='-', label="CDF of Object Sizes", color='red')
+    
+    plt.xlabel("Size (cm)")
+    plt.ylabel("Cumulative Percentage (%)")
+    plt.title("Combined Kuz-Ram Distribution and CDF")
+    plt.grid(True)
+    plt.legend(loc='best')
+    
+    # Save the plot to a buffer.
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format="png", dpi=300)
+    plt.close()
+    buffer.seek(0)
+    encoded_plot = base64.b64encode(buffer.read()).decode("utf-8")
+    
+    # Delete only the unique output folder (bw-cutout_{uuid}) after processing.
+    shutil.rmtree(unique_output, ignore_errors=True)
+    
+    return {
+        "kuzram": {
+            "X50": kuzram_data["X50"],
+            "P10": kuzram_data["P10"],
+            "P20": kuzram_data["P20"],
+            "P80": kuzram_data["P80"],
+            "P90": kuzram_data["P90"],
+            "percentage_below_60": kuzram_data["percentage_below_60"],
+            "percentage_above_60": kuzram_data["percentage_above_60"]
+        },
+        "threshold_percentages": threshold_percentages,
+        "plot_image_base64": encoded_plot
+    }
 
 app = Flask(__name__)
 
@@ -121,10 +189,8 @@ def fragmentation_red_outline():
         print(cutouts_folder)
         
         # Call extract_marker_properties on the cutouts folder to get the marker info
-        marker_file, longest_side_px, conversion_factor = extract_marker_properties(cutouts_folder)
+        _,_,conversion_factor = extract_marker_properties(cutouts_folder)
         marker_data = {
-            "marker_file": marker_file,
-            "longest_side_px": longest_side_px,
             "conversion_factor": conversion_factor
         }
 
@@ -143,11 +209,47 @@ def fragmentation_red_outline():
             "output_image": encoded_image,
             "marker_properties": marker_data
         }
+
+        shutil.rmtree(output_folder, ignore_errors=True)
         return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": f"Fragmentation failed: {str(e)}"}), 500
 
+@app.route("/fragmentation-analysis", methods=["POST"])
+def fragmentation_analysis():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    try:
+        # Get parameters from form-data
+        A = float(request.form.get("A"))
+        K = float(request.form.get("K"))
+        Q = float(request.form.get("Q"))
+        E = float(request.form.get("E"))
+        n = float(request.form.get("n"))
+        conversion = float(request.form.get("conversion"))  # mm/px
+
+        # Save image temporarily
+        uid = str(uuid.uuid4())
+        temp_filename = f"fragment_{uid}.jpg"
+        file.save(temp_filename)
+
+        # Perform full analysis
+        result = run_full_fragmentation_analysis(
+            temp_filename, A, K, Q, E, n, conversion
+        )
+
+        os.remove(temp_filename)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @app.route('/kuzram', methods=['POST'])
 def kuzram_endpoint():
     data = request.get_json()
