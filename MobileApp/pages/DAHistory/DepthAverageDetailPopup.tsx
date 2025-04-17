@@ -1,4 +1,3 @@
-// DepthAverageDetailPopup.tsx
 import React from 'react';
 import {
   View,
@@ -19,10 +18,9 @@ import {
   Hash,
   Star,
 } from 'react-native-feather';
-import type { DepthAverageData } from '../../context/DepthAverageContext';
+import type {DepthAverageData} from '../../context/DepthAverageContext';
 
-const { height: windowHeight } = Dimensions.get('window');
-// We'll cap the modal content at 80% of the screen height
+const {height: windowHeight} = Dimensions.get('window');
 const MODAL_MAX_HEIGHT = windowHeight * 0.8;
 
 interface DepthAverageDetailPopupProps {
@@ -38,17 +36,26 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
 }) => {
   if (!data) return null;
 
-  // Ensure kedalaman is parsed into an object
+  const safeParse = (jsonStr: string | null | undefined) => {
+    try {
+      return JSON.parse(jsonStr || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  console.log("data detail: ", data);
   const kedalamanObj: Record<string, string> =
     typeof data.kedalaman === 'string'
-      ? JSON.parse(data.kedalaman)
-      : data.kedalaman;
+      ? safeParse(data.kedalaman)
+      : data.kedalaman || {};
 
-  // Turn into a sorted array for display
+  const jumlahLubang = data.jumlahLubang || '0';
+
   const kedalamanItems = Object.entries(kedalamanObj)
     .map(([key, value]) => ({
       number: parseInt(key.replace(/[^0-9]/g, ''), 10),
-      label: key.replace(/([A-Za-z]+)(\d+)/, '$1 $2'), // “kedalaman 1”, “kedalaman 2”, …
+      label: key.replace(/([A-Za-z]+)(\d+)/, '$1 $2'),
       value,
     }))
     .sort((a, b) => a.number - b.number);
@@ -58,11 +65,9 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
       animationType="fade"
       transparent
       visible={visible}
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={[styles.card, { maxHeight: MODAL_MAX_HEIGHT }]}>
-          {/* Header */}
+        <View style={[styles.card, {maxHeight: MODAL_MAX_HEIGHT}]}>
           <View style={styles.header}>
             <Text style={styles.headerText}>Detail Depth Average</Text>
             <TouchableOpacity onPress={onClose}>
@@ -70,53 +75,50 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Scrollable body */}
           <ScrollView
             contentContainerStyle={styles.bodyContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Image */}
-            {data.image ? (
+            showsVerticalScrollIndicator={false}>
+            {data.image && (
               <View style={styles.imageWrapper}>
                 <Image
-                  source={{ uri: data.image }}
+                  source={{uri: data.image}}
                   style={styles.image}
                   resizeMode="cover"
                 />
               </View>
-            ) : null}
+            )}
 
-            {/* Main info */}
             <View style={styles.infoBlock}>
               <View style={styles.infoRow}>
                 <Star width={20} height={20} color="#15803d" />
-                <Text style={styles.infoTitle}>
-                  Priority: {data.prioritas}
-                </Text>
+                <Text style={styles.infoTitle}>Priority: {data.prioritas}</Text>
               </View>
               <View style={styles.infoRow}>
                 <MapPin width={20} height={20} color="#15803d" />
-                <Text style={styles.infoText}>Lokasi: {data.location}</Text>
+                <Text style={styles.infoText}>
+                  Lokasi: {data.location || '—'}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Calendar width={20} height={20} color="#15803d" />
-                <Text style={styles.infoText}>Tanggal: {data.date}</Text>
+                <Text style={styles.infoText}>Tanggal: {data.date || '—'}</Text>
               </View>
               <View style={styles.infoRow}>
                 <BarChart width={20} height={20} color="#15803d" />
-                <Text style={styles.infoText}>Average: {data.average}</Text>
+                <Text style={styles.infoText}>
+                  Average: {data.average || '—'}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Hash width={20} height={20} color="#15803d" />
                 <Text style={styles.infoText}>
-                  Jumlah Lubang: {data.jumlahLubang}
+                  Jumlah Lubang: {jumlahLubang}
                 </Text>
               </View>
             </View>
 
-            {/* Kedalaman section */}
             <View style={styles.section}>
-              <View style={[styles.infoRow, { marginBottom: 8 }]}>
+              <View style={[styles.infoRow, {marginBottom: 8}]}>
                 <Layers width={20} height={20} color="#15803d" />
                 <Text style={styles.sectionTitle}>Kedalaman</Text>
               </View>
@@ -129,24 +131,18 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
                       style={[
                         styles.kedalamanRow,
                         i < kedalamanItems.length - 1 && styles.kedalamanBorder,
-                      ]}
-                    >
+                      ]}>
                       <Text style={styles.kedalamanLabel}>{item.label}</Text>
-                      <Text style={styles.kedalamanValue}>
-                        {item.value} cm
-                      </Text>
+                      <Text style={styles.kedalamanValue}>{item.value} cm</Text>
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text style={styles.emptyText}>
-                  Tidak ada data kedalaman
-                </Text>
+                <Text style={styles.emptyText}>Tidak ada data kedalaman</Text>
               )}
             </View>
           </ScrollView>
 
-          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeButtonText}>Tutup</Text>

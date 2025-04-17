@@ -20,4 +20,5 @@ export type RootStackParamList = {
   DepthAverageUpload: undefined;
   FragmentionDepthAverage: undefined
   DiggingTimePage: undefined;
+  DAHistoryIncomplete: undefined; 
 };

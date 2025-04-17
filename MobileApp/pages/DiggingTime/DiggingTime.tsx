@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useContext} from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Video from 'react-native-video';
 import {launchImageLibrary} from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Feather';
+import {FormContext} from '../../context/FragmentationContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -29,6 +30,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 const DiggingTimePage = () => {
   const navigation = useNavigation<NavigationProp>();
+  const {saveToDatabase} = useContext(FormContext);
   const [videoFile, setVideoFile] = useState<any>(null);
   const [isStopwatchOpen, setIsStopwatchOpen] = useState(false);
   const [isManualInputOpen, setIsManualInputOpen] = useState(false);
@@ -108,13 +110,68 @@ const DiggingTimePage = () => {
 
   const handleDeleteSavedTime = () => setSavedTime(null);
 
-  const handleSave = () => {
-    if (savedTime) {
-      Alert.alert('Success', `Saved digging time: ${savedTime}`);
-    } else {
+  const handleSave = async () => {
+    if (!savedTime) {
       Alert.alert('Error', 'No time recorded');
+      return;
+    }
+  
+    try {
+      let uploadedVideoUrl = null;
+  
+      if (videoFile?.uri && !videoFile.uploadedUrl) {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: videoFile.uri,
+          type: videoFile.type || 'video/mp4',
+          name: videoFile.fileName || 'video.mp4',
+        });
+  
+        const uploadResponse = await fetch(
+          'http://10.0.2.2:5180/api/upload/upload-video',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            body: formData,
+          },
+        );
+  
+        const uploadJson = await uploadResponse.json();
+        uploadedVideoUrl = uploadJson.url;
+      } else if (videoFile?.uploadedUrl) {
+        uploadedVideoUrl = videoFile.uploadedUrl;
+      }
+  
+      // Optional: update videoFile state with uploadedUrl
+      if (uploadedVideoUrl && !videoFile?.uploadedUrl) {
+        setVideoFile({...videoFile, uploadedUrl: uploadedVideoUrl});
+      }
+  
+      // Now call saveToDatabase with digging time and video URL
+      // Assuming useFormContext or similar
+      // You might need to import and use your FormContext to get saveToDatabase
+      if (typeof saveToDatabase === 'function') {
+        const success = await saveToDatabase({
+          diggingTime: savedTime,
+          videoUri: uploadedVideoUrl,
+        });
+  
+        if (success) {
+          Alert.alert('Success', `Saved digging time: ${savedTime}`);
+        } else {
+          Alert.alert('Error', 'Failed to save data');
+        }
+      } else {
+        Alert.alert('Error', 'saveToDatabase not found');
+      }
+    } catch (err: any) {
+      console.error('Save failed:', err);
+      Alert.alert('Error', err.message || 'Unexpected error occurred');
     }
   };
+  
 
   const validateTimeInput = (
     text: string,

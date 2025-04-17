@@ -39,5 +39,33 @@ namespace aspnet.Controllers
             var fileUrl = $"{Request.Scheme}://{Request.Host}/Images/{fileName}";
             return Ok(new { url = fileUrl });
         }
+
+        [HttpPost("upload-video")]
+        public async Task<IActionResult> UploadVideo([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowed = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm" };
+
+            if (!allowed.Contains(ext))
+                return BadRequest("Invalid video format.");
+
+            var folder = Path.Combine("wwwroot", "Videos");
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            var uniqueFileName = $"{Guid.NewGuid()}{ext}";
+            var path = Path.Combine(folder, uniqueFileName);
+
+            using (var stream = new FileStream(path, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var publicUrl = $"{Request.Scheme}://{Request.Host}/Videos/{uniqueFileName}";
+            return Ok(new { url = publicUrl });
+        }
     }
 }

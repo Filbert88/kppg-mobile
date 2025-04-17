@@ -160,6 +160,15 @@ const DepthAverageUpload = () => {
     }
   };  
 
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'DAHistoryIncomplete') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate back to DAHistoryIncomplete
+    } else {
+      navigation.navigate('DAHistory'); // Navigate back to DAHistory
+    }
+  };
+
   console.log(imageUri)
   const isFormValid = imageUri !== null;
 
@@ -207,10 +216,7 @@ const DepthAverageUpload = () => {
         {formData.isEdit && (
           <TouchableOpacity
             className="px-4 py-3 bg-red-200 rounded-lg"
-            onPress={() => {
-              resetForm();               // clear formData + isEdit
-              navigation.navigate('DAHistory');
-            }}
+            onPress={handleCancelEdit}
           >
             <Text className="text-red-800 font-medium">Cancel Edit</Text>
           </TouchableOpacity>

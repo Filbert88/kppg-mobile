@@ -19,6 +19,7 @@ import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
 import DatePriority from './pages/DatePriority/DatePriority';
+import DAHistoryIncomplete from './pages/DAHistory/DAHistoryIncomplete';
 import Help from './pages/Help/Help';
 import {
   DepthAverageContext,
@@ -223,7 +224,7 @@ export default function App() {
                 <ScreenWrapper
                   component={FragmentationForm1}
                   customBackAction={() =>
-                    props.navigation.navigate('AddOrHistory', {
+                    props.navigation.navigate('DatePriority', {
                       type: 'FragmentasiForm1',
                     })
                   }
@@ -362,6 +363,24 @@ export default function App() {
                   customBackAction={() =>
                     props.navigation.navigate('AddOrHistory', {
                       type: 'FragmentasiForm1',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="DAHistoryIncomplete">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'DAHistoryIncomplete'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={DAHistoryIncomplete}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'DepthAverage',
                     })
                   }
                   {...props}
