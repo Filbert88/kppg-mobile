@@ -4,6 +4,7 @@ using aspnet.Data;
 using aspnet.Models;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace aspnet.Controllers
 {
@@ -48,12 +49,10 @@ namespace aspnet.Controllers
             return Ok(fragmentationData);
         }
 
-        // POST: api/Fragmentation
-        // POST: api/Fragmentation
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] FragmentationDataDto dto)
         {
-            // 1) Check for priority conflict on same day
+            // 1) Priority conflict check
             bool exists = await _context.FragmentationDatas
                 .AnyAsync(f => f.Tanggal.Date == dto.Tanggal.Date && f.Prioritas == dto.Prioritas);
 
@@ -71,7 +70,7 @@ namespace aspnet.Controllers
                 });
             }
 
-            // 2) Map DTO → EF Entity
+            // 2) Map to entity
             var entity = new FragmentationData
             {
                 Skala = dto.Skala,
@@ -84,11 +83,12 @@ namespace aspnet.Controllers
                 AmmoniumNitrate = dto.AmmoniumNitrate,
                 VolumeBlasting = dto.VolumeBlasting,
                 PowderFactor = dto.PowderFactor,
-            
+                DiggingTime = dto.DiggingTime,
+                VideoUri = dto.VideoUri,
                 Synced = 1
             };
 
-            // 3) Create FragmentationImsse and Results
+            // 3) Add images and results
             for (int i = 0; i < dto.UploadedImageUrls.Count; i++)
             {
                 var image = new FragmentationImage
@@ -97,24 +97,24 @@ namespace aspnet.Controllers
                     Synced = 1
                 };
 
-                // Optional: Add corresponding fragmented result
+                // Add fragmented result image
                 if (i < dto.FragmentedImageUrls.Count)
                 {
                     image.FragmentationImageResults.Add(new FragmentationImageResult
                     {
-                        Result1 = dto.FragmentedImageUrls[i], // fragmented result image URL
-                        Result2 = JsonSerializer.Serialize(dto.AnalysisJson), // full analysis object
+                        Result1 = dto.FragmentedImageUrls[i],
+                        Result2 = i < dto.AnalysisJsonList.Count ? JsonSerializer.Serialize(dto.AnalysisJsonList[i]) : "",
                         Synced = 1
                     });
                 }
 
-                // Optional: Add plot result only on first image
-                if (i == 0 && !string.IsNullOrEmpty(dto.PlotImageUrl))
+                // Add plot image result
+                if (i < dto.PlotImageUrls.Count)
                 {
                     image.FragmentationImageResults.Add(new FragmentationImageResult
                     {
-                        Result1 = dto.PlotImageUrl, // the plot image
-                        Result2 = JsonSerializer.Serialize(dto.AnalysisJson),
+                        Result1 = dto.PlotImageUrls[i],
+                        Result2 = i < dto.AnalysisJsonList.Count ? JsonSerializer.Serialize(dto.AnalysisJsonList[i]) : "",
                         Synced = 1
                     });
                 }
@@ -122,15 +122,9 @@ namespace aspnet.Controllers
                 entity.FragmentationImages.Add(image);
             }
 
-            // 4) Save
+            // 4) Save and return summary
             _context.FragmentationDatas.Add(entity);
             await _context.SaveChangesAsync();
-
-            // 5) Return the saved record with all children included
-            var saved = await _context.FragmentationDatas
-                .Include(f => f.FragmentationImages)
-                    .ThenInclude(i => i.FragmentationImageResults)
-                .FirstOrDefaultAsync(f => f.Id == entity.Id);
 
             return Ok(new
             {
@@ -138,70 +132,8 @@ namespace aspnet.Controllers
                 prioritas = entity.Prioritas,
                 tanggal = entity.Tanggal
             });
-
         }
 
-        // [HttpPut("{id}")]
-        // public async Task<IActionResult> Update(int id, [FromBody] FragmentationDataDto dto)
-        // {
-        //     var existing = await _context.FragmentationDatas
-        //         .Include(f => f.FragmentationImages)
-        //           .ThenInclude(i => i.FragmentationImageResults)
-        //         .FirstOrDefaultAsync(f => f.Id == id);
-
-        //     if (existing == null) return NotFound();
-        //     if (dto.Prioritas != existing.Prioritas
-        //      || dto.Tanggal.Date != existing.Tanggal.Date)
-        //     {
-        //         // re‑check collision if they changed date or priority
-        //         bool conflict = await _context.FragmentationDatas
-        //           .AnyAsync(f => f.Id != id
-        //                       && f.Tanggal.Date == dto.Tanggal.Date
-        //                       && f.Prioritas == dto.Prioritas);
-        //         if (conflict) return Conflict("Priority conflict");
-        //     }
-
-        //     // map updated fields
-        //     existing.Skala = dto.Skala;
-        //     existing.Pilihan = dto.Pilihan;
-        //     existing.Ukuran = dto.Ukuran;
-        //     existing.Prioritas = dto.Prioritas;
-        //     existing.Lokasi = dto.Lokasi;
-        //     existing.Tanggal = dto.Tanggal;
-        //     existing.Litologi = dto.Litologi;
-        //     existing.AmmoniumNitrate = dto.AmmoniumNitrate;
-        //     existing.VolumeBlasting = dto.VolumeBlasting;
-        //     existing.PowderFactor = dto.PowderFactor;
-        //     // if DiggingTime/VideoUri exist, update them too
-
-        //     // for simplicity here we’ll **wipe** old images/results and re‑add:
-        //     _context.FragmentationImageResults
-        //         .RemoveRange(existing.FragmentationImages.SelectMany(i => i.FragmentationImageResults));
-        //     _context.FragmentationImages.RemoveRange(existing.FragmentationImages);
-
-        //     // now re‑add exactly as in Create:
-        //     foreach (var url in dto.UploadedImageUrls)
-        //     {
-        //         var img = new FragmentationImage
-        //         {
-        //             ImageUri = url,
-        //             Synced = 1
-        //         };
-        //         foreach (var frag in dto.FragmentedResults)
-        //         {
-        //             img.FragmentationImageResults.Add(new FragmentationImageResult
-        //             {
-        //                 Result1 = frag.ImageDataUrl,
-        //                 Result2 = JsonSerializer.Serialize(frag.AnalysisJson),
-        //                 Synced = 1
-        //             });
-        //         }
-        //         existing.FragmentationImages.Add(img);
-        //     }
-
-        //     await _context.SaveChangesAsync();
-        //     return NoContent();
-        // }
 
         // DELETE: api/Fragmentation/5
         [HttpDelete("{id}")]
@@ -341,14 +273,65 @@ namespace aspnet.Controllers
         public async Task<IActionResult> GetTodayByPriority([FromQuery] int priority)
         {
             var today = DateTime.UtcNow.Date;
-            var frag = await _context.FragmentationDatas
+
+            // 1. Fetch raw data with includes
+            var raw = await _context.FragmentationDatas
                 .Include(fd => fd.FragmentationImages)
                     .ThenInclude(fi => fi.FragmentationImageResults)
                 .Where(fd => fd.Tanggal.Date == today && fd.Prioritas == priority)
                 .FirstOrDefaultAsync();
-            if (frag == null) return NotFound();
-            return Ok(frag);
+
+            if (raw == null) return NotFound();
+
+            // 2. Manual projection + deserialization
+            var result = new
+            {
+                raw.Id,
+                raw.Skala,
+                raw.Pilihan,
+                raw.Ukuran,
+                raw.Prioritas,
+                raw.Lokasi,
+                raw.Tanggal,
+                raw.Litologi,
+                raw.AmmoniumNitrate,
+                raw.VolumeBlasting,
+                raw.PowderFactor,
+                raw.Synced,
+                raw.DiggingTime,
+                raw.VideoUri,
+                fragmentationImages = raw.FragmentationImages.Select(fi => new
+                {
+                    fi.Id,
+                    fi.ImageUri,
+                    fi.Synced,
+                    fragmentationImageResults = fi.FragmentationImageResults.Select(fr => new
+                    {
+                        fr.Id,
+                        fr.Result1,
+                        Result2 = SafeDeserialize(fr.Result2),
+                        fr.Measurement,
+                        fr.Synced
+                    }).ToList()
+                }).ToList()
+            };
+
+            return Ok(result);
         }
+
+        // Utility to safely parse JSON or fallback to string
+        private object? SafeDeserialize(string json)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<object>(json);
+            }
+            catch
+            {
+                return json; // fallback: return as-is if not valid JSON
+            }
+        }
+
 
         [HttpGet("next-priority")]
         public async Task<IActionResult> GetNextPriority([FromQuery] DateTime tanggal)

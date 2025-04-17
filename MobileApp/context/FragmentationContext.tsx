@@ -131,10 +131,9 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     });
   };
 
-  // ✅ Dummy payload to test without running full flow
   const dummyPayload: Partial<FragmentationData> = {
-    skala: 'Skala Dummy',
-    pilihan: 'Pilihan Dummy',
+    skala: 'Skala Dummyaaa',
+    pilihan: 'Pilihan dadasdsaDummaaay',
     ukuran: 'Ukuran Dummy',
     prioritas: 1,
     lokasi: 'Lokasi Dummy',
@@ -143,12 +142,14 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     ammoniumNitrate: '123',
     volumeBlasting: '456',
     powderFactor: '7.89',
-    diggingTime: '30 minutes',
+    diggingTime: '45 minutes',
     videoUri: 'http://example.com/video.mp4',
+
     uploadedImageUrls: [
-      'http://10.0.2.2:5180/Images/image1.jpg',
+      'http://10.0.2.2:5180/Imagdsdasdes/image1.jpg',
       'http://10.0.2.2:5180/Images/image2.jpg',
     ],
+
     fragmentedResults: [
       {
         imageData: 'http://10.0.2.2:5180/Images/fragment1.jpg',
@@ -159,25 +160,46 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
         conversionFactor: 0.456,
       },
     ],
+
     finalAnalysisResults: [
       {
-        plot_image_base64: 'http://10.0.2.2:5180/Images/plot.png',
+        plot_image_base64: 'http://10.0.2.2:5180/Images/plot1.png',
         kuzram: {
-          P10: 1,
-          P20: 2,
-          P80: 80,
-          P90: 90,
-          X50: 50,
-          percentage_above_60: 12.5,
-          percentage_below_60: 87.5,
+          P10: 5,
+          P20: 10,
+          P80: 60,
+          P90: 75,
+          X50: 45,
+          percentage_above_60: 30.0,
+          percentage_below_60: 70.0,
         },
         threshold_percentages: {
-          '10': 5,
-          '20': 10,
-          '30': 25,
-          '40': 35,
-          '50': 15,
-          '60': 10,
+          '10': 8,
+          '20': 15,
+          '30': 20,
+          '40': 30,
+          '50': 10,
+          '60': 17,
+        },
+      },
+      {
+        plot_image_base64: 'http://10.0.2.2:5180/Images/paat2.png',
+        kuzram: {
+          P10: 3,
+          P20: 6,
+          P80: 70,
+          P90: 85,
+          X50: 55,
+          percentage_above_60: 25.0,
+          percentage_below_60: 75.0,
+        },
+        threshold_percentages: {
+          '10': 7,
+          '20': 12,
+          '30': 22,
+          '40': 33,
+          '50': 18,
+          '60': 8,
         },
       },
     ],
@@ -226,12 +248,10 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
           videoUri: payload.videoUri ?? null,
           uploadedImageUrls: payload.uploadedImageUrls,
           fragmentedImageUrls: payload.fragmentedResults.map(f => f.imageData),
-          plotImageUrl:
-            payload.finalAnalysisResults[0]?.plot_image_base64.replace(
-              'localhost',
-              '10.0.2.2',
-            ),
-          analysisJson: payload.finalAnalysisResults[0], // include entire analysis
+          plotImageUrls: payload.finalAnalysisResults.map(a =>
+            a.plot_image_base64.replace('localhost', '10.0.2.2'),
+          ),
+          analysisJsonList: payload.finalAnalysisResults,
         };
 
         // 4) POST to ASP.NET
