@@ -133,12 +133,12 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
 
   const dummyPayload: Partial<FragmentationData> = {
     skala: 'Skala Dummyaaa',
-    pilihan: 'Pilihan dadasdsaDummaaay',
+    pilihan: 'Pilihan dazxczxcxzcdasdsaDummaaay',
     ukuran: 'Ukuran Dummy',
     prioritas: 1,
     lokasi: 'Lokasi Dummy',
     tanggal: new Date().toISOString(),
-    litologi: 'Litologi Dummy',
+    litologi: 'Litologi Dusddsdsdmmy',
     ammoniumNitrate: '123',
     volumeBlasting: '456',
     powderFactor: '7.89',
@@ -205,9 +205,9 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     ],
   };
 
-  useEffect(() => {
-    saveToDatabase(dummyPayload);
-  }, []);
+  // useEffect(() => {
+  //   saveToDatabase(dummyPayload);
+  // }, []);
 
   const saveToDatabase = async (
     overrideData?: Partial<FragmentationData>,

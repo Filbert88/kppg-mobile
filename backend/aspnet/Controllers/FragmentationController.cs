@@ -97,24 +97,12 @@ namespace aspnet.Controllers
                     Synced = 1
                 };
 
-                // Add fragmented result image
-                if (i < dto.FragmentedImageUrls.Count)
+                if (i < dto.FragmentedImageUrls.Count && i < dto.AnalysisJsonList.Count)
                 {
                     image.FragmentationImageResults.Add(new FragmentationImageResult
                     {
-                        Result1 = dto.FragmentedImageUrls[i],
-                        Result2 = i < dto.AnalysisJsonList.Count ? JsonSerializer.Serialize(dto.AnalysisJsonList[i]) : "",
-                        Synced = 1
-                    });
-                }
-
-                // Add plot image result
-                if (i < dto.PlotImageUrls.Count)
-                {
-                    image.FragmentationImageResults.Add(new FragmentationImageResult
-                    {
-                        Result1 = dto.PlotImageUrls[i],
-                        Result2 = i < dto.AnalysisJsonList.Count ? JsonSerializer.Serialize(dto.AnalysisJsonList[i]) : "",
+                        Result1 = dto.FragmentedImageUrls[i], 
+                        Result2 = JsonSerializer.Serialize(dto.AnalysisJsonList[i]), 
                         Synced = 1
                     });
                 }
