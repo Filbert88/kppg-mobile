@@ -27,6 +27,7 @@ import {syncLocalDataWithBackend} from './database/services/syncService';
 import './global.css';
 import FragmentationForm6 from './pages/fragmentation-form/fragmentation-form6';
 import {dbService} from './database/services/dbService';
+import DiggingTimePage from './pages/DiggingTime/DiggingTime';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -310,6 +311,22 @@ export default function App() {
               )}
             </Stack.Screen>
 
+            <Stack.Screen name="DiggingTimePage">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'DiggingTimePage'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={DiggingTimePage}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationResult')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="FragmentationHistory">
               {(
                 props: NativeStackScreenProps<

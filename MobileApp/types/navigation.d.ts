@@ -18,4 +18,5 @@ export type RootStackParamList = {
   FormDA3: undefined;
   DAHistory: undefined;
   DepthAverageUpload: undefined;
+  DiggingTimePage: undefined;
 };

@@ -9,6 +9,9 @@ import {
   Modal,
   StyleSheet,
   Alert,
+  ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import {FormContext} from '../../context/FragmentationContext';
@@ -31,10 +34,58 @@ type NavigationProp = NativeStackNavigationProp<
 export default function FragmentationForm4() {
   const navigation = useNavigation<NavigationProp>();
   const {formData, updateForm} = useContext(FormContext);
-  const images = formData.imageUris;
+  const images = formData.rawImageUris;
 
   // Local state for which image is being edited.
   const [editingIndex, setEditingIndex] = useState<number>(-1);
+
+  // Loading state
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Animation values
+  const spinValue = new Animated.Value(0);
+  const scaleValue = new Animated.Value(1);
+
+  // Start spinning animation
+  useEffect(() => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start();
+
+      // Pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleValue, {
+            toValue: 1.1,
+            duration: 700,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleValue, {
+            toValue: 1,
+            duration: 700,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+    } else {
+      spinValue.setValue(0);
+      scaleValue.setValue(1);
+    }
+  }, [isLoading, spinValue, scaleValue]);
+
+  // Create the spin interpolation
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   // Connectivity state: isOnline is true if connected to the Internet.
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -53,7 +104,8 @@ export default function FragmentationForm4() {
     if (result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) {
-        updateForm({imageUris: [...images, uri]});
+        const newUris = [...images, uri];
+        updateForm({rawImageUris: newUris});
       }
     }
   };
@@ -69,7 +121,7 @@ export default function FragmentationForm4() {
     const newImages = images.map((imgUri, idx) =>
       idx === editingIndex ? resultUri : imgUri,
     );
-    updateForm({imageUris: newImages});
+    updateForm({rawImageUris: newImages});
     setEditingIndex(-1);
   };
 
@@ -93,11 +145,71 @@ export default function FragmentationForm4() {
 
   // Online "Next" button action.
   // For example, if online, you might continue to the next form in the workflow.
-  const handleNext = () => {
-    if (images.length === 0) {
-      return; // No images? Don't navigate.
+  const handleNext = async () => {
+    if (formData.rawImageUris.length === 0) return;
+
+    // Set loading state to true to show animation
+    setIsLoading(true);
+
+    try {
+      // 1. Upload each local URI
+      const uploadUrls: string[] = [];
+      for (let i = 0; i < formData.rawImageUris.length; i++) {
+        const uri = formData.rawImageUris[i];
+        const form = new FormData();
+        form.append('file', {
+          uri,
+          type: 'image/jpeg',
+          name: `upload${i}.jpg`,
+        } as any);
+
+        const resp = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
+          method: 'POST',
+          body: form,
+        });
+        const body = await resp.json();
+        uploadUrls.push(body.url);
+      }
+      updateForm({uploadedImageUrls: uploadUrls});
+
+      // 2. Call multi‑fragment with those uploaded files
+      const multiForm = new FormData();
+      uploadUrls.forEach(u => {
+        multiForm.append('files', {
+          uri: u,
+          type: 'image/jpeg',
+          name: u.split('/').pop(),
+        } as any);
+      });
+      const mfResp = await fetch(
+        'http://10.0.2.2:5180/api/Fragmentation/multi-fragment',
+        {method: 'POST', body: multiForm},
+      );
+
+      // 3. Build your fragment URLs from mfResults
+      //    e.g. your API returns just filename, so prefix with your static folder
+      const mfResults: Array<{
+        filename: string;
+        result: {
+          marker_properties: {conversion_factor: number};
+          output_image: string;
+        };
+      }> = await mfResp.json();
+      const fragmentedResults = mfResults.map(r => ({
+        imageData: `data:image/png;base64,${r.result.output_image}`, // or use r.result.output_image if you prefer inline base64
+        conversionFactor: r.result.marker_properties.conversion_factor,
+      }));
+      updateForm({fragmentedResults});
+
+      // Set loading state to false before navigation
+      setIsLoading(false);
+      navigation.navigate('FragmentationForm5');
+    } catch (e) {
+      console.error(e);
+      // Set loading state to false on error
+      setIsLoading(false);
+      Alert.alert('Error', 'Failed to process images');
     }
-    navigation.navigate('FragmentationForm5');
   };
 
   const isEditing = editingIndex >= 0;
@@ -128,12 +240,30 @@ export default function FragmentationForm4() {
         {isOnline ? (
           <TouchableOpacity
             onPress={handleNext}
-            disabled={images.length === 0}
+            disabled={images.length === 0 || isLoading}
             style={[
               styles.nextButton,
-              images.length === 0 && {backgroundColor: 'gray', opacity: 0.6},
+              (images.length === 0 || isLoading) && {
+                backgroundColor: 'gray',
+                opacity: 0.6,
+              },
             ]}>
-            <Text style={styles.nextButtonText}>Next</Text>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <Animated.View
+                  style={[
+                    styles.loadingIconContainer,
+                    {
+                      transform: [{rotate: spin}, {scale: scaleValue}],
+                    },
+                  ]}>
+                  <ActivityIndicator size="small" color="#fff" />
+                </Animated.View>
+                <Text style={styles.loadingText}>Processing...</Text>
+              </View>
+            ) : (
+              <Text style={styles.nextButtonText}>Next</Text>
+            )}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -159,6 +289,25 @@ export default function FragmentationForm4() {
           />
         )}
       </Modal>
+
+      {/* Full screen loading overlay for better UX */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <Animated.View
+              style={{
+                transform: [{rotate: spin}, {scale: scaleValue}],
+              }}>
+              <ActivityIndicator size="large" color="green" />
+            </Animated.View>
+            <Text style={styles.loadingCardTitle}>Processing Images</Text>
+            <Text style={styles.loadingCardText}>
+              Please wait while we process your images. This may take a
+              moment...
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -214,5 +363,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingIconContainer: {
+    marginRight: 8,
+  },
+  loadingText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingCardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#333',
+  },
+  loadingCardText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
