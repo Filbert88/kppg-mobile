@@ -164,7 +164,7 @@ export default class SQLiteService {
           [data.id],
         );
         // 3. Reinsert the images from data.imageUris.
-        for (const image of data.imageUris) {
+        for (const image of data.rawImageUris) {
           await this.db.executeSql(
             `INSERT INTO FragmentationImages (fragmentationId, imageUri, synced)
              VALUES (?, ?, 0)`,
@@ -203,7 +203,7 @@ export default class SQLiteService {
         const mainId = insertMain[0].insertId;
         console.log('FragmentationData saved with id:', mainId);
         // Insert each image.
-        for (const image of data.imageUris) {
+        for (const image of data.rawImageUris) {
           await this.db.executeSql(
             `INSERT INTO FragmentationImages (fragmentationId, imageUri, synced)
              VALUES (?, ?, 0)`,

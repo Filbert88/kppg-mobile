@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function FragmentationForm5() {
   const navigation = useNavigation<NavigationProp>();
-  const {formData, updateForm} = useContext(FormContext);
+  const {formData, updateForm, resetForm} = useContext(FormContext);
 
   // formData.fragmentedResults: Array<{ imageData: string; conversionFactor: number }>
   const images = formData.fragmentedResults;
@@ -221,6 +221,15 @@ export default function FragmentationForm5() {
     }
   };
 
+  const handleCancelEdit = () => {
+    resetForm(); 
+    if (formData.origin === 'FragmentationHistoryIncomplete') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+    } else {
+      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+    }
+  };
+
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -244,6 +253,13 @@ export default function FragmentationForm5() {
       </ScrollView>
 
       <View style={styles.bottomBar}>
+        {formData.isEdit && (
+          <TouchableOpacity
+            className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+            onPress={handleCancelEdit}>
+            <Text className="text-red-800 font-medium text-lg text-center">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           disabled={!isFormValid || isLoading}
           onPress={handleNext}

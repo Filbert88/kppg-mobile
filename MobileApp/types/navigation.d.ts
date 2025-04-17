@@ -13,6 +13,7 @@ export type RootStackParamList = {
   FragmentationForm6: undefined;
   FragmentationResult: undefined;
   FragmentationHistory: undefined;
+  FragmentationHistoryIncomplete: undefined;
   FormDA1: undefined;
   FormDA2: undefined;
   FormDA3: undefined;

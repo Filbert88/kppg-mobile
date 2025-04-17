@@ -11,7 +11,7 @@ import FormDA1 from './pages/FormDA1/FormDA1';
 import FormDA2 from './pages/FormDA2/FormDA2';
 import FormDA3 from './pages/FormDA3/FormDA3';
 import DAHistory from './pages/DAHistory/DAHistory';
-import FragmentationHistory from './pages/FragmentationHistory/FragmentationHistory';
+import FragmentationHistoryIncomplete from './pages/FragmentationHistoryIncomplete/FragmentationHistoryIncomplete';
 import FragmentationForm1 from './pages/fragmentation-form/fragmentation-form1';
 import FragmentationForm2 from './pages/fragmentation-form/fragmentation-form2';
 import FragmentationForm3 from './pages/fragmentation-form/fragmentation-form3';
@@ -32,7 +32,7 @@ import './global.css';
 import FragmentationForm6 from './pages/fragmentation-form/fragmentation-form6';
 import {dbService} from './database/services/dbService';
 import DiggingTimePage from './pages/DiggingTime/DiggingTime';
-
+import { FormContext } from './context/FragmentationContext';
 import FragmentationHistToDepth from './pages/FragmentationHistToDepth/FragmentationHistToDepth';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -100,10 +100,17 @@ export default function App() {
             </Stack.Screen>
 
             <Stack.Screen name="FragmentionDepthAverage">
-              {(props: NativeStackScreenProps<RootStackParamList, 'FragmentionDepthAverage'>) => (
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentionDepthAverage'
+                >,
+              ) => (
                 <ScreenWrapper
                   component={FragmentationHistToDepth}
-                  customBackAction={() => props.navigation.navigate('FragmentationHistory')}
+                  customBackAction={() =>
+                    props.navigation.navigate('FragmentationHistory')
+                  }
                   {...props}
                 />
               )}
@@ -220,17 +227,28 @@ export default function App() {
                   RootStackParamList,
                   'FragmentationForm1'
                 >,
-              ) => (
-                <ScreenWrapper
-                  component={FragmentationForm1}
-                  customBackAction={() =>
-                    props.navigation.navigate('DatePriority', {
-                      type: 'FragmentasiForm1',
-                    })
-                  }
-                  {...props}
-                />
-              )}
+              ) => {
+                // Grab formData from FragmentationContext
+                const {formData} = useContext(FormContext);
+
+                // Only provide a back-handler when NOT editing
+                const backHandler = formData.isEdit
+                  ? undefined // Disable back button when editing
+                  : () => {
+                      // When not editing, navigate back to DatePriority
+                      props.navigation.navigate('DatePriority', {
+                        type: 'FragmentasiForm1',
+                      });
+                    };
+
+                return (
+                  <ScreenWrapper
+                    component={FragmentationForm1}
+                    customBackAction={backHandler} // Provide custom back action based on isEdit
+                    {...props}
+                  />
+                );
+              }}
             </Stack.Screen>
 
             <Stack.Screen name="FragmentationForm2">
@@ -351,15 +369,15 @@ export default function App() {
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen name="FragmentationHistory">
+            <Stack.Screen name="FragmentationHistoryIncomplete">
               {(
                 props: NativeStackScreenProps<
                   RootStackParamList,
-                  'FragmentationHistory'
+                  'FragmentationHistoryIncomplete'
                 >,
               ) => (
                 <ScreenWrapper
-                  component={FragmentationHistory}
+                  component={FragmentationHistoryIncomplete}
                   customBackAction={() =>
                     props.navigation.navigate('AddOrHistory', {
                       type: 'FragmentasiForm1',

@@ -26,7 +26,11 @@ const AddOrHistory = () => {
   };
 
   const handleHistoryBelumSelesaiPress = () => {
-    navigation.navigate('DAHistoryIncomplete'); 
+    if (type === 'FragmentasiForm1') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Navigate to FragmentationHistoryIncomplete
+    } else if (type === 'DepthAverage') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate to DAHistoryIncomplete
+    }
   };
 
   return (
