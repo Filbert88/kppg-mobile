@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil } from 'lucide-react';
+import DepthAverageDetailPopup from "./depthAverageDetailPopup";
 
 interface DepthAverageItem {
   id: number;
@@ -10,11 +11,18 @@ interface DepthAverageItem {
   lokasi: string;
   tanggal: string;
   average: string;
+  kedalaman: Record<string, string>;
 }
 
-export default function SummaryScreen() {
+interface SummaryScreenProps {
+  onEdit?: (item: DepthAverageItem) => void;
+}
+
+export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
   const [data, setData] = useState<DepthAverageItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<DepthAverageItem | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,26 +30,38 @@ export default function SummaryScreen() {
         setIsLoading(true);
         const res = await fetch("http://localhost:5180/api/DepthAverage");
         const json = await res.json();
-
-        const mapped = json.map((item: any) => ({
+        const mapped = json.map((item: any): DepthAverageItem => ({
           id: item.id,
           imageUri: item.imageUri,
           prioritas: item.prioritas,
           lokasi: item.lokasi,
           tanggal: item.tanggal.split("T")[0],
           average: `${item.average} cm`,
+          kedalaman: typeof item.kedalaman === "string"
+            ? JSON.parse(item.kedalaman)
+            : item.kedalaman,
         }));
 
         setData(mapped);
-        setIsLoading(false);
       } catch (error) {
         console.error("Failed to fetch Depth Average:", error);
+      } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
   }, []);
+
+  const handleCardClick = (item: DepthAverageItem) => {
+    console.log("hai")
+    setSelectedItem(item);
+    setIsPopupOpen(true);
+  };
+
+  const handleClosePopup = () => {
+    setIsPopupOpen(false);
+  };
 
   return (
     <div className="pb-10 mt-2">
@@ -66,7 +86,8 @@ export default function SummaryScreen() {
           {data.map((item, index) => (
             <div
               key={item.id}
-              className="bg-rose-50 rounded-xl shadow-sm overflow-hidden"
+              className="bg-rose-50 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleCardClick(item)}
             >
               <div className="p-4">
                 <h2 className="text-lg font-bold mb-3">
@@ -94,14 +115,7 @@ export default function SummaryScreen() {
                         strokeLinejoin="round"
                         className="text-gray-300"
                       >
-                        <rect
-                          width="18"
-                          height="18"
-                          x="3"
-                          y="3"
-                          rx="2"
-                          ry="2"
-                        />
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                         <circle cx="9" cy="9" r="2" />
                         <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
                       </svg>
@@ -130,12 +144,26 @@ export default function SummaryScreen() {
               </div>
 
               <div className="flex border-t border-rose-100 mt-2">
-                <button className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors flex items-center justify-center gap-1.5">
+                <button 
+                  className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors flex items-center justify-center gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onEdit) {
+                      onEdit(item); // 🔥 Just use callback!
+                    }
+                  }}
+                >
                   <Pencil size={16} />
                   <span>Edit</span>
                 </button>
                 <div className="w-px bg-rose-100"></div>
-                <button className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors">
+                <button 
+                  className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // View Fragmentation action
+                  }}
+                >
                   Lihat Fragmentasi
                 </button>
               </div>
@@ -143,6 +171,12 @@ export default function SummaryScreen() {
           ))}
         </div>
       )}
+
+      <DepthAverageDetailPopup
+        isOpen={isPopupOpen}
+        onClose={handleClosePopup}
+        data={selectedItem}
+      />
     </div>
   );
 }

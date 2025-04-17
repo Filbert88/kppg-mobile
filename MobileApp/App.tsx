@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useContext, useEffect, useRef} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from './types/navigation';
@@ -20,7 +20,10 @@ import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
 import DatePriority from './pages/DatePriority/DatePriority';
 import Help from './pages/Help/Help';
-import {DepthAverageProvider} from './context/DepthAverageContext';
+import {
+  DepthAverageContext,
+  DepthAverageProvider,
+} from './context/DepthAverageContext';
 import {FormProvider} from './context/FragmentationContext';
 import NetInfo from '@react-native-community/netinfo';
 import {syncLocalDataWithBackend} from './database/services/syncService';
@@ -29,6 +32,7 @@ import FragmentationForm6 from './pages/fragmentation-form/fragmentation-form6';
 import {dbService} from './database/services/dbService';
 import DiggingTimePage from './pages/DiggingTime/DiggingTime';
 
+import FragmentationHistToDepth from './pages/FragmentationHistToDepth/FragmentationHistToDepth';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
@@ -69,6 +73,7 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
   return (
     <NavigationContainer>
       <DepthAverageProvider>
@@ -93,6 +98,16 @@ export default function App() {
               )}
             </Stack.Screen>
 
+            <Stack.Screen name="FragmentionDepthAverage">
+              {(props: NativeStackScreenProps<RootStackParamList, 'FragmentionDepthAverage'>) => (
+                <ScreenWrapper
+                  component={FragmentationHistToDepth}
+                  customBackAction={() => props.navigation.navigate('FragmentationHistory')}
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+
             <Stack.Screen name="Help">
               {(props: NativeStackScreenProps<RootStackParamList, 'Help'>) => (
                 <ScreenWrapper component={Help} {...props} />
@@ -105,17 +120,25 @@ export default function App() {
                   RootStackParamList,
                   'DepthAverageUpload'
                 >,
-              ) => (
-                <ScreenWrapper
-                  component={DepthAverageUpload}
-                  customBackAction={() =>
-                    props.navigation.navigate('DatePriority', {
-                      type: 'DepthAverage',
-                    })
-                  }
-                  {...props}
-                />
-              )}
+              ) => {
+                // grab isEdit from context here
+                const {formData} = useContext(DepthAverageContext);
+                // only provide a back‐handler when NOT editing
+                const backHandler = formData.isEdit
+                  ? undefined
+                  : () =>
+                      props.navigation.navigate('DatePriority', {
+                        type: 'DepthAverage',
+                      });
+
+                return (
+                  <ScreenWrapper
+                    component={DepthAverageUpload}
+                    customBackAction={backHandler}
+                    {...props}
+                  />
+                );
+              }}
             </Stack.Screen>
             <Stack.Screen name="DatePriority">
               {(

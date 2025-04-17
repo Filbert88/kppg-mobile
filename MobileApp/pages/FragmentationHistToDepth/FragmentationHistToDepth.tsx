@@ -9,28 +9,24 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {MapPin, Calendar, BarChart, Edit2} from 'react-native-feather';
-import {
-  DepthAverageContext,
-  DepthAverageData,
-} from '../../context/DepthAverageContext';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import type {RootStackParamList} from '../../types/navigation';
-import DepthAverageDetailPopup from './DepthAverageDetailPopup';
+import {DepthAverageContext, DepthAverageData} from '../../context/DepthAverageContext';
+import DepthAverageDetailPopup from '../DAHistory/DepthAverageDetailPopup';
+import {useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// Reusing the same card component from DAHistory
 const EnhancedDepthAverageCard = ({
   data,
   index,
   onEdit,
-  onViewFragmentation,
   onPress,
 }: {
   data: DepthAverageData;
   index: number;
   onEdit: (id: number) => void;
-  onViewFragmentation: (id: number) => void;
   onPress: (data: DepthAverageData) => void;
 }) => (
   <TouchableOpacity
@@ -113,32 +109,28 @@ const EnhancedDepthAverageCard = ({
             <Text className="text-green-800 ml-1 font-medium">Edit</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            className="bg-green-200 px-4 py-2 rounded-full ml-2"
-            onPress={(e) => {
-              e.stopPropagation(); // Prevent card click
-              onViewFragmentation(data.id);
-            }}>
-            <Text className="text-green-800 font-medium">Lihat Fragmentasi</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
   </TouchableOpacity>
 );
 
-const DAHistory = () => {
+
+const FragmentationHistToDepth = () => {
   const {loadData, setFormData} = useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<DepthAverageData[]>([]);
-  const [selectedData, setSelectedData] = useState<DepthAverageData | null>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<DepthAverageData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const loadedData = await loadData();
         console.log('Loaded Data from SQLite:', loadedData);
+
+        // For now, we're using all depth average data
+        // Later you might want to filter for today's data only
         setData(loadedData);
       } catch (error) {
         console.error('Failed to load depth average data:', error);
@@ -148,7 +140,6 @@ const DAHistory = () => {
     fetchData();
   }, []);
 
-  // Handle edit button press
   const handleEdit = (id: number) => {
     // find the item in state
     const item = data.find(d => d.id === id);
@@ -164,28 +155,33 @@ const DAHistory = () => {
       kedalaman: item.kedalaman ?? {},
       average: item.average.replace(' cm', ''), // strip unit
       prioritas: item.prioritas,
-      isEdit: true
     });
 
     // go to the DepthAverageUpload (or directly FormDA1 if you prefer)
     navigation.navigate('DepthAverageUpload');
   };
-
-  // Handle view fragmentation button press
-  const handleViewFragmentation = (id: number) => {
-    console.log('View Fragmentation pressed for ID:', id);
-    // Navigate to fragmentation details screen
-  };
-
-  const handleCardPress = (data: DepthAverageData) => {
-    setSelectedData(data);
-    setDetailVisible(true);
+  
+    const handleCardPress = (item: DepthAverageData) => {
+      setSelectedRecord(item);
+      setPopupVisible(true);
+    };
+    
+  const handleClosePopup = () => {
+    setPopupVisible(false);
+    setSelectedRecord(null);
   };
 
   return (
     <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
       <ScrollView className="flex-1 px-4 pt-6">
+        {/* Title at the top of the page */}
+        <View className="mb-6">
+          <Text className="text-2xl font-bold text-gray-800 text-center">
+            Fragmentation-form 1
+          </Text>
+        </View>
+
         {data.length > 0 ? (
           data.map((item, index) => (
             <EnhancedDepthAverageCard
@@ -193,7 +189,6 @@ const DAHistory = () => {
               data={item}
               index={index}
               onEdit={handleEdit}
-              onViewFragmentation={handleViewFragmentation}
               onPress={handleCardPress}
             />
           ))
@@ -205,14 +200,13 @@ const DAHistory = () => {
         <View className="h-6" />
       </ScrollView>
 
-      {/* Detail Popup */}
       <DepthAverageDetailPopup
-        visible={detailVisible}
-        data={selectedData}
-        onClose={() => setDetailVisible(false)}
+        visible={popupVisible}
+        data={selectedRecord}
+        onClose={handleClosePopup}
       />
     </SafeAreaView>
   );
 };
 
-export default DAHistory;
+export default FragmentationHistToDepth;

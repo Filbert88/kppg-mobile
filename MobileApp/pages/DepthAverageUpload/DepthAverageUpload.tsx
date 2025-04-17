@@ -6,9 +6,10 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { ArrowRight, Save } from 'react-native-feather';
@@ -23,7 +24,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 const DepthAverageUpload = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { setFormData, saveToDatabase } = useContext(DepthAverageContext);
+  const { formData, setFormData, saveToDatabase, resetForm } = useContext(DepthAverageContext);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean>(true);
@@ -33,8 +34,38 @@ const DepthAverageUpload = () => {
       setIsConnected(!!state.isConnected);
     });
 
+    if (formData.imageUri) {
+      setImageUri(formData.imageUri);
+    }
+
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const unblock = navigation.addListener('beforeRemove', e => {
+      if (formData.isEdit) {
+        e.preventDefault();
+      }
+    });
+    return unblock;
+  }, [navigation, formData.isEdit]);
+
+  // 2️⃣ Swallow the Android hardware back button while editing
+  useFocusEffect(
+    React.useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          if (formData.isEdit) {
+            return true; // block
+          }
+          return false;  // allow
+        }
+      );
+      return () => subscription.remove();
+    }, [formData.isEdit])
+  );
+
 
   const handleImagePicker = async () => {
     const hasPermission = await requestPhotoPermission();
@@ -170,7 +201,22 @@ const DepthAverageUpload = () => {
         )}
       </TouchableOpacity>
 
-      <View className="absolute bottom-5 right-5 mb-4">
+      {/* Fixed: Button container with proper layout */}
+      <View className="w-full flex-row justify-between p-6 mb-4">
+        {/* Cancel Edit (only when editing) - Now positioned to the left */}
+        {formData.isEdit && (
+          <TouchableOpacity
+            className="px-4 py-3 bg-red-200 rounded-lg"
+            onPress={() => {
+              resetForm();               // clear formData + isEdit
+              navigation.navigate('DAHistory');
+            }}
+          >
+            <Text className="text-red-800 font-medium">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
+        
+        {/* Next/Save button */}
         <TouchableOpacity
           disabled={!isFormValid || isLoading}
           onPress={isConnected ? handleNextOnline : handleSaveOffline}
