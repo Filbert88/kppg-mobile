@@ -1,161 +1,153 @@
-import React from 'react';
+// FragmentationResult.tsx
+import React, {useContext} from 'react';
 import {
   View,
   Text,
   ScrollView,
   SafeAreaView,
-  StatusBar,
+  Image,
+  StyleSheet,
+  Dimensions,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
-import {LineChart} from 'react-native-chart-kit';
-import {Save} from 'react-native-feather';
-import {Dimensions} from 'react-native';
-
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import {FormContext} from '../../context/FragmentationContext';
 
-type NavigationProp = NativeStackNavigationProp<
+type NavProp = NativeStackNavigationProp<
   RootStackParamList,
   'FragmentationResult'
 >;
 
-
-const graphData = {
-  labels: ['0', '10', '20', '30', '40', '50', '60', '70'],
-  datasets: [
-    {
-      data: [0, 20, 35, 45, 60, 75, 85, 95],
-      color: (opacity = 1) => `rgba(72, 187, 120, ${opacity})`, 
-      strokeWidth: 2,
-    },
-  ],
-};
-
-const summaryData = [
-  {size: '4750.00', percent: '100.00'},
-  {size: '4000.00', percent: '100.00'},
-  {size: '2000.00', percent: '100.00'},
-  {size: '1000.00', percent: '94.24'},
-  {size: '750.00', percent: '85.71'},
-  {size: '500.00', percent: '70.71'},
-  {size: '250.00', percent: '50.49'},
-  {size: '125.00', percent: '22.94'},
-  {size: '63.00', percent: '17.07'},
-  {size: '45.00', percent: '10.24'},
-  {size: '31.00', percent: '8.85'},
-  {size: '23.00', percent: '6.98'},
-  {size: '16.00', percent: '4.69'},
-  {size: '11.00', percent: '3.26'},
-  {size: '7.800', percent: '2.14'},
-  {size: '5.500', percent: '1.65'},
-  {size: '4.000', percent: '1.21'},
-];
-
-const sizeMetrics = [
-  {label: 'P20 Size (μm)', value: '75.24'},
-  {label: 'P50 Size (μm)', value: '244.53'},
-  {label: 'P80 Size (μm)', value: '480.26'},
-  {label: 'Top Size (μm)', value: '771.90'},
-];
-
-const FragmentationResult = () => {
+export default function FragmentationResult() {
+  const navigation = useNavigation<NavProp>();
+  const {formData, saveToDatabase} = useContext(FormContext);
+  const result = formData.finalAnalysisResults[0];
   const screenWidth = Dimensions.get('window').width;
-  const navigation = useNavigation<NavigationProp>();
+
+  // Replace localhost → 10.0.2.2 on Android emulator
+  const imageUri = result.plot_image_base64.replace('localhost', '10.0.2.2');
+
+  const summaryArray = Object.entries(result.threshold_percentages)
+    .map(([size, pct]) => ({size: parseFloat(size), pct}))
+    .sort((a, b) => b.size - a.size);
+
+  const onSave = async () => {
+    const ok = await saveToDatabase();
+    if (ok) {
+      Alert.alert('Success', 'Fragmentation saved!');
+      navigation.navigate('Homepage'); // or wherever
+    } else {
+      Alert.alert('Error', 'Could not save fragmentation.');
+    }
+  };
 
   return (
-    <SafeAreaView className="flex-1">
-      <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
-      <ScrollView className="flex-1">
-        <View className="p-4 gap-4">
-          <View className="bg-white rounded-xl p-4 shadow-sm">
-            <Text className="text-lg font-bold text-gray-800 mb-4">Grafik</Text>
-            <LineChart
-              data={graphData}
-              width={screenWidth - 48}
-              height={220}
-              chartConfig={{
-                backgroundColor: '#ffffff',
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientTo: '#ffffff',
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(72, 187, 120, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                style: {
-                  borderRadius: 16,
-                },
-                propsForDots: {
-                  r: '2',
-                  strokeWidth: '1',
-                  stroke: '#48bb78',
-                },
-              }}
-              bezier
-              style={{
-                marginVertical: 8,
-                borderRadius: 16,
-              }}
-              yAxisLabel=""
-              yAxisSuffix=""
-            />
-            <View className="flex-row justify-between mt-2">
-              <Text className="text-xs text-gray-600">Particle Size (μm)</Text>
-              <Text className="text-xs text-gray-600">Percent Finer</Text>
-            </View>
+    <SafeAreaView style={styles.root}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Image
+          source={{uri: imageUri}}
+          style={{
+            width: screenWidth - 32,
+            height: (screenWidth - 32) * 0.6,
+            borderRadius: 8,
+          }}
+          resizeMode="contain"
+        />
+
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Ringkasan</Text>
+        </View>
+
+        <View style={styles.table}>
+          <View style={[styles.row, styles.rowHeader]}>
+            <Text style={[styles.cell, styles.cellHeader]}>Size (mm)</Text>
+            <Text style={[styles.cell, styles.cellHeader]}>%</Text>
           </View>
-          <View className="bg-white rounded-xl p-4 shadow-sm">
-            <Text className="text-lg font-bold text-gray-800 mb-4">
-              Ringkasan
-            </Text>
-            <View className="border border-gray-200 rounded-lg overflow-hidden">
-              <View className="flex-row bg-gray-50 border-b border-gray-200">
-                <Text className="flex-1 px-4 py-2 font-medium text-gray-700">
-                  Size (μm)
-                </Text>
-                <Text className="flex-1 px-4 py-2 font-medium text-gray-700">
-                  Percent (%)
-                </Text>
-              </View>
-              {summaryData.map((item, index) => (
-                <View
-                  key={index}
-                  className={`flex-row ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  }`}>
-                  <Text className="flex-1 px-4 py-2 text-gray-600">
-                    {item.size}
-                  </Text>
-                  <Text className="flex-1 px-4 py-2 text-gray-600">
-                    {item.percent}
-                  </Text>
-                </View>
-              ))}
+          {summaryArray.map((row, idx) => (
+            <View
+              key={row.size}
+              style={[
+                styles.row,
+                idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
+              ]}>
+              <Text style={styles.cell}>{row.size.toFixed(3)}</Text>
+              <Text style={styles.cell}>{row.pct.toFixed(2)}</Text>
             </View>
-            <View className="mt-4 space-y-2">
-              {sizeMetrics.map((metric, index) => (
-                <View
-                  key={index}
-                  className="flex-row justify-between bg-gray-50 px-4 py-2 rounded-lg">
-                  <Text className="text-gray-600">{metric.label}</Text>
-                  <Text className="font-medium text-gray-800">
-                    {metric.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          ))}
         </View>
       </ScrollView>
-      <View className="p-4 mb-4">
+
+      {/* Bottom center: Tambah Digging Time */}
+      <View style={styles.bottomCenter}>
         <TouchableOpacity
-          className="bg-green-700 py-3 rounded-lg shadow-sm flex-row items-center justify-center"
-          onPress={() => console.log('Save pressed')}>
-          <Save width={20} height={20} color="white" className="mr-4" />
-          <Text className="text-white font-bold text-lg ml-2">Simpan</Text>
+          style={styles.centerButton}
+          onPress={() => navigation.navigate('DiggingTimePage')}>
+          <Text style={styles.centerText}>Tambah Digging Time</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom right: Simpan */}
+      <View style={styles.bottomRight}>
+        <TouchableOpacity style={styles.saveButton} onPress={onSave}>
+          <Text style={styles.saveText}>Simpan</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
-};
+}
 
-export default FragmentationResult;
+const styles = StyleSheet.create({
+  root: {flex: 1, backgroundColor: '#f3f4f6'},
+  container: {padding: 16, paddingBottom: 100},
+  header: {
+    backgroundColor: '#a4d4ae',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  headerText: {fontSize: 18, fontWeight: 'bold', color: '#fff'},
+  table: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  row: {flexDirection: 'row', paddingVertical: 6},
+  rowHeader: {backgroundColor: '#eaeaea'},
+  rowEven: {backgroundColor: '#fff'},
+  rowOdd: {backgroundColor: '#f9f9f9'},
+  cell: {flex: 1, textAlign: 'center', fontSize: 14, color: '#333'},
+  cellHeader: {fontWeight: '600'},
+
+  bottomCenter: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  centerButton: {
+    backgroundColor: '#48bb78',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  centerText: {color: '#fff', fontWeight: 'bold'},
+
+  bottomRight: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+  },
+  saveButton: {
+    backgroundColor: '#2f855a',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  saveText: {color: '#fff', fontWeight: 'bold'},
+});

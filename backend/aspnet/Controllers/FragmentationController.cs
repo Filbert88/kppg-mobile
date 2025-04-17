@@ -49,41 +49,159 @@ namespace aspnet.Controllers
         }
 
         // POST: api/Fragmentation
+        // POST: api/Fragmentation
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] FragmentationData fragmentationData)
+        public async Task<IActionResult> Create([FromBody] FragmentationDataDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            // 1) Check for priority conflict on same day
+            bool exists = await _context.FragmentationDatas
+                .AnyAsync(f => f.Tanggal.Date == dto.Tanggal.Date && f.Prioritas == dto.Prioritas);
 
-            _context.FragmentationDatas.Add(fragmentationData);
+            if (exists)
+            {
+                var existing = await _context.FragmentationDatas
+                    .Where(f => f.Tanggal.Date == dto.Tanggal.Date)
+                    .Select(f => f.Prioritas)
+                    .ToListAsync();
+
+                return Conflict(new
+                {
+                    message = $"Priority {dto.Prioritas} on {dto.Tanggal:yyyy-MM-dd} already exists",
+                    existingPriorities = existing
+                });
+            }
+
+            // 2) Map DTO → EF Entity
+            var entity = new FragmentationData
+            {
+                Skala = dto.Skala,
+                Pilihan = dto.Pilihan,
+                Ukuran = dto.Ukuran,
+                Prioritas = dto.Prioritas,
+                Lokasi = dto.Lokasi,
+                Tanggal = dto.Tanggal,
+                Litologi = dto.Litologi,
+                AmmoniumNitrate = dto.AmmoniumNitrate,
+                VolumeBlasting = dto.VolumeBlasting,
+                PowderFactor = dto.PowderFactor,
+            
+                Synced = 1
+            };
+
+            // 3) Create FragmentationImsse and Results
+            for (int i = 0; i < dto.UploadedImageUrls.Count; i++)
+            {
+                var image = new FragmentationImage
+                {
+                    ImageUri = dto.UploadedImageUrls[i],
+                    Synced = 1
+                };
+
+                // Optional: Add corresponding fragmented result
+                if (i < dto.FragmentedImageUrls.Count)
+                {
+                    image.FragmentationImageResults.Add(new FragmentationImageResult
+                    {
+                        Result1 = dto.FragmentedImageUrls[i], // fragmented result image URL
+                        Result2 = JsonSerializer.Serialize(dto.AnalysisJson), // full analysis object
+                        Synced = 1
+                    });
+                }
+
+                // Optional: Add plot result only on first image
+                if (i == 0 && !string.IsNullOrEmpty(dto.PlotImageUrl))
+                {
+                    image.FragmentationImageResults.Add(new FragmentationImageResult
+                    {
+                        Result1 = dto.PlotImageUrl, // the plot image
+                        Result2 = JsonSerializer.Serialize(dto.AnalysisJson),
+                        Synced = 1
+                    });
+                }
+
+                entity.FragmentationImages.Add(image);
+            }
+
+            // 4) Save
+            _context.FragmentationDatas.Add(entity);
             await _context.SaveChangesAsync();
 
-            return Ok(fragmentationData);
+            // 5) Return the saved record with all children included
+            var saved = await _context.FragmentationDatas
+                .Include(f => f.FragmentationImages)
+                    .ThenInclude(i => i.FragmentationImageResults)
+                .FirstOrDefaultAsync(f => f.Id == entity.Id);
+
+            return Ok(new
+            {
+                id = entity.Id,
+                prioritas = entity.Prioritas,
+                tanggal = entity.Tanggal
+            });
+
         }
 
-        // PUT: api/Fragmentation/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] FragmentationData fragmentationData)
-        {
-            if (id != fragmentationData.Id)
-                return BadRequest();
+        // [HttpPut("{id}")]
+        // public async Task<IActionResult> Update(int id, [FromBody] FragmentationDataDto dto)
+        // {
+        //     var existing = await _context.FragmentationDatas
+        //         .Include(f => f.FragmentationImages)
+        //           .ThenInclude(i => i.FragmentationImageResults)
+        //         .FirstOrDefaultAsync(f => f.Id == id);
 
-            _context.Entry(fragmentationData).State = EntityState.Modified;
+        //     if (existing == null) return NotFound();
+        //     if (dto.Prioritas != existing.Prioritas
+        //      || dto.Tanggal.Date != existing.Tanggal.Date)
+        //     {
+        //         // re‑check collision if they changed date or priority
+        //         bool conflict = await _context.FragmentationDatas
+        //           .AnyAsync(f => f.Id != id
+        //                       && f.Tanggal.Date == dto.Tanggal.Date
+        //                       && f.Prioritas == dto.Prioritas);
+        //         if (conflict) return Conflict("Priority conflict");
+        //     }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await FragmentationDataExists(id))
-                    return NotFound();
+        //     // map updated fields
+        //     existing.Skala = dto.Skala;
+        //     existing.Pilihan = dto.Pilihan;
+        //     existing.Ukuran = dto.Ukuran;
+        //     existing.Prioritas = dto.Prioritas;
+        //     existing.Lokasi = dto.Lokasi;
+        //     existing.Tanggal = dto.Tanggal;
+        //     existing.Litologi = dto.Litologi;
+        //     existing.AmmoniumNitrate = dto.AmmoniumNitrate;
+        //     existing.VolumeBlasting = dto.VolumeBlasting;
+        //     existing.PowderFactor = dto.PowderFactor;
+        //     // if DiggingTime/VideoUri exist, update them too
 
-                throw;
-            }
+        //     // for simplicity here we’ll **wipe** old images/results and re‑add:
+        //     _context.FragmentationImageResults
+        //         .RemoveRange(existing.FragmentationImages.SelectMany(i => i.FragmentationImageResults));
+        //     _context.FragmentationImages.RemoveRange(existing.FragmentationImages);
 
-            return NoContent();
-        }
+        //     // now re‑add exactly as in Create:
+        //     foreach (var url in dto.UploadedImageUrls)
+        //     {
+        //         var img = new FragmentationImage
+        //         {
+        //             ImageUri = url,
+        //             Synced = 1
+        //         };
+        //         foreach (var frag in dto.FragmentedResults)
+        //         {
+        //             img.FragmentationImageResults.Add(new FragmentationImageResult
+        //             {
+        //                 Result1 = frag.ImageDataUrl,
+        //                 Result2 = JsonSerializer.Serialize(frag.AnalysisJson),
+        //                 Synced = 1
+        //             });
+        //         }
+        //         existing.FragmentationImages.Add(img);
+        //     }
+
+        //     await _context.SaveChangesAsync();
+        //     return NoContent();
+        // }
 
         // DELETE: api/Fragmentation/5
         [HttpDelete("{id}")]
@@ -170,13 +288,13 @@ namespace aspnet.Controllers
         // POST: api/Fragmentation/fragmentation-analysis
         [HttpPost("fragmentation-analysis")]
         public async Task<IActionResult> RunFragmentationAnalysis(
-           List<IFormFile> files,
-           [FromForm] double A,
-           [FromForm] double K,
-           [FromForm] double Q,
-           [FromForm] double E,
-           [FromForm] double n,
-           [FromForm] double conversion)
+        List<IFormFile> files,
+        [FromForm] double A,
+        [FromForm] double K,
+        [FromForm] double Q,
+        [FromForm] double E,
+        [FromForm] double n,
+        [FromForm] double conversion)
         {
             if (files == null || files.Count == 0)
                 return BadRequest("No files uploaded.");
@@ -184,15 +302,16 @@ namespace aspnet.Controllers
             var client = _clientFactory.CreateClient("LongRunningClient");
             var results = new List<object>();
 
-            // Process each uploaded file
             foreach (var file in files)
             {
                 using var content = new MultipartFormDataContent();
-                using var fileStream = file.OpenReadStream();
-                var fileContent = new StreamContent(fileStream);
+                // stream the file
+                using var stream = file.OpenReadStream();
+                var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-
                 content.Add(fileContent, "file", file.FileName);
+
+                // append your parameters
                 content.Add(new StringContent(A.ToString()), "A");
                 content.Add(new StringContent(K.ToString()), "K");
                 content.Add(new StringContent(Q.ToString()), "Q");
@@ -203,14 +322,46 @@ namespace aspnet.Controllers
                 var response = await client.PostAsync("http://localhost:5000/fragmentation-analysis", content);
                 if (!response.IsSuccessStatusCode)
                 {
-                    results.Add(new { filename = file.FileName, error = $"Analysis failed with status {response.StatusCode}" });
+                    results.Add(new { filename = file.FileName, error = response.StatusCode });
                     continue;
                 }
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-                var parsedResult = JsonSerializer.Deserialize<object>(jsonResponse);
-                results.Add(parsedResult);
+
+                var json = await response.Content.ReadAsStringAsync();
+                // you can strongly type this instead of object
+                var parsed = JsonSerializer.Deserialize<object>(json);
+                results.Add(parsed);
             }
+
             return Ok(results);
         }
+
+        // in FragmentationController.cs
+        // GET: api/Fragmentation/today?priority=1
+        [HttpGet("today")]
+        public async Task<IActionResult> GetTodayByPriority([FromQuery] int priority)
+        {
+            var today = DateTime.UtcNow.Date;
+            var frag = await _context.FragmentationDatas
+                .Include(fd => fd.FragmentationImages)
+                    .ThenInclude(fi => fi.FragmentationImageResults)
+                .Where(fd => fd.Tanggal.Date == today && fd.Prioritas == priority)
+                .FirstOrDefaultAsync();
+            if (frag == null) return NotFound();
+            return Ok(frag);
+        }
+
+        [HttpGet("next-priority")]
+        public async Task<IActionResult> GetNextPriority([FromQuery] DateTime tanggal)
+        {
+            // find the maximum existing priority for that date
+            var maxPriority = await _context.FragmentationDatas
+                .Where(f => f.Tanggal.Date == tanggal.Date)
+                .MaxAsync(f => (int?)f.Prioritas)
+                ?? 0;
+
+            // next one is max + 1
+            return Ok(maxPriority + 1);
+        }
+
     }
 }

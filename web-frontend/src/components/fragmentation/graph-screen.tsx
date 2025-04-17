@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface GraphScreenProps {
@@ -35,9 +35,13 @@ export default function GraphScreen({
     formData.finalAnalysisResults || []
   );
   const [uploading, setUploading] = useState(false);
+  const hasUploaded = useRef(false);
 
   useEffect(() => {
     const uploadAllPlots = async () => {
+      if (hasUploaded.current) return;
+      hasUploaded.current = true;
+
       setUploading(true);
       const newResults = await Promise.all(
         (formData.finalAnalysisResults || []).map(async (result, index) => {
@@ -82,7 +86,7 @@ export default function GraphScreen({
     };
 
     uploadAllPlots();
-  }, [formData.finalAnalysisResults, updateFormData]);
+  }, []);
 
   return (
     <div className="p-4 bg-white w-[70%]">
@@ -93,7 +97,7 @@ export default function GraphScreen({
       ) : updatedResults.length === 0 ? (
         <p>No final analysis results found.</p>
       ) : (
-        updatedResults.map((result, idx) => {
+        formData.finalAnalysisResults.map((result, idx) => {
           const { kuzram, threshold_percentages, plotFileUrl } = result;
 
           return (

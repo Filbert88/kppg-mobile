@@ -250,8 +250,19 @@ function SkiaPixelCanvasImpl(
         onPanResponderMove: evt => {
           if (activeTool === 'draw' && lastPointDraw) {
             const {locationX, locationY} = evt.nativeEvent;
-            drawLineSegmentInRgba(lastPointDraw, {x: locationX, y: locationY});
-            setLastPointDraw({x: locationX, y: locationY});
+            const nextPoint = {x: locationX, y: locationY};
+            console.log(selectedColor)
+            // If the user picked white, treat it as an erase stroke:
+            if (
+              selectedColor.toLowerCase() === '#FFFFFF' ||
+              selectedColor.toLowerCase() === 'white'
+            ) {
+              eraseLineSegmentInRgba(lastPointDraw, nextPoint, lineThickness);
+            } else {
+              drawLineSegmentInRgba(lastPointDraw, nextPoint);
+            }
+
+            setLastPointDraw(nextPoint);
             rebuildImage(rgbaData);
           }
         },
@@ -275,7 +286,8 @@ function SkiaPixelCanvasImpl(
         width: RWidth,
         height: RHeight,
       });
-      ff.fill(rgbaColor, Math.floor(x), Math.floor(y), 20);
+      const tol = fillColor.toLowerCase() === '#FFFFFF' ? 255 : 20;
+      ff.fill(rgbaColor, Math.floor(x), Math.floor(y), tol);
       rebuildImage(rgbaData);
     },
     reDrawAllStrokes: () => {

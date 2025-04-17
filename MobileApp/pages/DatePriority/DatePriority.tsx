@@ -69,7 +69,7 @@ const DatePriority = () => {
       const endpoint =
         type === 'DepthAverage'
           ? `http://10.0.2.2:5180/api/DepthAverage/next-priority?tanggal=${date}`
-          : `http://10.0.2.2:5180/api/FragmentationData/next-priority?tanggal=${date}`;
+          : `http://10.0.2.2:5180/api/Fragmentation/next-priority?tanggal=${date}`;
   
       try {
         const response = await fetch(endpoint);
