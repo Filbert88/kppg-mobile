@@ -18,6 +18,6 @@ export type RootStackParamList = {
   FormDA3: undefined;
   DAHistory: undefined;
   DepthAverageUpload: undefined;
-  tes: undefined
+  FragmentionDepthAverage: undefined
   DiggingTimePage: undefined;
 };

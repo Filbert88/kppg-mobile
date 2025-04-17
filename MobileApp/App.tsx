@@ -98,11 +98,11 @@ export default function App() {
               )}
             </Stack.Screen>
 
-            <Stack.Screen name="tes">
-              {(props: NativeStackScreenProps<RootStackParamList, 'tes'>) => (
+            <Stack.Screen name="FragmentionDepthAverage">
+              {(props: NativeStackScreenProps<RootStackParamList, 'FragmentionDepthAverage'>) => (
                 <ScreenWrapper
                   component={FragmentationHistToDepth}
-                  customBackAction={() => props.navigation.navigate('Homepage')}
+                  customBackAction={() => props.navigation.navigate('FragmentationHistory')}
                   {...props}
                 />
               )}
