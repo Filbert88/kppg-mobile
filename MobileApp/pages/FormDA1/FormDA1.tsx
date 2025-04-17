@@ -20,7 +20,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA1'>;
 
 const FormDA1 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, setFormData } = useContext(DepthAverageContext);
+  const { formData, setFormData, resetForm } = useContext(DepthAverageContext);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (field: string, value: string) => {
@@ -129,19 +129,25 @@ const FormDA1 = () => {
           </View>
         </View>
       </ScrollView>
-
-      {/* Next Button */}
-      <View className="p-5 items-end mb-4">
+      <View className="flex-row justify-between p-5 items-center">
+        {formData.isEdit && (
+          <TouchableOpacity
+            className="px-4 py-2 bg-red-200 rounded-lg"
+            onPress={() => {
+              resetForm();
+              navigation.navigate('DAHistory');
+            }}
+          >
+            <Text className="text-red-800 font-medium">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           disabled={!isFormValid}
           className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
-            isFormValid
-              ? 'bg-green-700'
-              : 'bg-gray-400 opacity-60'
+            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
           }`}
-          onPress={() => {
-            if (isFormValid) navigation.navigate('FormDA2');
-          }}>
+          onPress={() => navigation.navigate('FormDA2')}
+        >
           <Text className="text-white font-semibold mr-2">Next</Text>
           <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>

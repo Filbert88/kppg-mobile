@@ -8,7 +8,10 @@ export type DepthAverageData = {
   location: string;
   date: string;
   average: string;
+  kedalaman: Record<string, string>;
+  jumlahLubang: string;
   image?: string;
+  prioritas: number;
 };
 
 type FormDataType = {
@@ -20,6 +23,7 @@ type FormDataType = {
   kedalaman: Record<string, string>;
   average: string;
   prioritas: number;
+  isEdit: boolean;
 };
 
 type DepthAverageContextType = {
@@ -39,6 +43,7 @@ const defaultFormData: FormDataType = {
   kedalaman: {},
   average: '',
   prioritas: 0,
+  isEdit: false
 };
 
 export const DepthAverageContext = createContext<DepthAverageContextType>({
@@ -60,8 +65,10 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     setFormDataState(prev => ({...prev, ...data}));
   };
 
-  const saveToDatabase = async (overrideData?: Partial<FormDataType>): Promise<boolean> => {
-    const data = overrideData ? { ...formData, ...overrideData } : formData;
+  const saveToDatabase = async (
+    overrideData?: Partial<FormDataType>,
+  ): Promise<boolean> => {
+    const data = overrideData ? {...formData, ...overrideData} : formData;
     try {
       const state = await NetInfo.fetch();
 
@@ -173,6 +180,8 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
           average: `${item.average} cm`,
           image: item.imageUri,
           prioritas: item.prioritas,
+          kedalaman: item.kedalaman,
+          jumlahLubang: item.jumlahLubang,
         }));
       } catch (error) {
         console.error('Failed to fetch data from API:', error);
@@ -189,6 +198,8 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
         average: `${item.average} cm`,
         image: item.imageUri,
         prioritas: item.prioritas,
+        kedalaman: item.kedalaman,
+        jumlahLubang: item.jumlahLubang,
       }));
     } catch (error) {
       console.error('Failed to fetch data from SQLite:', error);

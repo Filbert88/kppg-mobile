@@ -15,7 +15,7 @@ import {RootStackParamList} from '../../types/navigation';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA3'>;
 
 const FormDA3 = () => {
-  const {formData, setFormData, saveToDatabase} =
+  const {formData, setFormData, saveToDatabase, resetForm} =
     useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [calculatedAverage, setCalculatedAverage] = useState<string>('N/A');
@@ -48,6 +48,33 @@ const FormDA3 = () => {
     }
   };
 
+  // UPDATE handler
+  const handleUpdateAndNavigate = async () => {
+    try {
+      // send a PUT to your API
+      // const response = await fetch(
+      //   `http://10.0.2.2:5180/api/DepthAverage/${formData.id}`,
+      //   {
+      //     method: 'PUT',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({
+      //       lokasi: formData.lokasi,
+      //       tanggal: formData.tanggal,
+      //       average: formData.average,
+      //       prioritas: formData.prioritas,
+      //       kedalaman: JSON.stringify(formData.kedalaman),
+      //       jumlahLubang: formData.jumlahLubang,
+      //       imageUri: formData.imageUri,
+      //     }),
+      //   }
+      // );
+      // if (!response.ok) throw new Error('Update failed');
+      // navigation.navigate('DAHistory');
+    } catch (error) {
+      console.error('Failed to update data:', error);
+    }
+  };
+  const isEdit = formData.isEdit;
   const isFormValid =
     calculatedAverage !== 'N/A' &&
     calculatedAverage !== '' &&
@@ -72,14 +99,21 @@ const FormDA3 = () => {
         </View>
       </View>
 
-      <View className="p-6 mb-4">
+      <View className="flex-row justify-between p-6 mb-4">
+        {isEdit && (
+          <TouchableOpacity
+            className="px-4 py-2 bg-red-200 rounded-lg"
+            onPress={() => { resetForm(); navigation.navigate('DAHistory'); }}
+          >
+            <Text className="text-red-800 font-medium">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           disabled={!isFormValid}
-          onPress={handleSaveAndNavigate}
-          className={`px-6 py-3 rounded-lg shadow-md ml-auto flex-row items-center ${
-            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
-          }`}>
-          <Text className="text-white font-bold mr-2">Simpan</Text>
+          className={`px-6 py-3 rounded-lg flex-row items-center ${isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'}`}
+          onPress={isEdit ? handleUpdateAndNavigate : handleSaveAndNavigate}
+        >
+          <Text className="text-white font-bold mr-2">{isEdit ? 'Update' : 'Simpan'}</Text>
           <Save width={20} height={20} color="white" />
         </TouchableOpacity>
       </View>

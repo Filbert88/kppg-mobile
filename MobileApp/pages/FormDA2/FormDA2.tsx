@@ -18,7 +18,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA2'>;
 
 const FormDA2 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, setFormData } = useContext(DepthAverageContext);
+  const { formData, setFormData, resetForm } = useContext(DepthAverageContext);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
@@ -111,17 +111,23 @@ const FormDA2 = () => {
         <View className="h-20" />
       </ScrollView>
 
-      <View className="p-6 mb-4">
+      <View className="flex-row justify-between p-6 mb-4"> 
+        {formData.isEdit && (
+          <TouchableOpacity
+            className="px-4 py-2 bg-red-200 rounded-lg"
+            onPress={() => {
+              resetForm();
+              navigation.navigate('DAHistory');
+            }}
+          >
+            <Text className="text-red-800 font-medium">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           disabled={!isFormValid}
-          className={`px-6 py-3 rounded-lg shadow-md ml-auto flex-row items-center ${
-            isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
-          }`}
-          onPress={() => {
-            if (isFormValid) {
-              navigation.navigate('FormDA3');
-            }
-          }}>
+          className={`px-6 py-3 rounded-lg flex-row items-center ${isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'}`}
+          onPress={() => navigation.navigate('FormDA3')}
+        >
           <Text className="text-white font-bold mr-2">Next</Text>
           <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>

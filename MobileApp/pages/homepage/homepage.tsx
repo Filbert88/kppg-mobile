@@ -73,7 +73,7 @@ export default function Homepage() {
         <TouchableOpacity
           style={{width: buttonWidth}}
           className="bg-green-500 py-3 rounded-md mb-6 items-center"
-          onPress={() => navigation.navigate('Help')}>
+          onPress={() => navigation.navigate('tes')}>
           <Text className="text-white font-medium text-lg">Bantuan</Text>
         </TouchableOpacity>
       </View>
