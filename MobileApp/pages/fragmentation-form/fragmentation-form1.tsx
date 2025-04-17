@@ -112,7 +112,7 @@ export default function FragmentationForm1() {
       ]);
     }
   };
-  const {rawImageUris, skala, pilihan, ukuran, lokasi, tanggal} = formData;
+  const { rawImageUris, skala, pilihan, ukuran, lokasi } = formData;
 
   console.log('Form data ', formData);
 
@@ -121,8 +121,7 @@ export default function FragmentationForm1() {
     skala.trim() !== '' &&
     pilihan.trim() !== '' &&
     ukuran.trim() !== '' &&
-    lokasi.trim() !== '' &&
-    tanggal.trim() !== '';
+    lokasi.trim() !== ''
 
   // Close other dropdown when one is opened
   const toggleSkalaDropdown = () => {

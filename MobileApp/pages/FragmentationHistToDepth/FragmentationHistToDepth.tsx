@@ -7,15 +7,20 @@ import {
   StatusBar,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import {MapPin, Calendar, BarChart, Edit2} from 'react-native-feather';
-import {DepthAverageContext, DepthAverageData} from '../../context/DepthAverageContext';
+import {
+  DepthAverageContext,
+  DepthAverageData,
+} from '../../context/DepthAverageContext';
 import DepthAverageDetailPopup from '../DAHistory/DepthAverageDetailPopup';
-import {useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
 
 // Reusing the same card component from DAHistory
 const EnhancedDepthAverageCard = ({
@@ -29,9 +34,7 @@ const EnhancedDepthAverageCard = ({
   onEdit: (id: number) => void;
   onPress: (data: DepthAverageData) => void;
 }) => (
-  <TouchableOpacity
-    activeOpacity={0.7}
-    onPress={() => onPress(data)}>
+  <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(data)}>
     <View className="bg-rose-50 rounded-xl overflow-hidden shadow-sm border border-rose-100 mb-4">
       <View className="p-4">
         <Text className="text-xl font-bold text-black mb-3">
@@ -101,44 +104,87 @@ const EnhancedDepthAverageCard = ({
         <View className="flex-row justify-end mt-3 space-x-2">
           <TouchableOpacity
             className="bg-green-200 px-4 py-2 rounded-full flex-row items-center"
-            onPress={(e) => {
+            onPress={e => {
               e.stopPropagation(); // Prevent card click
               onEdit(data.id);
             }}>
             <Edit2 width={16} height={16} color="#047857" />
             <Text className="text-green-800 ml-1 font-medium">Edit</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </View>
   </TouchableOpacity>
 );
 
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'FragmentionDepthAverage'
+>;
 
-const FragmentationHistToDepth = () => {
+type NavigationProps = RouteProp<RootStackParamList, 'FragmentionDepthAverage'>;
+
+const FragmentationDepthAverage = () => {
+  const route = useRoute<NavigationProps>();
+  const {priority, tanggal} = route.params;
   const {loadData, setFormData} = useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<DepthAverageData[]>([]);
   const [popupVisible, setPopupVisible] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<DepthAverageData | null>(null);
-
+  const [selectedRecord, setSelectedRecord] = useState<DepthAverageData | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(true);
+  console.log(tanggal);
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const loadedData = await loadData();
-        console.log('Loaded Data from SQLite:', loadedData);
-
-        // For now, we're using all depth average data
-        // Later you might want to filter for today's data only
-        setData(loadedData);
+        setLoading(true); // You can dynamically set this based on your state or logic
+        const formattedTanggalValue = formatDate(tanggal);
+        console.log('Formatted Tanggal:', formattedTanggalValue); // YYYY-MM-DD format
+        const res = await fetch(
+          `http://10.0.2.2:5180/api/DepthAverage/today?priority=${priority}&tanggal=${formattedTanggalValue}`,
+        );
+        console.log(res);
+        if (!res.ok) throw new Error('Failed to fetch depth average data');
+        const data = await res.json();
+        const dataArray = Array.isArray(data) ? data : [data];
+        console.log('Fetched data:', data);
+        const mappedData = dataArray.map((item: any) => ({
+          id: item.id,
+          location: item.lokasi,
+          date: item.tanggal.split('T')[0], // Format to YYYY-MM-DD
+          average: `${item.average} cm`,
+          image: item.imageUri,
+          prioritas: item.prioritas,
+          kedalaman: item.kedalaman,
+          jumlahLubang: item.jumlahLubang,
+        }));
+        setData(mappedData);
       } catch (error) {
-        console.error('Failed to load depth average data:', error);
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [priority]);
+
+  const formatDate = (tanggal: string) => {
+    if (!tanggal) return '';
+
+    // Parse the date and set the time to 00:00:00 (avoid time zone conversion)
+    const date = new Date(tanggal);
+    date.setHours(0, 0, 0, 0); // Set time to 00:00:00
+
+    // Get the formatted date
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
 
   const handleEdit = (id: number) => {
     // find the item in state
@@ -155,21 +201,35 @@ const FragmentationHistToDepth = () => {
       kedalaman: item.kedalaman ?? {},
       average: item.average.replace(' cm', ''), // strip unit
       prioritas: item.prioritas,
+      isEdit: true
     });
 
     // go to the DepthAverageUpload (or directly FormDA1 if you prefer)
     navigation.navigate('DepthAverageUpload');
   };
-  
-    const handleCardPress = (item: DepthAverageData) => {
-      setSelectedRecord(item);
-      setPopupVisible(true);
-    };
-    
+
+  const handleCardPress = (item: DepthAverageData) => {
+    setSelectedRecord(item);
+    setPopupVisible(true);
+  };
+
   const handleClosePopup = () => {
     setPopupVisible(false);
     setSelectedRecord(null);
   };
+
+  // Render the loading spinner when data is being fetched
+  if (loading) {
+    return (
+      <SafeAreaView>
+        <ActivityIndicator
+          size="large"
+          color="#00613B"
+          style={{marginTop: 100}}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1">
@@ -209,4 +269,4 @@ const FragmentationHistToDepth = () => {
   );
 };
 
-export default FragmentationHistToDepth;
+export default FragmentationDepthAverage;

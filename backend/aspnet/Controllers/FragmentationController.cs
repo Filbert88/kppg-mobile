@@ -23,15 +23,47 @@ namespace aspnet.Controllers
             _clientFactory = clientFactory;
         }
 
-        // GET: api/Fragmentation
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var fragmentationDatas = await _context.FragmentationDatas
+            var allData = await _context.FragmentationDatas
                 .Include(fd => fd.FragmentationImages)
                     .ThenInclude(fi => fi.FragmentationImageResults)
                 .ToListAsync();
-            return Ok(fragmentationDatas);
+
+            var result = allData.Select(raw => new
+            {
+                raw.Id,
+                raw.Skala,
+                raw.Pilihan,
+                raw.Ukuran,
+                raw.Prioritas,
+                raw.Lokasi,
+                raw.Tanggal,
+                raw.Litologi,
+                raw.AmmoniumNitrate,
+                raw.VolumeBlasting,
+                raw.PowderFactor,
+                raw.Synced,
+                raw.DiggingTime,
+                raw.VideoUri,
+                fragmentationImages = raw.FragmentationImages.Select(fi => new
+                {
+                    fi.Id,
+                    fi.ImageUri,
+                    fi.Synced,
+                    fragmentationImageResults = fi.FragmentationImageResults.Select(fr => new
+                    {
+                        fr.Id,
+                        fr.Result1,
+                        Result2 = SafeDeserialize(fr.Result2),
+                        fr.Measurement,
+                        fr.Synced
+                    }).ToList()
+                }).ToList()
+            });
+
+            return Ok(result);
         }
 
         // GET: api/Fragmentation/5
@@ -120,6 +152,22 @@ namespace aspnet.Controllers
                 prioritas = entity.Prioritas,
                 tanggal = entity.Tanggal
             });
+        }
+
+        [HttpDelete("clear-all")]
+        public async Task<IActionResult> ClearAllData()
+        {
+            var allResults = await _context.FragmentationImageResults.ToListAsync();
+            var allImages = await _context.FragmentationImages.ToListAsync();
+            var allData = await _context.FragmentationDatas.ToListAsync();
+
+            _context.FragmentationImageResults.RemoveRange(allResults);
+            _context.FragmentationImages.RemoveRange(allImages);
+            _context.FragmentationDatas.RemoveRange(allData);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("All fragmentation data has been deleted.");
         }
 
 

@@ -230,6 +230,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
         // 2) make sure prioritas is a real integer
         if (!payload.prioritas || isNaN(payload.prioritas)) {
           const dateParam = encodeURIComponent(payload.tanggal);
+          console.log(dateParam)
           const prioRes = await fetch(
             `http://10.0.2.2:5180/api/Fragmentation/next-priority?tanggal=${dateParam}`,
           );

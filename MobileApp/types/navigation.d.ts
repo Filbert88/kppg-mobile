@@ -4,7 +4,7 @@ export type RootStackParamList = {
   Homepage: undefined;
   Help: undefined;
   AddOrHistory: {type: 'FragmentasiForm1' | 'DepthAverage'};
-  DatePriority: { type: 'FragmentasiForm1' | 'DepthAverage' };
+  DatePriority: {type: 'FragmentasiForm1' | 'DepthAverage'};
   FragmentationForm1: undefined;
   FragmentationForm2: undefined;
   FragmentationForm3: undefined;
@@ -19,7 +19,9 @@ export type RootStackParamList = {
   FormDA3: undefined;
   DAHistory: undefined;
   DepthAverageUpload: undefined;
-  FragmentionDepthAverage: undefined
+  FragmentionDepthAverage: {priority: number; tanggal: string};
   DiggingTimePage: undefined;
   DAHistoryIncomplete: undefined; 
+  FragmentationHistoryDone: undefined;
+  DepthAverageFragmention1 : {priority: number; tanggal: string};
 };

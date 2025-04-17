@@ -18,7 +18,6 @@ import {RootStackParamList} from '../../types/navigation';
 import {DepthAverageContext} from '../../context/DepthAverageContext';
 import {FormContext} from '../../context/FragmentationContext';
 import { dbService } from '../../database/services/dbService';
-
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DatePriority'
@@ -32,9 +31,9 @@ const DatePriority = () => {
 
   const {
     formData,
-    setFormData,
+    updateForm,
     resetForm: resetDepthForm,
-  } = useContext(DepthAverageContext);
+  } = useContext(FormContext);
   const {resetForm: resetFragmentationForm} = useContext(FormContext);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -50,14 +49,14 @@ const DatePriority = () => {
   }, [type]);
 
   const handleChange = (field: string, value: any) => {
-    setFormData({...formData, [field]: value});
+    updateForm({...formData, [field]: value});
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
         const formattedDate = selectedDate.toISOString().split('T')[0];
-        setFormData({ tanggal: formattedDate });
+        updateForm({ tanggal: formattedDate });
         fetchNextPriority(formattedDate); 
       }      
   };
@@ -76,7 +75,7 @@ const DatePriority = () => {
         const nextPriority = await response.json();
         console.log(nextPriority)
 
-        setFormData({ prioritas: nextPriority });
+        updateForm({ prioritas: nextPriority });
       } catch (error) {
         console.error('Failed to fetch next priority from API:', error);
       }
@@ -90,7 +89,7 @@ const DatePriority = () => {
         .filter((d: any) => d.tanggal === date)
         .reduce((max: number, curr: any) => Math.max(max, curr.prioritas ?? 0), 0);
   
-      setFormData({ prioritas: maxPriority + 1 });
+      updateForm({ prioritas: maxPriority + 1 });
     }
   };
   
