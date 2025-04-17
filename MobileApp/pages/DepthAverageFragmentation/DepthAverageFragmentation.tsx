@@ -1,4 +1,4 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,9 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
-import { FormContext } from '../../context/FragmentationContext';
 
 export interface FragmentationResponse {
   id: number;
@@ -70,82 +69,47 @@ export interface Kuzram {
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'FragmentationHistoryDone'
+  'DepthAverageFragmention1'
 >;
+
+type NavigationProps = RouteProp<RootStackParamList, 'DepthAverageFragmention1'>;
 
 const {width, height} = Dimensions.get('window');
 
-const FragmentationResultScreen = () => {
-    const {formData, updateForm} = useContext(FormContext);
+const DepthAverageFragmentation = () => {
+  const route = useRoute<NavigationProps>();
+  const {priority, tanggal} = route.params;
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<FragmentationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSummary, setShowSummary] = useState(false);
   const [selectedItem, setSelectedItem] =
     useState<FragmentationResponse | null>(null);
-
   useEffect(() => {
-    fetch('http://10.0.2.2:5180/api/Fragmentation')
+    const formattedTanggalValue = formatDate(tanggal);
+    fetch(
+      `http://10.0.2.2:5180/api/Fragmentation/today?priority=${priority}&tanggal=${formattedTanggalValue}`,
+    )
       .then(res => {
         console.log('Raw response:', res);
         return res.json();
       })
       .then(json => {
         console.log('Parsed JSON:', json);
-        setData(json);
+        setData([json]);
       })
       .catch(err => console.error('Fetch error:', err))
       .finally(() => setLoading(false));
   }, []);
-
   const handleShowSummary = (item: FragmentationResponse) => {
     setSelectedItem(item);
     setShowSummary(true);
   };
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
 
-const handleEdit = (id: number) => {
-  // Find the item in the state data by its id
-  const item = data.find(d => d.id === id);
-  if (!item) return;
-
-  // Seed the form context with the selected record and set `isEdit` to true
-  updateForm({
-    id: item.id,
-    imageUris: item.fragmentationImages.map(image => image.imageUri) || [],
-    skala: item.skala || '',
-    pilihan: item.pilihan || '',
-    ukuran: item.ukuran || '',
-    prioritas: item.prioritas,
-    lokasi: item.lokasi,
-    tanggal: item.tanggal,
-    litologi: item.litologi,
-    ammoniumNitrate: item.ammoniumNitrate,
-    volumeBlasting: item.volumeBlasting,
-    powderFactor: item.powderFactor,
-    rawImageUris: item.fragmentationImages.map(image => image.imageUri) || [],
-    uploadedImageUrls:
-      item.fragmentationImages.map(image => image.imageUri) || [],
-    fragmentedResults: [],
-    finalAnalysisResults: [],
-    diggingTime: item.diggingTime ?? undefined, // Set `undefined` if `diggingTime` is `null`
-    videoUri: item.videoUri ?? undefined,
-    isEdit: true, // Set `isEdit` to true
-  });
-
-  // Navigate to the FragmentationForm4 screen
-  navigation.navigate('FragmentationForm4');
-};
-
-  const handleViewDepthAverage = (item: FragmentationResponse) => {
-    console.log("tanggal ", item.tanggal)
-    navigation.navigate('FragmentionDepthAverage', {
-      priority: item.prioritas,
-      tanggal: item.tanggal,
-    });
+  const handleAddPhoto = () => {
+    // Implement add photo functionality
+    console.log('Add photo pressed');
   };
 
   // Format date function
@@ -183,7 +147,6 @@ const handleEdit = (id: number) => {
 
   return (
     <View style={styles.container}>
-
       <ScrollView style={styles.scrollView}>
         {data.map(item => {
           const firstImage = item.fragmentationImages[0];
@@ -233,17 +196,9 @@ const handleEdit = (id: number) => {
                   <View style={styles.actionButtonsContainerNew}>
                     <TouchableOpacity
                       style={styles.addPhotoButton}
-                      onPress={() => handleEdit(item.id)}>
+                      onPress={handleAddPhoto}>
                       <Text style={styles.addPhotoButtonText}>
                         + Tambah Foto
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.depthAverageButton}
-                      onPress={() => handleViewDepthAverage(item)}>
-                      <Text style={styles.depthAverageButtonText}>
-                        Lihat Depth Average
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -673,4 +628,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FragmentationResultScreen;
+export default DepthAverageFragmentation;

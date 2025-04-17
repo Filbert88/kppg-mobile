@@ -18,7 +18,10 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../types/navigation';
 import DepthAverageDetailPopup from './DepthAverageDetailPopup';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'DAHistory'
+>;
 
 const EnhancedDepthAverageCard = ({
   data,
@@ -33,9 +36,7 @@ const EnhancedDepthAverageCard = ({
   onViewFragmentation: (id: number) => void;
   onPress: (data: DepthAverageData) => void;
 }) => (
-  <TouchableOpacity
-    activeOpacity={0.7}
-    onPress={() => onPress(data)}>
+  <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(data)}>
     <View className="bg-rose-50 rounded-xl overflow-hidden shadow-sm border border-rose-100 mb-4">
       <View className="p-4">
         <Text className="text-xl font-bold text-black mb-3">
@@ -105,7 +106,7 @@ const EnhancedDepthAverageCard = ({
         <View className="flex-row justify-end mt-3 space-x-2">
           <TouchableOpacity
             className="bg-green-200 px-4 py-2 rounded-full flex-row items-center"
-            onPress={(e) => {
+            onPress={e => {
               e.stopPropagation(); // Prevent card click
               onEdit(data.id);
             }}>
@@ -115,11 +116,13 @@ const EnhancedDepthAverageCard = ({
 
           <TouchableOpacity
             className="bg-green-200 px-4 py-2 rounded-full ml-2"
-            onPress={(e) => {
+            onPress={e => {
               e.stopPropagation(); // Prevent card click
               onViewFragmentation(data.id);
             }}>
-            <Text className="text-green-800 font-medium">Lihat Fragmentasi</Text>
+            <Text className="text-green-800 font-medium">
+              Lihat Fragmentasi
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -131,7 +134,9 @@ const DAHistory = () => {
   const {loadData, setFormData} = useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<DepthAverageData[]>([]);
-  const [selectedData, setSelectedData] = useState<DepthAverageData | null>(null);
+  const [selectedData, setSelectedData] = useState<DepthAverageData | null>(
+    null,
+  );
   const [detailVisible, setDetailVisible] = useState(false);
 
   useEffect(() => {
@@ -164,7 +169,7 @@ const DAHistory = () => {
       kedalaman: item.kedalaman ?? {},
       average: item.average.replace(' cm', ''), // strip unit
       prioritas: item.prioritas,
-      isEdit: true
+      isEdit: true,
     });
 
     // go to the DepthAverageUpload (or directly FormDA1 if you prefer)
@@ -173,8 +178,14 @@ const DAHistory = () => {
 
   // Handle view fragmentation button press
   const handleViewFragmentation = (id: number) => {
-    console.log('View Fragmentation pressed for ID:', id);
-    // Navigate to fragmentation details screen
+    const item = data.find(d => d.id === id);
+    if (!item) return;
+
+    // Pass priority and tanggal as params
+    navigation.navigate('DepthAverageFragmention1', {
+      priority: item.prioritas,
+      tanggal: item.date, // assuming date is already formatted as "YYYY-MM-DD"
+    });
   };
 
   const handleCardPress = (data: DepthAverageData) => {
