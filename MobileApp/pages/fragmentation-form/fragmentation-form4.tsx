@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  BackHandler,
 } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import {FormContext} from '../../context/FragmentationContext';
@@ -22,7 +23,7 @@ import EditingApp from './EditingApp';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
-
+import { useFocusEffect } from '@react-navigation/native';
 // Import your SQLite service singleton (adjust the path as needed)
 import {dbService} from '../../database/services/dbService';
 
@@ -33,7 +34,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function FragmentationForm4() {
   const navigation = useNavigation<NavigationProp>();
-  const {formData, updateForm} = useContext(FormContext);
+  const {formData, updateForm, resetForm} = useContext(FormContext);
   const images = formData.rawImageUris;
 
   // Local state for which image is being edited.
@@ -45,6 +46,9 @@ export default function FragmentationForm4() {
   // Animation values
   const spinValue = new Animated.Value(0);
   const scaleValue = new Animated.Value(1);
+
+  console.log("apa: ", formData.isEdit)
+
 
   // Start spinning animation
   useEffect(() => {
@@ -134,6 +138,7 @@ export default function FragmentationForm4() {
       // It is assumed that dbService.saveFragmentationData accepts a data object
       // matching your FragmentationData structure.
       await dbService.init();
+      console.log("formData sblm update", formData);
       await dbService.saveOrUpdateFragmentationData(formData);
       Alert.alert('Success', 'Data saved locally.');
       navigation.navigate('FragmentationHistory');
@@ -212,6 +217,15 @@ export default function FragmentationForm4() {
     }
   };
 
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'FragmentationHistoryIncomplete') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+    } else {
+      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+    }
+  };
+
   const isEditing = editingIndex >= 0;
 
   return (
@@ -237,6 +251,13 @@ export default function FragmentationForm4() {
 
       {/* Fixed bottom button */}
       <View style={styles.bottomBar}>
+        {formData.isEdit && (
+          <TouchableOpacity
+            className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+            onPress={handleCancelEdit}>
+            <Text className="text-red-800 font-medium text-lg text-center">Cancel Edit</Text>
+          </TouchableOpacity>
+        )}
         {isOnline ? (
           <TouchableOpacity
             onPress={handleNext}

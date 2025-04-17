@@ -9,7 +9,7 @@ import {
   Image,
   Alert,
   Animated,
-  Dimensions,
+  BackHandler,
 } from 'react-native';
 import {ChevronDown, Edit, ArrowRight} from 'react-native-feather';
 import {useNavigation} from '@react-navigation/native';
@@ -18,7 +18,8 @@ import {RootStackParamList} from '../../types/navigation';
 import {launchImageLibrary} from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {Platform} from 'react-native';
-import { FormContext} from '../../context/FragmentationContext';
+import {FormContext} from '../../context/FragmentationContext';
+import {useFocusEffect} from '@react-navigation/native';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -27,14 +28,14 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function FragmentationForm1() {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, updateForm } = useContext(FormContext);
-//   const [imageUri, setImageUri] = useState<string | null>(null);
-//
-//   const [skala, setSkala] = useState('');
-//   const [pilihan, setPilihan] = useState('');
-//   const [ukuran, setUkuran] = useState('');
-//   const [lokasi, setLokasi] = useState('');
-//   const [tanggal, setTanggal] = useState('');
+  const {formData, updateForm, resetForm} = useContext(FormContext);
+  //   const [imageUri, setImageUri] = useState<string | null>(null);
+  //
+  //   const [skala, setSkala] = useState('');
+  //   const [pilihan, setPilihan] = useState('');
+  //   const [ukuran, setUkuran] = useState('');
+  //   const [lokasi, setLokasi] = useState('');
+  //   const [tanggal, setTanggal] = useState('');
 
   const [skalaDropdownOpen, setSkalaDropdownOpen] = useState(false);
   const [pilihanDropdownOpen, setPilihanDropdownOpen] = useState(false);
@@ -46,6 +47,30 @@ export default function FragmentationForm1() {
 
   const skalaOptions = ['Skala Helm', 'Skala Bola', 'Skala Manual'];
   const pilihanOptions = ['Centimeter (cm)', 'Meter (m)', 'Decimeter (dm)'];
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          if (formData.isEdit) {
+            return true; // Block back button when in edit mode
+          }
+          return false; // Allow back button when not editing
+        },
+      );
+      return () => subscription.remove();
+    }, [formData.isEdit]),
+  );
+
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'FragmentationHistoryIncomplete') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+    } else {
+      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+    }
+  };
 
   // Animation functions
   useEffect(() => {
@@ -78,11 +103,8 @@ export default function FragmentationForm1() {
     } else if (result.assets && result.assets.length > 0) {
       const selectedImage = result.assets[0];
       updateForm({
-            rawImageUris: [
-              ...formData.imageUris,
-              selectedImage.uri || '',
-            ],
-          });
+        rawImageUris: [...formData.imageUris, selectedImage.uri || ''],
+      });
 
       console.log('Updated imageUris:', [
         ...formData.imageUris,
@@ -92,7 +114,7 @@ export default function FragmentationForm1() {
   };
   const { rawImageUris, skala, pilihan, ukuran, lokasi } = formData;
 
-  console.log("Form data ", formData)
+  console.log('Form data ', formData);
 
   const isFormValid =
     rawImageUris.length >= 1 &&
@@ -175,8 +197,8 @@ export default function FragmentationForm1() {
                       index === skalaOptions.length - 1 ? 'border-b-0' : ''
                     }`}
                     onPress={() => {
-                      console.log("press")
-                      updateForm({ skala: option });
+                      console.log('press');
+                      updateForm({skala: option});
                       setSkalaDropdownOpen(false);
                     }}>
                     <Text className="text-black">{option}</Text>
@@ -223,7 +245,7 @@ export default function FragmentationForm1() {
                       index === pilihanOptions.length - 1 ? 'border-b-0' : ''
                     }`}
                     onPress={() => {
-                      updateForm({ pilihan: option });
+                      updateForm({pilihan: option});
                       setPilihanDropdownOpen(false);
                     }}>
                     <Text className="text-black">{option}</Text>
@@ -239,7 +261,7 @@ export default function FragmentationForm1() {
                 <TextInput
                   placeholder="Masukkan ukuran..."
                   value={ukuran}
-                  onChangeText={text => updateForm({ ukuran: text })}
+                  onChangeText={text => updateForm({ukuran: text})}
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 text-black"
                   keyboardType="numeric"
@@ -255,14 +277,57 @@ export default function FragmentationForm1() {
                 <TextInput
                   placeholder="Masukkan lokasi..."
                   value={lokasi}
-                  onChangeText={text => updateForm({ lokasi: text })}
+                  onChangeText={text => updateForm({lokasi: text})}
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 text-black"
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
             </View>
+
+            {/* Tanggal */}
+            <View className="gap-1">
+              <Text className="text-black font-black mb-1">Tanggal</Text>
+              <TouchableOpacity
+                className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center"
+                onPress={() => setShowDatePicker(true)}>
+                <Text
+                  className={`text-black ${!tanggal ? 'text-gray-400' : ''}`}>
+                  {tanggal || 'Masukkan tanggal...'}
+                </Text>
+                <Edit stroke="#666" width={20} height={20} />
+              </TouchableOpacity>
+
+              {/* Show the actual native date picker */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={tanggal ? new Date(tanggal) : new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios'); // keep open on iOS
+                    if (selectedDate) {
+                      const formatted = selectedDate
+                        .toISOString()
+                        .split('T')[0];
+                      updateForm({tanggal: formatted});
+                    }
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
+            </View>
           </View>
+
+          {formData.isEdit && (
+            <TouchableOpacity
+              className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+              onPress={handleCancelEdit}>
+              <Text className="text-red-800 font-medium text-lg text-center">
+                Cancel Edit
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Next Button */}
           <TouchableOpacity

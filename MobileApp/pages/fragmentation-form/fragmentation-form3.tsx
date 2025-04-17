@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, {useContext, useState} from 'react';
 import {
   View,
   Text,
@@ -7,28 +7,39 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import { FormContext} from '../../context/FragmentationContext';
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FragmentationForm3'>;
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {FormContext} from '../../context/FragmentationContext';
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'FragmentationForm3'
+>;
 
 export default function FragmentationForm3() {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, updateForm } = useContext(FormContext);
-  const { powderFactor } = formData;
+  const {formData, updateForm, resetForm} = useContext(FormContext);
+  const {powderFactor} = formData;
 
-//   const [powderFactor, setPowderFactor] = useState('25');
+  //   const [powderFactor, setPowderFactor] = useState('25');
 
   const isFormValid = powderFactor.trim() !== '';
+
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'FragmentationHistoryIncomplete') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+    } else {
+      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          className="w-full my-20"
-        >
+          contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}
+          className="w-full my-20">
           <View className="flex-1 mt-4 gap-4">
             <View className="gap-1">
               <Text className="text-black font-black mb-1">Powder Factor</Text>
@@ -37,7 +48,7 @@ export default function FragmentationForm3() {
                   placeholder="Masukkan jumlah..."
                   placeholderTextColor="#9CA3AF"
                   value={powderFactor}
-                  onChangeText={text => updateForm({ powderFactor: text })}
+                  onChangeText={text => updateForm({powderFactor: text})}
                   keyboardType="numeric"
                   className="flex-1 text-black"
                 />
@@ -45,6 +56,15 @@ export default function FragmentationForm3() {
             </View>
           </View>
 
+          {formData.isEdit && (
+            <TouchableOpacity
+              className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+              onPress={handleCancelEdit}>
+              <Text className="text-red-800 font-medium text-lg text-center">
+                Cancel Edit
+              </Text>
+            </TouchableOpacity>
+          )}
           {/* Next Button */}
           <TouchableOpacity
             disabled={!isFormValid}
@@ -55,8 +75,7 @@ export default function FragmentationForm3() {
               if (isFormValid) {
                 navigation.navigate('FragmentationForm4');
               }
-            }}
-          >
+            }}>
             <Text className="text-white font-medium">Next</Text>
           </TouchableOpacity>
         </ScrollView>

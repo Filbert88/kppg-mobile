@@ -13,6 +13,7 @@ export type RootStackParamList = {
   FragmentationForm6: undefined;
   FragmentationResult: undefined;
   FragmentationHistory: undefined;
+  FragmentationHistoryIncomplete: undefined;
   FormDA1: undefined;
   FormDA2: undefined;
   FormDA3: undefined;
@@ -20,6 +21,7 @@ export type RootStackParamList = {
   DepthAverageUpload: undefined;
   FragmentionDepthAverage: {priority: number; tanggal: string};
   DiggingTimePage: undefined;
+  DAHistoryIncomplete: undefined; 
   FragmentationHistoryDone: undefined;
   DepthAverageFragmention1 : {priority: number; tanggal: string};
 };

@@ -1,39 +1,33 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useEffect, useState, useContext} from 'react';
 import {
   View,
   Text,
   ScrollView,
   SafeAreaView,
   StatusBar,
-  Image,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import {MapPin, Calendar, BarChart, Edit2} from 'react-native-feather';
-import {
-  DepthAverageContext,
-  DepthAverageData,
-} from '../../context/DepthAverageContext';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../types/navigation';
 import DepthAverageDetailPopup from './DepthAverageDetailPopup';
+import {dbService} from '../../database/services/dbService'; // Adjust import path to your actual service
+import {DepthAverageContext} from '../../context/DepthAverageContext';
+import { DepthAverageData } from '../../context/DepthAverageContext';
 
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'DAHistory'
->;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const EnhancedDepthAverageCard = ({
   data,
   index,
   onEdit,
-  onViewFragmentation,
   onPress,
 }: {
   data: DepthAverageData;
   index: number;
   onEdit: (id: number) => void;
-  onViewFragmentation: (id: number) => void;
   onPress: (data: DepthAverageData) => void;
 }) => (
   <TouchableOpacity activeOpacity={0.7} onPress={() => onPress(data)}>
@@ -113,26 +107,15 @@ const EnhancedDepthAverageCard = ({
             <Edit2 width={16} height={16} color="#047857" />
             <Text className="text-green-800 ml-1 font-medium">Edit</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            className="bg-green-200 px-4 py-2 rounded-full ml-2"
-            onPress={e => {
-              e.stopPropagation(); // Prevent card click
-              onViewFragmentation(data.id);
-            }}>
-            <Text className="text-green-800 font-medium">
-              Lihat Fragmentasi
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
   </TouchableOpacity>
 );
 
-const DAHistory = () => {
-  const {loadData, setFormData} = useContext(DepthAverageContext);
+const DAHistoryIncomplete = () => {
   const navigation = useNavigation<NavigationProp>();
+  const {setFormData} = useContext(DepthAverageContext);
   const [data, setData] = useState<DepthAverageData[]>([]);
   const [selectedData, setSelectedData] = useState<DepthAverageData | null>(
     null,
@@ -142,9 +125,8 @@ const DAHistory = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const loadedData = await loadData();
-        console.log('Loaded Data from SQLite:', loadedData);
-        setData(loadedData);
+        const loadedData = await loadDataFromSQLite(); // Fetch incomplete data from SQLite
+        setData(loadedData); // Set data to state
       } catch (error) {
         console.error('Failed to load depth average data:', error);
       }
@@ -153,13 +135,36 @@ const DAHistory = () => {
     fetchData();
   }, []);
 
+  // Function to fetch data from SQLite
+  const loadDataFromSQLite = async (): Promise<DepthAverageData[]> => {
+    try {
+      const allData = await dbService.getAllData(); // Fetch all data from SQLite
+      // Filter out completed (synced) data, only showing incomplete (synced: 0) records
+      const incompleteData = allData.filter((item: any) => item.synced === 0);
+
+      // Transform data to match DepthAverageDetailPopup format
+      return incompleteData.map((item: any) => ({
+        id: item.id,
+        location: item.lokasi || '',
+        date: item.tanggal || '',
+        average: item.average || '—',
+        image: item.imageUri || '',
+        prioritas: item.prioritas || 0,
+        kedalaman: item.kedalaman ? JSON.parse(item.kedalaman) : {}, // Safely parse kedalaman
+        jumlahLubang: item.jumlahLubang || '0',
+      }));
+    } catch (error) {
+      console.error('Error loading data from SQLite:', error);
+      return [];
+    }
+  };
+
   // Handle edit button press
   const handleEdit = (id: number) => {
-    // find the item in state
     const item = data.find(d => d.id === id);
     if (!item) return;
 
-    // seed the form context with selected record
+    // Seed the form context with selected record
     setFormData({
       id: item.id,
       imageUri: item.image ?? null,
@@ -170,23 +175,11 @@ const DAHistory = () => {
       average: item.average.replace(' cm', ''), // strip unit
       prioritas: item.prioritas,
       isEdit: true,
-      origin: 'DAHistory',
+      origin: 'DAHistoryIncomplete',
     });
 
-    // go to the DepthAverageUpload (or directly FormDA1 if you prefer)
+    // Navigate to the DepthAverageUpload (or directly FormDA1 if you prefer)
     navigation.navigate('DepthAverageUpload');
-  };
-
-  // Handle view fragmentation button press
-  const handleViewFragmentation = (id: number) => {
-    const item = data.find(d => d.id === id);
-    if (!item) return;
-
-    // Pass priority and tanggal as params
-    navigation.navigate('DepthAverageFragmention1', {
-      priority: item.prioritas,
-      tanggal: item.date, // assuming date is already formatted as "YYYY-MM-DD"
-    });
   };
 
   const handleCardPress = (data: DepthAverageData) => {
@@ -205,7 +198,6 @@ const DAHistory = () => {
               data={item}
               index={index}
               onEdit={handleEdit}
-              onViewFragmentation={handleViewFragmentation}
               onPress={handleCardPress}
             />
           ))
@@ -214,7 +206,6 @@ const DAHistory = () => {
             <Text className="text-gray-500 text-lg">No history available</Text>
           </View>
         )}
-        <View className="h-6" />
       </ScrollView>
 
       {/* Detail Popup */}
@@ -227,4 +218,4 @@ const DAHistory = () => {
   );
 };
 
-export default DAHistory;
+export default DAHistoryIncomplete;

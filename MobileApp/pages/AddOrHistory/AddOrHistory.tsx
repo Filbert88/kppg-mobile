@@ -25,6 +25,14 @@ const AddOrHistory = () => {
     }
   };
 
+  const handleHistoryBelumSelesaiPress = () => {
+    if (type === 'FragmentasiForm1') {
+      navigation.navigate('FragmentationHistoryIncomplete'); // Navigate to FragmentationHistoryIncomplete
+    } else if (type === 'DepthAverage') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate to DAHistoryIncomplete
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
@@ -45,6 +53,16 @@ const AddOrHistory = () => {
             <Clock width={20} height={20} color="#065f46" className="mr-2" />
             <Text className="text-center text-emerald-800 font-bold text-lg">
               Riwayat Hasil
+            </Text>
+          </TouchableOpacity>
+
+          {/* Add a button for History Belum Selesai */}
+          <TouchableOpacity
+            className="bg-emerald-200 py-4 px-6 rounded-xl shadow-md active:bg-emerald-300 flex-row justify-center items-center"
+            onPress={handleHistoryBelumSelesaiPress}>
+            <Clock width={20} height={20} color="#065f46" className="mr-2" />
+            <Text className="text-center text-emerald-800 font-bold text-lg">
+              History Belum Selesai
             </Text>
           </TouchableOpacity>
         </View>

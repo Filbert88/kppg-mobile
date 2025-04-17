@@ -48,28 +48,37 @@ const FormDA3 = () => {
     }
   };
 
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'DAHistoryIncomplete') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate back to DAHistoryIncomplete
+    } else {
+      navigation.navigate('DAHistory'); // Navigate back to DAHistory
+    }
+  };
+
   // UPDATE handler
   const handleUpdateAndNavigate = async () => {
+    console.log("hit")
     try {
-      // send a PUT to your API
-      // const response = await fetch(
-      //   `http://10.0.2.2:5180/api/DepthAverage/${formData.id}`,
-      //   {
-      //     method: 'PUT',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({
-      //       lokasi: formData.lokasi,
-      //       tanggal: formData.tanggal,
-      //       average: formData.average,
-      //       prioritas: formData.prioritas,
-      //       kedalaman: JSON.stringify(formData.kedalaman),
-      //       jumlahLubang: formData.jumlahLubang,
-      //       imageUri: formData.imageUri,
-      //     }),
-      //   }
-      // );
-      // if (!response.ok) throw new Error('Update failed');
-      // navigation.navigate('DAHistory');
+      const response = await fetch(
+        `http://10.0.2.2:5180/api/DepthAverage/${formData.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lokasi: formData.lokasi,
+            tanggal: formData.tanggal,
+            average: formData.average,
+            prioritas: formData.prioritas,
+            kedalaman: JSON.stringify(formData.kedalaman),
+            jumlahLubang: formData.jumlahLubang,
+            imageUri: formData.imageUri,
+          }),
+        }
+      );
+      if (!response.ok) throw new Error('Update failed');
+      navigation.navigate('DAHistory');
     } catch (error) {
       console.error('Failed to update data:', error);
     }
@@ -103,7 +112,7 @@ const FormDA3 = () => {
         {isEdit && (
           <TouchableOpacity
             className="px-4 py-2 bg-red-200 rounded-lg"
-            onPress={() => { resetForm(); navigation.navigate('DAHistory'); }}
+            onPress={handleCancelEdit}
           >
             <Text className="text-red-800 font-medium">Cancel Edit</Text>
           </TouchableOpacity>

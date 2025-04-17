@@ -42,7 +42,8 @@ export interface FragmentationData {
   finalAnalysisResults: AnalysisResult[];
   diggingTime?: string;
   videoUri?: string;
-  isEdit: boolean;
+  origin?: string; // Track where we came from (FragmentationHistory or FragmentationHistoryIncomplete)
+  isEdit?: boolean;
 }
 
 interface FormContextProps {
@@ -74,7 +75,8 @@ export const FormContext = createContext<FormContextProps>({
     finalAnalysisResults: [],
     diggingTime: undefined,
     videoUri: undefined,
-    isEdit: false
+    origin: '',
+    isEdit: false,
   },
   updateForm: () => {},
   resetForm: () => {},
@@ -101,7 +103,8 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     finalAnalysisResults: [],
     diggingTime: undefined,
     videoUri: undefined,
-    isEdit: false
+    origin: '', // added to track origin
+    isEdit: false,
   });
 
   const updateForm = (data: Partial<FragmentationData>) => {
@@ -131,7 +134,8 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
       finalAnalysisResults: [],
       diggingTime: undefined,
       videoUri: undefined,
-      isEdit: false
+      origin: '', // added to track origin
+      isEdit: false,
     });
   };
 

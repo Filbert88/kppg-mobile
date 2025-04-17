@@ -24,6 +24,7 @@ type FormDataType = {
   average: string;
   prioritas: number;
   isEdit: boolean;
+  origin: string;
 };
 
 type DepthAverageContextType = {
@@ -43,7 +44,8 @@ const defaultFormData: FormDataType = {
   kedalaman: {},
   average: '',
   prioritas: 0,
-  isEdit: false
+  isEdit: false,
+  origin: '',
 };
 
 export const DepthAverageContext = createContext<DepthAverageContextType>({

@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, {useContext, useState} from 'react';
 import {
   View,
   Text,
@@ -9,29 +9,29 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { ArrowRight, Edit2, Calendar, MapPin, Hash } from 'react-native-feather';
+import {ArrowRight, Edit2, Calendar, MapPin, Hash} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import { DepthAverageContext } from '../../context/DepthAverageContext';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
+import {DepthAverageContext} from '../../context/DepthAverageContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA1'>;
 
 const FormDA1 = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { formData, setFormData, resetForm } = useContext(DepthAverageContext);
+  const {formData, setFormData, resetForm} = useContext(DepthAverageContext);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (field: string, value: string) => {
-    setFormData({ [field]: value });
+    setFormData({[field]: value});
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       const formattedDate = selectedDate.toISOString().split('T')[0];
-      setFormData({ tanggal: formattedDate });
+      setFormData({tanggal: formattedDate});
     }
   };
 
@@ -41,6 +41,14 @@ const FormDA1 = () => {
     formData.lokasi?.trim() !== '' &&
     formData.tanggal?.trim() !== '';
 
+  const handleCancelEdit = () => {
+    resetForm();
+    if (formData.origin === 'DAHistoryIncomplete') {
+      navigation.navigate('DAHistoryIncomplete'); // Navigate back to DAHistoryIncomplete
+    } else {
+      navigation.navigate('DAHistory'); // Navigate back to DAHistory
+    }
+  };
   return (
     <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
@@ -133,11 +141,7 @@ const FormDA1 = () => {
         {formData.isEdit && (
           <TouchableOpacity
             className="px-4 py-2 bg-red-200 rounded-lg"
-            onPress={() => {
-              resetForm();
-              navigation.navigate('DAHistory');
-            }}
-          >
+            onPress={handleCancelEdit}>
             <Text className="text-red-800 font-medium">Cancel Edit</Text>
           </TouchableOpacity>
         )}
@@ -146,8 +150,7 @@ const FormDA1 = () => {
           className={`px-6 py-3 rounded-lg shadow-md flex-row items-center ${
             isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
           }`}
-          onPress={() => navigation.navigate('FormDA2')}
-        >
+          onPress={() => navigation.navigate('FormDA2')}>
           <Text className="text-white font-semibold mr-2">Next</Text>
           <ArrowRight width={18} height={18} color="white" />
         </TouchableOpacity>
