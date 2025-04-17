@@ -19,7 +19,7 @@ const AddOrHistory = () => {
 
   const handleRiwayatPress = () => {
     if (type === 'FragmentasiForm1') {
-      navigation.navigate('FragmentationHistory');
+      navigation.navigate('FragmentationHistoryDone');
     } else if (type === 'DepthAverage') {
       navigation.navigate('DAHistory');
     }

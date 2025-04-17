@@ -34,6 +34,9 @@ import {dbService} from './database/services/dbService';
 import DiggingTimePage from './pages/DiggingTime/DiggingTime';
 import { FormContext } from './context/FragmentationContext';
 import FragmentationHistToDepth from './pages/FragmentationHistToDepth/FragmentationHistToDepth';
+import FragmentationResultScreen from './pages/FragmentationHistory/FragmentationHistoryDone';
+import FragmentationDepthAverage from './pages/FragmentationHistToDepth/FragmentationHistToDepth';
+import DepthAverageFragmentation from './pages/DepthAverageFragmentation/DepthAverageFragmentation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
@@ -107,9 +110,25 @@ export default function App() {
                 >,
               ) => (
                 <ScreenWrapper
-                  component={FragmentationHistToDepth}
+                  component={FragmentationDepthAverage}
                   customBackAction={() =>
-                    props.navigation.navigate('FragmentationHistory')
+                    props.navigation.navigate('FragmentationHistoryDone')
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="DepthAverageFragmention1">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'DepthAverageFragmention1'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={DepthAverageFragmentation}
+                  customBackAction={() =>
+                    props.navigation.navigate('DAHistory')
                   }
                   {...props}
                 />
@@ -399,6 +418,24 @@ export default function App() {
                   customBackAction={() =>
                     props.navigation.navigate('AddOrHistory', {
                       type: 'DepthAverage',
+                    })
+                  }
+                  {...props}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="FragmentationHistoryDone">
+              {(
+                props: NativeStackScreenProps<
+                  RootStackParamList,
+                  'FragmentationHistoryDone'
+                >,
+              ) => (
+                <ScreenWrapper
+                  component={FragmentationResultScreen}
+                  customBackAction={() =>
+                    props.navigation.navigate('AddOrHistory', {
+                      type: 'FragmentasiForm1',
                     })
                   }
                   {...props}
