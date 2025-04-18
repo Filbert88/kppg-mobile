@@ -28,6 +28,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {dbService} from '../../database/services/dbService'; // Adjust the path as needed
 import {FormContext} from '../../context/FragmentationContext';
+import { useToast } from '../../context/ToastContext';
 
 // Define your FragmentationData type based on what is stored in your DB.
 // For this example, we assume that your DB returns the following fields:
@@ -344,7 +345,7 @@ const FragmentationHistoryIncomplete = () => {
   >([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<'all' | 'done' | 'undone'>('all');
-
+  const {showToast} = useToast()
   // Fetch fragmentation data from SQLite on mount.
   useEffect(() => {
     const fetchData = async () => {
@@ -368,6 +369,7 @@ const FragmentationHistoryIncomplete = () => {
         });
         setFragmentationData(updatedRecords);
       } catch (error) {
+        showToast("Failed to Load Fragmentation Data", "error")
         console.error('Error fetching fragmentation data:', error);
       } finally {
         setLoading(false);

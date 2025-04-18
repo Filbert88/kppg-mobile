@@ -17,6 +17,7 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../types/navigation';
 import DepthAverageDetailPopup from './DepthAverageDetailPopup';
+import { useToast } from '../../context/ToastContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -138,14 +139,14 @@ const DAHistory = () => {
     null,
   );
   const [detailVisible, setDetailVisible] = useState(false);
-
+  const {showToast} = useToast();
   useEffect(() => {
     const fetchData = async () => {
       try {
         const loadedData = await loadData();
-        console.log('Loaded Data from SQLite:', loadedData);
         setData(loadedData);
       } catch (error) {
+        showToast("Failed to fetch data", "error");
         console.error('Failed to load depth average data:', error);
       }
     };

@@ -20,6 +20,7 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import { useToast } from '../../context/ToastContext';
+import { API_BASE_URL } from '@env';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -142,7 +143,7 @@ export default function FragmentationForm5() {
         const upForm = new FormData();
         upForm.append('file', file);
 
-        const upRes = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
+        const upRes = await fetch(`${API_BASE_URL}/api/Upload/upload`, {
           method: 'POST',
           body: upForm,
         });
@@ -190,7 +191,7 @@ export default function FragmentationForm5() {
       faForm.append('conversion', conversion.toString());
 
       const faRes = await fetch(
-        'http://10.0.2.2:5180/api/Fragmentation/fragmentation-analysis',
+        `${API_BASE_URL}/api/Fragmentation/fragmentation-analysis`,
         {
           method: 'POST',
           body: faForm,

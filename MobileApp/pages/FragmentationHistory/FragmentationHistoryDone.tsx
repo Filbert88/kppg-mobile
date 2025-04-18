@@ -16,6 +16,8 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import { FormContext } from '../../context/FragmentationContext';
+import { API_BASE_URL } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 export interface FragmentationResponse {
   id: number;
@@ -83,9 +85,10 @@ const FragmentationResultScreen = () => {
   const [showSummary, setShowSummary] = useState(false);
   const [selectedItem, setSelectedItem] =
     useState<FragmentationResponse | null>(null);
+      const {showToast} = useToast();
 
   useEffect(() => {
-    fetch('http://10.0.2.2:5180/api/Fragmentation')
+    fetch(`${API_BASE_URL}/api/Fragmentation`)
       .then(res => {
         console.log('Raw response:', res);
         return res.json();
@@ -93,8 +96,12 @@ const FragmentationResultScreen = () => {
       .then(json => {
         console.log('Parsed JSON:', json);
         setData(json);
+        
       })
-      .catch(err => console.error('Fetch error:', err))
+      .catch(err => {
+        console.error('Fetch error:', err);
+        showToast("Failed to get Fragmentation History", "error")
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -185,7 +192,7 @@ const handleEdit = (id: number) => {
     <View style={styles.container}>
 
       <ScrollView style={styles.scrollView}>
-        {data.map(item => {
+        {Array.isArray(data) && data.length > 0 && data.map(item => {
           const firstImage = item.fragmentationImages[0];
           const firstResult = firstImage?.fragmentationImageResults[0];
           let analysisData: AnalysisJson | null = null;
@@ -264,7 +271,7 @@ const handleEdit = (id: number) => {
                         )
                           ? analysisData.plot_image_base64.replace(
                               'http://localhost:5180',
-                              'http://10.0.2.2:5180',
+                              `${API_BASE_URL}`,
                             )
                           : analysisData.plot_image_base64,
                       }}

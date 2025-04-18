@@ -15,6 +15,8 @@ import {
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import { API_BASE_URL } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 export interface FragmentationResponse {
   id: number;
@@ -83,27 +85,48 @@ const DepthAverageFragmentation = () => {
   const [data, setData] = useState<FragmentationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSummary, setShowSummary] = useState(false);
+  const {showToast} = useToast();
   const [selectedItem, setSelectedItem] =
     useState<FragmentationResponse | null>(null);
-  useEffect(() => {
-    const formattedTanggalValue = formatDate(tanggal);
-    fetch(
-      `http://10.0.2.2:5180/api/Fragmentation/today?priority=${priority}&tanggal=${formattedTanggalValue}`,
-    )
-      .then(res => {
-        console.log('Raw response:', res);
-        return res.json();
-      })
-      .then(json => {
-        console.log('Parsed JSON:', json);
-        setData([json]);
-      })
-      .catch(err => console.error('Fetch error:', err))
-      .finally(() => setLoading(false));
-  }, []);
+    useEffect(() => {
+      const formattedTanggalValue = formatDateP(tanggal);
+    
+      fetch(`${API_BASE_URL}/api/Fragmentation/today?priority=${priority}&tanggal=${formattedTanggalValue}`)
+        .then(res => {
+          console.log('Raw response:', res);
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(json => {
+          console.log('Parsed JSON:', json);
+          setData([json]); 
+        })
+        .catch(err => {
+          showToast("Failed to fetch Depth Average data", "error")
+          console.error('Fetch error:', err);
+        })
+        .finally(() => setLoading(false));
+    }, []);
   const handleShowSummary = (item: FragmentationResponse) => {
     setSelectedItem(item);
     setShowSummary(true);
+  };
+
+  const formatDateP = (tanggal: string) => {
+    if (!tanggal) return '';
+
+    // Parse the date and set the time to 00:00:00 (avoid time zone conversion)
+    const date = new Date(tanggal);
+    date.setHours(0, 0, 0, 0); // Set time to 00:00:00
+
+    // Get the formatted date
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   };
 
 
@@ -219,7 +242,7 @@ const DepthAverageFragmentation = () => {
                         )
                           ? analysisData.plot_image_base64.replace(
                               'http://localhost:5180',
-                              'http://10.0.2.2:5180',
+                              `${API_BASE_URL}`,
                             )
                           : analysisData.plot_image_base64,
                       }}

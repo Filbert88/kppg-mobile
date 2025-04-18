@@ -15,7 +15,7 @@ namespace aspnet.Models
         public string JumlahLubang { get; set; } = "N/A";
 
         [Required]
-        public int Prioritas { get; set; } = 0;
+        public int Prioritas { get; set; } = 1;
 
         [Required]
         public string Lokasi { get; set; } = "Unknown";

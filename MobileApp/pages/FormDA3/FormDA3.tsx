@@ -11,6 +11,8 @@ import {DepthAverageContext} from '../../context/DepthAverageContext';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import { API_BASE_URL } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FormDA3'>;
 
@@ -19,7 +21,7 @@ const FormDA3 = () => {
     useContext(DepthAverageContext);
   const navigation = useNavigation<NavigationProp>();
   const [calculatedAverage, setCalculatedAverage] = useState<string>('N/A');
-
+  const {showToast} = useToast()
   const depthValues = Object.values(formData.kedalaman)
     .map(value => parseFloat(value))
     .filter(value => !isNaN(value));
@@ -41,9 +43,11 @@ const FormDA3 = () => {
     try {
       const success = await saveToDatabase();
       if (success) {
+        showToast("Success to Save!!", "success")
         navigation.navigate('DAHistory');
       }
     } catch (error) {
+      showToast("Failed to save data", "error")
       console.error('Failed to save data:', error);
     }
   };
@@ -62,7 +66,7 @@ const FormDA3 = () => {
     console.log("hit")
     try {
       const response = await fetch(
-        `http://10.0.2.2:5180/api/DepthAverage/${formData.id}`,
+        `${API_BASE_URL}/api/DepthAverage/${formData.id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

@@ -18,6 +18,7 @@ import {RootStackParamList} from '../../types/navigation';
 import {DepthAverageContext} from '../../context/DepthAverageContext';
 import {FormContext} from '../../context/FragmentationContext';
 import { dbService } from '../../database/services/dbService';
+import { API_BASE_URL } from '@env';
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DatePriority'
@@ -67,8 +68,8 @@ const DatePriority = () => {
     if (isOnline) {
       const endpoint =
         type === 'DepthAverage'
-          ? `http://10.0.2.2:5180/api/DepthAverage/next-priority?tanggal=${date}`
-          : `http://10.0.2.2:5180/api/Fragmentation/next-priority?tanggal=${date}`;
+          ? `${API_BASE_URL}/api/DepthAverage/next-priority?tanggal=${date}`
+          : `${API_BASE_URL}/api/Fragmentation/next-priority?tanggal=${date}`;
   
       try {
         const response = await fetch(endpoint);

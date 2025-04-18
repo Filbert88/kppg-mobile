@@ -23,10 +23,11 @@ import EditingApp from './EditingApp';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
-import { useFocusEffect } from '@react-navigation/native';
+import {useFocusEffect} from '@react-navigation/native';
 // Import your SQLite service singleton (adjust the path as needed)
 import {dbService} from '../../database/services/dbService';
-import { useToast } from '../../context/ToastContext';
+import {useToast} from '../../context/ToastContext';
+import {API_BASE_URL} from '@env';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,7 +35,7 @@ type NavigationProp = NativeStackNavigationProp<
 >;
 
 export default function FragmentationForm4() {
-  const { showToast } = useToast();
+  const {showToast} = useToast();
   const navigation = useNavigation<NavigationProp>();
   const {formData, updateForm, resetForm} = useContext(FormContext);
   const images = formData.rawImageUris;
@@ -49,8 +50,7 @@ export default function FragmentationForm4() {
   const spinValue = new Animated.Value(0);
   const scaleValue = new Animated.Value(1);
 
-  console.log("apa: ", formData.isEdit)
-
+  console.log('apa: ', formData.isEdit);
 
   // Start spinning animation
   useEffect(() => {
@@ -140,13 +140,11 @@ export default function FragmentationForm4() {
       // It is assumed that dbService.saveFragmentationData accepts a data object
       // matching your FragmentationData structure.
       await dbService.init();
-      console.log("formData sblm update", formData);
+      console.log('formData sblm update', formData);
       await dbService.saveOrUpdateFragmentationData(formData);
-      Alert.alert('Success', 'Data saved locally.');
-      navigation.navigate('FragmentationHistory');
+      navigation.navigate('FragmentationHistoryIncomplete');
     } catch (error) {
       console.error('Error saving data locally:', error);
-      Alert.alert('Error', 'Failed to save data locally.');
     }
   };
 
@@ -170,7 +168,7 @@ export default function FragmentationForm4() {
           name: `upload${i}.jpg`,
         } as any);
 
-        const resp = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
+        const resp = await fetch(`${API_BASE_URL}/api/Upload/upload`, {
           method: 'POST',
           body: form,
         });
@@ -189,7 +187,7 @@ export default function FragmentationForm4() {
         } as any);
       });
       const mfResp = await fetch(
-        'http://10.0.2.2:5180/api/Fragmentation/multi-fragment',
+        `${API_BASE_URL}/api/Fragmentation/multi-fragment`,
         {method: 'POST', body: multiForm},
       );
 
@@ -217,8 +215,10 @@ export default function FragmentationForm4() {
       // Set loading state to false on error
       setIsLoading(false);
       showToast(
-        e instanceof Error ? e.message : 'Something went wrong during processing.',
-        'error'
+        e instanceof Error
+          ? e.message
+          : 'Something went wrong during processing.',
+        'error',
       );
     }
   };
@@ -261,7 +261,9 @@ export default function FragmentationForm4() {
           <TouchableOpacity
             className="px-4 py-5 bg-red-200 rounded-lg mb-2"
             onPress={handleCancelEdit}>
-            <Text className="text-red-800 font-medium text-lg text-center">Cancel Edit</Text>
+            <Text className="text-red-800 font-medium text-lg text-center">
+              Cancel Edit
+            </Text>
           </TouchableOpacity>
         )}
         {isOnline ? (
