@@ -288,6 +288,17 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         console.log("ALL IMAGES TO PROCESS:", formData.images);
         console.log("ALL EDITING STATES:", editingStatesCopy);
 
+        if (formData.images.length === 1 && selectedImage) {
+          console.log(
+            "Single image case detected, ensuring edits are captured"
+          );
+          // Force a refresh of the editing state to ensure it's the most current
+          if (hybridContainerRef.current) {
+            const freshState = hybridContainerRef.current.getEditingState();
+            editingStatesCopy[selectedImage] = freshState;
+          }
+        }
+
         const processedImages = [];
         const filesToProcess = [];
 
@@ -439,12 +450,9 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             // Process all fragmentation results
             const newImagesFrag: string[] = [];
-            const newFragResults: {
-              image: string;
-              conversionFactor: number;
-            }[] = [];
+            const newFragResults: { image: string; conversionFactor: number }[] = [];
 
-            fragResults.forEach((item: any) => {
+            fragResults.forEach((item:any) => {
               let rawBase64 = item.result.output_image;
               if (!rawBase64.startsWith("data:image")) {
                 rawBase64 = "data:image/jpeg;base64," + rawBase64;

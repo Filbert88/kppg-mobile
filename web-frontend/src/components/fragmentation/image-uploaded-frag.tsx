@@ -113,6 +113,34 @@ const ImageUploadedFrag = forwardRef<
     }
   }, [selectedImage, formData.imagesFrag]);
 
+  // Add this right after your other useEffect hooks
+  useEffect(() => {
+    if (!selectedImage || !hybridContainerRef.current) return;
+
+    // Auto-save the current editing state every 3 seconds
+    const intervalId = setInterval(() => {
+      if (selectedImage && hybridContainerRef.current) {
+        const currentState = hybridContainerRef.current.getEditingState();
+        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+
+        console.log("Auto-saving editing state for:", normalizedSelectedImage);
+
+        setEditingStates((prev) => ({
+          ...prev,
+          [normalizedSelectedImage]: currentState,
+        }));
+
+        // Also update in formData to ensure it's persisted
+        updateFormData("editingFragStates", {
+          ...editingStates,
+          [normalizedSelectedImage]: currentState,
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [selectedImage, hybridContainerRef.current]);
+
   useEffect(() => {
     if (bgImage && editingStates[bgImage] && hybridContainerRef.current) {
       hybridContainerRef.current.setEditingState(editingStates[bgImage]);
@@ -291,6 +319,31 @@ const ImageUploadedFrag = forwardRef<
         };
         setEditingStates(updatedStates);
         updateFormData("editingFragStates", updatedStates);
+      }
+
+      if (formData.imagesFrag.length === 1 && selectedImage) {
+        console.log("Single image case detected - ensuring state is captured");
+
+        // Force a refresh of the HybridContainer ref if needed
+        if (hybridContainerRef.current) {
+          // Directly get the current state one more time to be certain
+          const freshState = hybridContainerRef.current.getEditingState();
+          const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+
+          // Log the fresh state for debugging
+          console.log("Fresh edit state for single image:", freshState);
+
+          // Update directly on the copy we'll use for processing
+          const updatedStates = {
+            ...editingStates,
+            [normalizedSelectedImage]: freshState,
+          };
+          setEditingStates(updatedStates);
+          updateFormData("editingFragStates", updatedStates);
+
+          // Small delay to ensure state is updated
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       }
 
       // Store the original selected image to restore later
@@ -477,15 +530,15 @@ const ImageUploadedFrag = forwardRef<
         // Move to the next step
         onNext();
       } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      console.error("Fragmentation analysis error:", err);
-      alert(`Error during fragmentation analysis: ${msg}`);
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        console.error("Fragmentation analysis error:", err);
+        alert(`Error during fragmentation analysis: ${msg}`);
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      console.error("General error during handleNext:", error);
+      alert(`Error: ${msg}`);
     }
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    console.error("General error during handleNext:", error);
-    alert(`Error: ${msg}`);
-  }
   };
 
   function handleHybridRefReady(hRef: HybridContainerRef | null) {
