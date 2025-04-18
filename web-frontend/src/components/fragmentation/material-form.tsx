@@ -12,6 +12,19 @@ interface MaterialFormProps {
 }
 
 export default function MaterialForm({ formData, updateFormData, onNext }: MaterialFormProps) {
+  const handleValueChange = (field: "ammoniumNitrate" | "blastingVolume", value: string) => {
+    updateFormData(field, value);
+
+    const Q = field === "ammoniumNitrate" ? parseFloat(value) : parseFloat(formData.ammoniumNitrate);
+    const V = field === "blastingVolume" ? parseFloat(value) : parseFloat(formData.blastingVolume);
+
+    if (!isNaN(Q) && !isNaN(V) && V !== 0) {
+      const calculatedPowderFactor = (Q / V).toFixed(2); 
+      updateFormData("powderFactor", calculatedPowderFactor);
+    } else {
+      updateFormData("powderFactor", ""); 
+    }
+  };
   const isFormValid =
     formData.rockType.trim() !== "" &&
     formData.ammoniumNitrate.trim() !== "" &&
@@ -44,7 +57,7 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
           <Label className="text-lg font-bold">Amonium Nitrat</Label>
           <Input
             value={formData.ammoniumNitrate}
-            onChange={(e) => updateFormData("ammoniumNitrate", e.target.value)}
+            onChange={(e) => handleValueChange("ammoniumNitrate", e.target.value)}
             placeholder="Masukkan jumlah..."
             className="w-full bg-white rounded-md mt-1"
           />
@@ -54,7 +67,7 @@ export default function MaterialForm({ formData, updateFormData, onNext }: Mater
           <Label className="text-lg font-bold">Volume Blasting</Label>
           <Input
             value={formData.blastingVolume}
-            onChange={(e) => updateFormData("blastingVolume", e.target.value)}
+            onChange={(e) => handleValueChange("blastingVolume", e.target.value)}
             placeholder="Masukkan volume..."
             className="w-full bg-white rounded-md mt-1"
           />
