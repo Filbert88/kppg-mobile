@@ -3,7 +3,7 @@ import React, {createContext, useState, FC, ReactNode, useEffect} from 'react';
 import {dbService} from '../database/services/dbService';
 import {Alert} from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-
+import { API_BASE_URL, API_IP } from '@env';
 export interface KuzramMetrics {
   P10: number;
   P20: number;
@@ -154,24 +154,24 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     videoUri: 'http://example.com/video.mp4',
 
     uploadedImageUrls: [
-      'http://10.0.2.2:5180/Imagdsdasdes/image1.jpg',
-      'http://10.0.2.2:5180/Images/image2.jpg',
+      `${API_BASE_URL}/Imagdsdasdes/image1.jpg`,
+      `${API_BASE_URL}/Images/image2.jpg`,
     ],
 
     fragmentedResults: [
       {
-        imageData: 'http://10.0.2.2:5180/Images/fragment1.jpg',
+        imageData: `${API_BASE_URL}/Images/fragment1.jpg`,
         conversionFactor: 0.123,
       },
       {
-        imageData: 'http://10.0.2.2:5180/Images/fragment2.jpg',
+        imageData: `${API_BASE_URL}/Images/fragment2.jpg`,
         conversionFactor: 0.456,
       },
     ],
 
     finalAnalysisResults: [
       {
-        plot_image_base64: 'http://10.0.2.2:5180/Images/plot1.png',
+        plot_image_base64: `${API_BASE_URL}/Images/plot1.png`,
         kuzram: {
           P10: 5,
           P20: 10,
@@ -191,7 +191,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
         },
       },
       {
-        plot_image_base64: 'http://10.0.2.2:5180/Images/paat2.png',
+        plot_image_base64: `${API_BASE_URL}/Images/paat2.png`,
         kuzram: {
           P10: 3,
           P20: 6,
@@ -232,7 +232,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
           const dateParam = encodeURIComponent(payload.tanggal);
           console.log(dateParam)
           const prioRes = await fetch(
-            `http://10.0.2.2:5180/api/Fragmentation/next-priority?tanggal=${dateParam}`,
+            `${API_BASE_URL}/api/Fragmentation/next-priority?tanggal=${dateParam}`,
           );
           if (!prioRes.ok) {
             throw new Error(`Couldn't get next‐priority: ${prioRes.status}`);
@@ -258,13 +258,13 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
           uploadedImageUrls: payload.uploadedImageUrls,
           fragmentedImageUrls: payload.fragmentedResults.map(f => f.imageData),
           plotImageUrls: payload.finalAnalysisResults.map(a =>
-            a.plot_image_base64.replace('localhost', '10.0.2.2'),
+            a.plot_image_base64.replace('localhost', API_IP),
           ),
           analysisJsonList: payload.finalAnalysisResults,
         };
 
         // 4) POST to ASP.NET
-        const res = await fetch('http://10.0.2.2:5180/api/Fragmentation', {
+        const res = await fetch(`${API_BASE_URL}/api/Fragmentation`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(dto),
@@ -284,7 +284,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
                   onPress: async () => {
                     dto.prioritas = newPrio;
                     const retry = await fetch(
-                      'http://10.0.2.2:5180/api/Fragmentation',
+                      `${API_BASE_URL}/api/Fragmentation`,
                       {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},

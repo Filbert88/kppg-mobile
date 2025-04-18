@@ -17,6 +17,8 @@ import Video from 'react-native-video';
 import {launchImageLibrary} from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Feather';
 import {FormContext} from '../../context/FragmentationContext';
+import { API_BASE_URL } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -41,7 +43,7 @@ const DiggingTimePage = () => {
   const [minutes, setMinutes] = useState('');
   const [seconds, setSeconds] = useState('');
   const [savedTime, setSavedTime] = useState<string | null>(null);
-
+  const {showToast} = useToast()
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isRunning) {
@@ -112,7 +114,7 @@ const DiggingTimePage = () => {
 
   const handleSave = async () => {
     if (!savedTime) {
-      Alert.alert('Error', 'No time recorded');
+      showToast("No time recorded", "error")
       return;
     }
   
@@ -128,7 +130,7 @@ const DiggingTimePage = () => {
         });
   
         const uploadResponse = await fetch(
-          'http://10.0.2.2:5180/api/upload/upload-video',
+          `${API_BASE_URL}/api/upload/upload-video`,
           {
             method: 'POST',
             headers: {
@@ -159,16 +161,16 @@ const DiggingTimePage = () => {
         });
   
         if (success) {
-          Alert.alert('Success', `Saved digging time: ${savedTime}`);
+          showToast(`Saved diggint time: ${savedTime}`, "success")
         } else {
-          Alert.alert('Error', 'Failed to save data');
+          showToast('Failed to save data', "error");
         }
       } else {
-        Alert.alert('Error', 'saveToDatabase not found');
+        showToast('Failed to save data',"error")
       }
     } catch (err: any) {
       console.error('Save failed:', err);
-      Alert.alert('Error', err.message || 'Unexpected error occurred');
+      showToast("Failed to save data", "error")
     }
   };
   

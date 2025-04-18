@@ -306,15 +306,15 @@ namespace aspnet.Controllers
         // in FragmentationController.cs
         // GET: api/Fragmentation/today?priority=1
         [HttpGet("today")]
-        public async Task<IActionResult> GetTodayByPriority([FromQuery] int priority)
+        public async Task<IActionResult> GetTodayByPriority([FromQuery] int priority,[FromQuery] DateTime tanggal)
         {
-            var today = DateTime.UtcNow.Date;
+            var tgl = tanggal.Date;
 
             // 1. Fetch raw data with includes
             var raw = await _context.FragmentationDatas
                 .Include(fd => fd.FragmentationImages)
                     .ThenInclude(fi => fi.FragmentationImageResults)
-                .Where(fd => fd.Tanggal.Date == today && fd.Prioritas == priority)
+                .Where(fd => fd.Tanggal.Date == tgl && fd.Prioritas == priority)
                 .FirstOrDefaultAsync();
 
             if (raw == null) return NotFound();

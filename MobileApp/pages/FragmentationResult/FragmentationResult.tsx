@@ -15,6 +15,8 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {FormContext} from '../../context/FragmentationContext';
+import { API_IP } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 type NavProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -26,9 +28,9 @@ export default function FragmentationResult() {
   const {formData, saveToDatabase} = useContext(FormContext);
   const result = formData.finalAnalysisResults[0];
   const screenWidth = Dimensions.get('window').width;
-
+  const {showToast} = useToast()
   // Replace localhost → 10.0.2.2 on Android emulator
-  const imageUri = result.plot_image_base64.replace('localhost', '10.0.2.2');
+  const imageUri = result.plot_image_base64.replace('localhost', API_IP);
 
   const summaryArray = Object.entries(result.threshold_percentages)
     .map(([size, pct]) => ({size: parseFloat(size), pct}))
@@ -37,10 +39,10 @@ export default function FragmentationResult() {
   const onSave = async () => {
     const ok = await saveToDatabase();
     if (ok) {
-      Alert.alert('Success', 'Fragmentation saved!');
+      showToast("Save Fragmentation success", "success")
       navigation.navigate('Homepage'); // or wherever
     } else {
-      Alert.alert('Error', 'Could not save fragmentation.');
+      showToast("Failed saving fragmentation", "error")
     }
   };
 

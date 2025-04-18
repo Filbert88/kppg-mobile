@@ -17,6 +17,7 @@ import { requestPhotoPermission } from '../../components/requestPhotoPermission'
 import { DepthAverageContext } from '../../context/DepthAverageContext';
 import NetInfo from '@react-native-community/netinfo';
 import { useToast } from '../../context/ToastContext';
+import { API_BASE_URL } from '@env';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -103,7 +104,7 @@ const DepthAverageUpload = () => {
         type: 'image/jpeg',
       } as any);
 
-      const uploadResponse = await fetch('http://10.0.2.2:5180/api/Upload/upload', {
+      const uploadResponse = await fetch(`${API_BASE_URL}/api/Upload/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -114,7 +115,7 @@ const DepthAverageUpload = () => {
       console.log("upload from dotnet: ",imageUrl)
       setFormData({ imageUri: imageUrl });
 
-      const ocrResponse = await fetch('http://10.0.2.2:5180/api/ocr', {
+      const ocrResponse = await fetch(`${API_BASE_URL}/api/ocr`, {
         method: 'POST',
         body: formData,
       });

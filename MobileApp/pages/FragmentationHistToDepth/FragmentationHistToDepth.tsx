@@ -21,6 +21,8 @@ import {
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import { API_BASE_URL } from '@env';
+import { useToast } from '../../context/ToastContext';
 
 // Reusing the same card component from DAHistory
 const EnhancedDepthAverageCard = ({
@@ -135,6 +137,7 @@ const FragmentationDepthAverage = () => {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const {showToast} = useToast()
   console.log(tanggal);
   useEffect(() => {
     const fetchData = async () => {
@@ -143,7 +146,7 @@ const FragmentationDepthAverage = () => {
         const formattedTanggalValue = formatDate(tanggal);
         console.log('Formatted Tanggal:', formattedTanggalValue); // YYYY-MM-DD format
         const res = await fetch(
-          `http://10.0.2.2:5180/api/DepthAverage/today?priority=${priority}&tanggal=${formattedTanggalValue}`,
+          `${API_BASE_URL}/api/DepthAverage/today?priority=${priority}&tanggal=${formattedTanggalValue}`,
         );
         console.log(res);
         if (!res.ok) throw new Error('Failed to fetch depth average data');
@@ -162,6 +165,7 @@ const FragmentationDepthAverage = () => {
         }));
         setData(mappedData);
       } catch (error) {
+        showToast("Failed to fetch data")
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);

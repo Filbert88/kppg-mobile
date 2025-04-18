@@ -11,13 +11,16 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import { API_BASE_URL } from '@env';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Homepage'>;
+
 
 const icon1Source = require('../../public/assets/bdm.png');
 const icon2Source = require('../../public/assets/kpp.png');
 
 export default function Homepage() {
+  console.log("api", API_BASE_URL)
   const navigation = useNavigation<NavigationProp>();
 
   const screenWidth = Dimensions.get('window').width;

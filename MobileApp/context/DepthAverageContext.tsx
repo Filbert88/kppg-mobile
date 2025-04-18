@@ -2,6 +2,7 @@ import React, {createContext, useState, ReactNode, useEffect} from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import {dbService} from '../database/services/dbService';
 import {Alert} from 'react-native';
+import { API_BASE_URL } from '@env';
 
 export type DepthAverageData = {
   id: number;
@@ -75,7 +76,7 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
       const state = await NetInfo.fetch();
 
       if (state.isConnected) {
-        const response = await fetch('http://10.0.2.2:5180/api/DepthAverage', {
+        const response = await fetch(`${API_BASE_URL}/api/DepthAverage`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify([
@@ -119,7 +120,7 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
 
                       try {
                         const retry = await fetch(
-                          'http://10.0.2.2:5180/api/DepthAverage',
+                          `${API_BASE_URL}/api/DepthAverage`,
                           {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -172,7 +173,7 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     if (netInfo.isConnected) {
       console.log('fetch history from real api');
       try {
-        const response = await fetch('http://10.0.2.2:5180/api/DepthAverage');
+        const response = await fetch(`${API_BASE_URL}/api/DepthAverage`);
         const json = await response.json();
 
         return json.map((item: any) => ({

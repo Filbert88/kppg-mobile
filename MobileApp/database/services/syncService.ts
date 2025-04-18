@@ -1,9 +1,9 @@
 import NetInfo from '@react-native-community/netinfo';
 import {dbService} from '../../database/services/dbService';
-
+import { API_BASE_URL } from '@env';
 const API_ENDPOINTS: {[key: string]: string} = {
-  DepthAverage: 'http://10.0.2.2:5180/api/DepthAverage',
-  FragmentationData: 'http://10.0.2.2:5180/api/FragmentationData',
+  DepthAverage: `${API_BASE_URL}/api/DepthAverage`,
+  FragmentationData: `${API_BASE_URL}/api/FragmentationData`,
 };
 
 const MODELS = ['DepthAverage', 'FragmentationData'];
@@ -14,7 +14,7 @@ const getNextPriorityDepthAverage = async (
   tanggal: string,
 ): Promise<number> => {
   const response = await fetch(
-    `http://10.0.2.2:5180/api/DepthAverage/next-priority?tanggal=${tanggal}`,
+    `${API_BASE_URL}/api/DepthAverage/next-priority?tanggal=${tanggal}`,
   );
   const json = await response.json();
   return json;
