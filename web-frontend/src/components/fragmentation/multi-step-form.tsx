@@ -36,7 +36,7 @@ export type FragmentationFormData = {
   }>;
   finalAnalysisResults: any[]; // Analysis results after calling fragmentation-analysis API
   diggingTime?: string;
-  videoUri? : string;
+  videoUri?: string;
 };
 
 interface MultiStepFormProps {
@@ -258,7 +258,17 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 9:
-        return <DiggingTimePage />;
+        return (
+          <DiggingTimePage
+            onSaveDiggingData={(digTime, videoUrl) => {
+              updateFormData("diggingTime", digTime);
+              updateFormData("videoUri", videoUrl);
+              handleSave(); // <-- 🟢 Save to database immediately
+            }}
+            onBack={() => setCurrentStep(10)}
+          />
+        );
+
       case 10:
         return (
           <SummaryScreen

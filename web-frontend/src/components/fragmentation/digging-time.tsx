@@ -13,7 +13,15 @@ import {
   Trash2,
 } from "lucide-react";
 
-export default function DiggingTimePage() {
+interface DiggingTimePageProps {
+  onSaveDiggingData: (diggingTime: string, videoUrl: string) => void;
+  onBack: () => void;
+}
+
+export default function DiggingTimePage({
+  onSaveDiggingData,
+  onBack,
+}: DiggingTimePageProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isStopwatchOpen, setIsStopwatchOpen] = useState(false);
@@ -87,8 +95,39 @@ export default function DiggingTimePage() {
     setSavedTime(null);
   };
 
-  const handleSave = () => {
-    alert(`Saved digging time: ${savedTime || "No time recorded"}`);
+  const handleSave = async () => {
+    try {
+      let videoUrl = "";
+
+      if (videoFile) {
+        const formData = new FormData();
+        formData.append("file", videoFile);
+
+        const uploadRes = await fetch(
+          "http://localhost:5180/api/Upload/upload-video",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+console.log(uploadRes)
+        if (!uploadRes.ok) throw new Error("Video upload failed");
+
+        const data = await uploadRes.json();
+        videoUrl = data.url;
+      }
+
+      if (!savedTime) {
+        alert("Please set a digging time first.");
+        return;
+      }
+
+      onSaveDiggingData(savedTime, videoUrl); 
+      onBack(); // return to SummaryScreen
+    } catch (err) {
+      console.error("Save failed:", err);
+      alert("Failed to save. Please try again.");
+    }
   };
 
   return (
@@ -286,7 +325,7 @@ export default function DiggingTimePage() {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                       placeholder="00"
+                      placeholder="00"
                       value={value}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, ""); // only digits
