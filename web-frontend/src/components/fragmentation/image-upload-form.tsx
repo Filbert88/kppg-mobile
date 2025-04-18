@@ -17,7 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
   Slash,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
@@ -51,7 +51,8 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const [editingStates, setEditingStates] = useState<{
       [key: string]: HybridContainerState;
     }>(() => formData.editingStates || {});
-
+    console.log("tes: ", formData);
+    console.log("form", formData.editingStates);
     // Canvas editing states and tool selection
     const [activeTool, setActiveTool] = useState<
       | "none"
@@ -72,9 +73,9 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const [showThicknessPicker, setShowThicknessPicker] = useState(false);
     const [showCropModal, setShowCropModal] = useState(false);
     const [disablePan, setDisablePan] = useState(false);
-    const [isLoading, setIsLoading] = useState(false)
-    const [loadingProgress, setLoadingProgress] = useState(0)
-    const [loadingMessage, setLoadingMessage] = useState("")
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingMessage, setLoadingMessage] = useState("");
     // React Cropper ref.
     const cropperRef = useRef<any>(null);
 
@@ -102,26 +103,43 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       }
     }, [bgImage, editingStates]);
 
+    // Add this after the useState declarations
+    useEffect(() => {
+      console.log("Current editing states:", editingStates);
+    }, [editingStates]);
+
+    // Add this to see when an image is switched
+    useEffect(() => {
+      if (selectedImage) {
+        console.log("Switched to image:", selectedImage);
+        console.log(
+          "Does this image have edits?",
+          editingStates[selectedImage] ? "Yes" : "No"
+        );
+      }
+    }, [selectedImage]);
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
         // Save the state of the current image first (if any)
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
-          setEditingStates((prev) => ({
-            ...prev,
-            [selectedImage]: currentState,
-          }));
-          updateFormData("editingStates", {
+          const updatedStates = {
             ...editingStates,
             [selectedImage]: currentState,
-          });
+          };
+          setEditingStates(updatedStates);
+          updateFormData("editingStates", updatedStates);
         }
+
         const reader = new FileReader();
         reader.onload = (event) => {
           const newImageUrl = (event.target?.result as string) || "";
           const updatedImages = [...formData.images, newImageUrl];
           updateFormData("images", updatedImages);
+
+          // Switch to the new image
           switchImage(newImageUrl);
         };
         reader.readAsDataURL(file);
@@ -190,19 +208,39 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     }
 
     // Switch current image
+    // Switch current image
     function switchImage(newImage: string) {
-      saveCurrentEditingState();
+      if (selectedImage && hybridContainerRef.current) {
+        const currentState = hybridContainerRef.current.getEditingState();
+        // Update both the local state and form data
+        const updatedStates = {
+          ...editingStates,
+          [selectedImage]: currentState,
+        };
+        setEditingStates(updatedStates);
+        updateFormData("editingStates", updatedStates);
+      }
+
       setSelectedImage(newImage);
       setBgImage(newImage);
-      if (editingStates[newImage] && hybridContainerRef.current) {
-        hybridContainerRef.current.setEditingState(editingStates[newImage]);
-      } else if (hybridContainerRef.current) {
-        hybridContainerRef.current.setEditingState({
-          canvasData: "",
-          shapes: [],
-          lines: [],
-        });
-      }
+
+      // Apply editing state for the new image after a brief delay to ensure rendering
+      setTimeout(() => {
+        if (hybridContainerRef.current) {
+          if (
+            editingStates[newImage] &&
+            Object.keys(editingStates[newImage]).length > 0
+          ) {
+            hybridContainerRef.current.setEditingState(editingStates[newImage]);
+          } else {
+            hybridContainerRef.current.setEditingState({
+              canvasData: "",
+              shapes: [],
+              lines: [],
+            });
+          }
+        }
+      }, 50);
     }
 
     // Expose method to parent via useImperativeHandle
@@ -222,130 +260,274 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
      * Capture the current image editing container using html2canvas,
      * create a File from the resulting image, upload it, and call the multi-fragment API.
      */
+    // ... previous code remains unchanged ...
+
     const handleNext = async () => {
-      if (!imageContainerRef.current) {
-        console.error("Image container not found.");
-        return;
-      }
       try {
-        setIsLoading(true)
-        setLoadingProgress(0)
-        setLoadingMessage("Saving editing state...")
-        // (a) Save current editing state.
+        setIsLoading(true);
+        setLoadingProgress(0);
+        setLoadingMessage("Preparing process...");
+
+        // First, save the current editing state
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
-          setEditingStates((prev) => ({
-            ...prev,
+          const updatedStates = {
+            ...editingStates,
             [selectedImage]: currentState,
-          }));
+          };
+          setEditingStates(updatedStates);
+          updateFormData("editingStates", updatedStates);
         }
-        updateFormData("editingStates", editingStates);
-        setLoadingProgress(10)
-        // (b) Capture the canvas.
-        setLoadingMessage("Capturing canvas...")
-        const canvas = await html2canvas(imageContainerRef.current, {
-          useCORS: true,
-          logging: false,
-        });
-        const finalDataUrl = canvas.toDataURL("image/png");
-        setLoadingProgress(25)
 
-        // (c) Replace the local image with the new captured version (only one image).
-        updateFormData("images", [finalDataUrl]);
-        setLoadingProgress(30)
-        // (d) Convert finalDataUrl to a File.
-        setLoadingMessage("Processing image...")
-        const blob = dataURLtoBlob(finalDataUrl);
-        const file = new File([blob], "editedImage.png", { type: blob.type });
-        setLoadingProgress(35)
+        // Store the original selected image to restore later
+        const originalImage = selectedImage;
 
-        // (e) Upload the file to obtain a permanent URL.
-        setLoadingMessage("Uploading image...")
-        const formDataUpload = new FormData();
-        formDataUpload.append("file", file);
-        const uploadResponse = await fetch(
-          "http://localhost:5180/api/Upload/upload",
-          {
-            method: "POST",
-            body: formDataUpload,
+        // Make a copy of editing states
+        const editingStatesCopy = JSON.parse(JSON.stringify(editingStates));
+
+        console.log("ALL IMAGES TO PROCESS:", formData.images);
+        console.log("ALL EDITING STATES:", editingStatesCopy);
+
+        const processedImages = [];
+        const filesToProcess = [];
+
+        // Process each image sequentially to get edited versions
+        for (let i = 0; i < formData.images.length; i++) {
+          const imageUrl = formData.images[i];
+          const imageIdx = i + 1;
+
+          setLoadingMessage(
+            `Processing image ${imageIdx} of ${formData.images.length}...`
+          );
+          console.log(
+            `Processing image ${imageIdx}: ${imageUrl.substring(0, 30)}...`
+          );
+
+          // Check if this image has edits
+          const hasEdits =
+            editingStatesCopy[imageUrl] &&
+            (editingStatesCopy[imageUrl].canvasData ||
+              (editingStatesCopy[imageUrl].shapes &&
+                editingStatesCopy[imageUrl].shapes.length > 0) ||
+              (editingStatesCopy[imageUrl].lines &&
+                editingStatesCopy[imageUrl].lines.length > 0));
+
+          console.log(`Image ${imageIdx} has edits:`, hasEdits);
+
+          let finalImageUrl = imageUrl;
+
+          // If image has edits, we need to switch to it and capture it
+          if (hasEdits) {
+            try {
+              // Set up the UI to show this image with its edits
+              setSelectedImage(imageUrl);
+              setBgImage(imageUrl);
+
+              // Apply edits to the hybrid container
+              if (hybridContainerRef.current) {
+                hybridContainerRef.current.setEditingState(
+                  editingStatesCopy[imageUrl]
+                );
+                console.log(
+                  `Applied editing state to image ${imageIdx}`,
+                  editingStatesCopy[imageUrl]
+                );
+              }
+
+              // Very important: Wait long enough for React to render and canvas to update
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+
+              // Now capture the image with its edits
+              if (imageContainerRef.current) {
+                console.log(`Capturing canvas for image ${imageIdx}`);
+
+                // Use html2canvas with better options
+                const canvas = await html2canvas(imageContainerRef.current, {
+                  useCORS: true,
+                  allowTaint: true,
+                  backgroundColor: null,
+                  scale: 1, // Use 1:1 scaling
+                  logging: true,
+                  onclone: (clonedDoc) => {
+                    console.log("Document cloned for html2canvas");
+                  },
+                });
+
+                finalImageUrl = canvas.toDataURL("image/png");
+                console.log(`Canvas captured for image ${imageIdx}`);
+              }
+            } catch (err) {
+              console.error(`Error capturing image ${imageIdx}:`, err);
+              finalImageUrl = imageUrl; // Fallback to original
+            }
+          } else {
+            console.log(`Using original image for ${imageIdx} (no edits)`);
           }
-        );
-        if (!uploadResponse.ok) {
-          throw new Error("Upload failed with status " + uploadResponse.status);
-        }
-        const uploadResult = await uploadResponse.json();
-        console.log("Uploaded image URL:", uploadResult.url);
-        setLoadingProgress(50)
 
-        // (f) Replace local images with the permanent URL.
-        updateFormData("images", [uploadResult.url]);
-        setLoadingProgress(55)
+          try {
+            // Convert the image to a file and upload it
+            const blob = dataURLtoBlob(finalImageUrl);
+            const file = new File([blob], `image_${i}.png`, {
+              type: blob.type,
+            });
 
-        // (g) Call the multi-fragment API with the same file.
-        setLoadingMessage("Analyzing fragmentation...")
-        const formDataFragment = new FormData();
-        formDataFragment.append("files", file);
-        const fragmentResponse = await fetch(
-          "http://localhost:5180/api/Fragmentation/multi-fragment",
-          {
-            method: "POST",
-            body: formDataFragment,
+            setLoadingMessage(`Uploading image ${imageIdx}...`);
+            const formDataUpload = new FormData();
+            formDataUpload.append("file", file);
+
+            const uploadResponse = await fetch(
+              "http://localhost:5180/api/Upload/upload",
+              {
+                method: "POST",
+                body: formDataUpload,
+              }
+            );
+
+            if (!uploadResponse.ok) {
+              throw new Error(
+                `Upload failed with status ${uploadResponse.status}`
+              );
+            }
+
+            const uploadResult = await uploadResponse.json();
+            processedImages.push(uploadResult.url);
+            console.log(`Successfully uploaded image ${imageIdx}`);
+
+            // Store the file for multi-fragment processing
+            filesToProcess.push(file);
+          } catch (err) {
+            console.error(`Error uploading image ${imageIdx}:`, err);
+            processedImages.push(imageUrl); // Keep original if upload fails
           }
-        );
-        if (!fragmentResponse.ok) {
-          throw new Error(
-            "Fragmentation failed with status " + fragmentResponse.status
+
+          setLoadingProgress(
+            Math.floor(10 + (50 * (i + 1)) / formData.images.length)
           );
         }
-        const fragResult = await fragmentResponse.json();
-        console.log("Fragmentation result:", fragResult);
-        setLoadingProgress(80)
 
-        // (h) Parse the fragmentation result.
-        // Assume the result is an array of objects as:
-        // { filename: "...", result: { marker_properties: { conversion_factor: ... }, output_image: "..." } }
-        setLoadingMessage("Processing results...")
-        const newImagesFrag: string[] = [];
-        const newFragResults: Array<{
-          image: string;
-          conversionFactor: number;
-        }> = [];
-        fragResult.forEach((item: any) => {
-          let rawBase64 = item.result.output_image;
-          if (!rawBase64.startsWith("data:image")) {
-            rawBase64 = "data:image/jpeg;base64," + rawBase64;
+        // Update form data with all processed images
+        updateFormData("images", processedImages);
+
+        // Process all files with the multi-fragment API
+        if (filesToProcess.length > 0) {
+          try {
+            setLoadingMessage("Analyzing fragmentation for all images...");
+
+            // Create form data with all files
+            const formDataFragment = new FormData();
+            filesToProcess.forEach((file, index) => {
+              formDataFragment.append("files", file);
+            });
+
+            // Call the multi-fragment API with all files at once
+            const fragmentResponse = await fetch(
+              "http://localhost:5180/api/Fragmentation/multi-fragment",
+              {
+                method: "POST",
+                body: formDataFragment,
+              }
+            );
+
+            if (!fragmentResponse.ok) {
+              throw new Error(
+                "Fragmentation failed with status " + fragmentResponse.status
+              );
+            }
+
+            const fragResults = await fragmentResponse.json();
+            console.log("Fragmentation results:", fragResults);
+
+            // Process all fragmentation results
+            const newImagesFrag: string[] = [];
+            const newFragResults: {
+              image: string;
+              conversionFactor: number;
+            }[] = [];
+
+            fragResults.forEach((item: any) => {
+              let rawBase64 = item.result.output_image;
+              if (!rawBase64.startsWith("data:image")) {
+                rawBase64 = "data:image/jpeg;base64," + rawBase64;
+              }
+
+              const conversionFactor =
+                item.result.marker_properties?.conversion_factor || 1;
+
+              newImagesFrag.push(rawBase64);
+              newFragResults.push({
+                image: rawBase64,
+                conversionFactor: conversionFactor,
+              });
+            });
+
+            // Update form data with fragmentation results
+            updateFormData("imagesFrag", newImagesFrag);
+            updateFormData("fragmentationResults", newFragResults);
+
+            console.log("Fragmentation completed for all images");
+            setLoadingProgress(90);
+          } catch (error) {
+            console.error("Error in fragmentation processing:", error);
+            setLoadingMessage(
+              `Fragmentation error: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            );
           }
-          const conversionFactor =
-            item.result.marker_properties?.conversion_factor || 1;
-          newImagesFrag.push(rawBase64);
-          newFragResults.push({ image: rawBase64, conversionFactor });
-        });
-        setLoadingProgress(90)
+        }
 
-        // (i) Replace formData.imagesFrag and fragmentationResults with new arrays.
-        updateFormData("imagesFrag", newImagesFrag);
-        updateFormData("fragmentationResults", newFragResults);
-        setLoadingProgress(100)
-        setLoadingMessage("Complete!")
+        // Restore the original selected image
+        if (originalImage) {
+          const originalIndex = formData.images.indexOf(originalImage);
+          if (originalIndex >= 0 && originalIndex < processedImages.length) {
+            setSelectedImage(processedImages[originalIndex]);
+            setBgImage(processedImages[originalIndex]);
+          } else {
+            setSelectedImage(processedImages[0]);
+            setBgImage(processedImages[0]);
+          }
+        }
 
-        // Finally, move to the next step.
+        setLoadingProgress(100);
+        setLoadingMessage("Complete!");
+
         setTimeout(() => {
-          setIsLoading(false)
-          // Finally, move to the next step.
-          onNext()
-        }, 100)
+          setIsLoading(false);
+          onNext();
+        }, 100);
       } catch (error) {
         console.error("Error in handleNext:", error);
-        setLoadingMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+        setLoadingMessage(
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         setTimeout(() => {
-          setIsLoading(false)
-        }, 2000)
+          setIsLoading(false);
+        }, 2000);
       }
     };
 
     function handleHybridRefReady(hRef: HybridContainerRef | null) {
-      if (bgImage && editingStates[bgImage] && hRef) {
-        hRef.setEditingState(editingStates[bgImage]);
+      if (!hRef) return;
+
+      console.log("Hybrid ref is ready");
+
+      if (bgImage) {
+        console.log("Attempting to set editing state for:", bgImage);
+
+        if (editingStates[bgImage]) {
+          console.log("Found editing state, applying it");
+          // Add a small timeout to ensure DOM is ready
+          setTimeout(() => {
+            hRef.setEditingState(editingStates[bgImage]);
+          }, 50);
+        } else {
+          console.log("No editing state found for this image");
+          hRef.setEditingState({
+            canvasData: "",
+            shapes: [],
+            lines: [],
+          });
+        }
       }
     }
 
@@ -384,6 +566,24 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             </div>
           ))}
         </div>
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-md w-full">
+              <div className="flex items-center mb-4">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <h3 className="font-semibold">{loadingMessage}</h3>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col p-6 mt-4">
           {/* Top Toolbar */}
           {bgImage && (

@@ -17,6 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
   Slash,
+  Loader2
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
@@ -89,6 +90,9 @@ const ImageUploadedFrag = forwardRef<
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showThicknessPicker, setShowThicknessPicker] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const cropperRef = useRef<any>(null);
   const transformWrapperRef = useRef<any>(null);
@@ -120,15 +124,19 @@ const ImageUploadedFrag = forwardRef<
     if (file) {
       if (selectedImage && hybridContainerRef.current) {
         const currentState = hybridContainerRef.current.getEditingState();
+        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+
         setEditingStates((prev) => ({
           ...prev,
-          [selectedImage]: currentState,
+          [normalizedSelectedImage]: currentState,
         }));
         updateFormData("editingFragStates", {
+          // Use editingFragStates, not editingStates
           ...editingStates,
-          [selectedImage]: currentState,
+          [normalizedSelectedImage]: currentState,
         });
       }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         let newImageUrl = (event.target?.result as string) || "";
@@ -196,33 +204,71 @@ const ImageUploadedFrag = forwardRef<
   function saveCurrentEditingState() {
     if (selectedImage && hybridContainerRef.current) {
       const state = hybridContainerRef.current.getEditingState();
-      setEditingStates((prev) => ({ ...prev, [selectedImage]: state }));
+      const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+      setEditingStates((prev) => ({
+        ...prev,
+        [normalizedSelectedImage]: state,
+      }));
     }
   }
 
   function switchImage(newImage: string) {
-    saveCurrentEditingState();
-    const normalized = normalizeBase64Image(newImage);
-    setSelectedImage(normalized);
-    setBgImage(normalized);
-    if (editingStates[normalized] && hybridContainerRef.current) {
-      hybridContainerRef.current.setEditingState(editingStates[normalized]);
-    } else if (hybridContainerRef.current) {
-      hybridContainerRef.current.setEditingState({
-        canvasData: "",
-        shapes: [],
-        lines: [],
-      });
+    if (selectedImage && hybridContainerRef.current) {
+      const currentState = hybridContainerRef.current.getEditingState();
+      // Normalize the current selected image before saving its state
+      const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+
+      // Update both the local state and form data with the CORRECT FIELD NAME
+      const updatedStates = {
+        ...editingStates,
+        [normalizedSelectedImage]: currentState,
+      };
+      setEditingStates(updatedStates);
+      updateFormData("editingFragStates", updatedStates); // Use editingFragStates, not editingStates
     }
+
+    // Normalize the new image
+    const normalizedNewImage = normalizeBase64Image(newImage);
+    setSelectedImage(normalizedNewImage);
+    setBgImage(normalizedNewImage);
+
+    // Apply editing state for the new image
+    setTimeout(() => {
+      if (hybridContainerRef.current) {
+        // Check for the normalized image URL in editing states
+        if (
+          editingStates[normalizedNewImage] &&
+          Object.keys(editingStates[normalizedNewImage]).length > 0
+        ) {
+          console.log(`Applying editing state for ${normalizedNewImage}`);
+          hybridContainerRef.current.setEditingState(
+            editingStates[normalizedNewImage]
+          );
+        } else {
+          console.log(
+            `No editing state found for ${normalizedNewImage}, setting empty state`
+          );
+          hybridContainerRef.current.setEditingState({
+            canvasData: "",
+            shapes: [],
+            lines: [],
+          });
+        }
+      }
+    }, 50);
   }
 
   useImperativeHandle(ref, () => ({
     saveEditingState() {
       if (selectedImage && hybridContainerRef.current) {
         const currentState = hybridContainerRef.current.getEditingState();
-        const newStates = { ...editingStates, [selectedImage]: currentState };
+        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+        const newStates = {
+          ...editingStates,
+          [normalizedSelectedImage]: currentState,
+        };
         setEditingStates(newStates);
-        updateFormData("editingFragStates", newStates);
+        updateFormData("editingFragStates", newStates); // Correct field name
       }
     },
   }));
@@ -232,123 +278,241 @@ const ImageUploadedFrag = forwardRef<
   // K is computed as Q/V with Q = ammoniumNitrate and V = blastingVolume.
   // The conversion factor is taken from fragmentationResults array at the same index.
   const handleNext = async () => {
-    if (!imageContainerRef.current) {
-      console.error("Image container not found.");
-      return;
-    }
     try {
-      // (a) Save editing state of selected image.
+      // Show loading state
+      // (You may want to add loading state variables like in the previous component)
+
+      // First, save the current editing state
       if (selectedImage && hybridContainerRef.current) {
         const currentState = hybridContainerRef.current.getEditingState();
-        setEditingStates((prev) => ({
-          ...prev,
+        const updatedStates = {
+          ...editingStates,
           [selectedImage]: currentState,
-        }));
+        };
+        setEditingStates(updatedStates);
+        updateFormData("editingFragStates", updatedStates);
       }
-      updateFormData("editingFragStates", editingStates);
 
-      // (b) Capture the currently displayed canvas.
-      const canvas = await html2canvas(imageContainerRef.current, {
-        useCORS: true,
-        logging: false,
-      });
-      const finalDataUrl = canvas.toDataURL("image/png");
+      // Store the original selected image to restore later
+      const originalImage = selectedImage;
 
-      // Replace the selected image in imagesFrag with the new captured version.
-      const updatedImagesFrag = formData.imagesFrag.map((img) =>
-        img === selectedImage ? finalDataUrl : img
-      );
-      updateFormData("imagesFrag", updatedImagesFrag);
+      // Create a copy of editing states to work with
+      const editingStatesCopy = JSON.parse(JSON.stringify(editingStates));
 
-      // (c) For each image (base64) in updatedImagesFrag, convert to File and upload.
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < updatedImagesFrag.length; i++) {
-        const img = updatedImagesFrag[i];
-        const blob = dataURLtoBlob(img);
-        const file = new File([blob], `editedImage_${i}.png`, {
-          type: blob.type,
+      console.log("ALL FRAG IMAGES TO PROCESS:", formData.imagesFrag);
+      console.log("ALL FRAG EDITING STATES:", editingStatesCopy);
+
+      // Process all images
+      const processedImages = [];
+      const filesToAnalyze = [];
+
+      // Process each image sequentially with proper rendering and capture
+      for (let i = 0; i < formData.imagesFrag.length; i++) {
+        const imageUrl = formData.imagesFrag[i];
+        const normalizedImageUrl = normalizeBase64Image(imageUrl);
+
+        console.log(
+          `Processing frag image ${i + 1}/${formData.imagesFrag.length}`
+        );
+
+        // Check if this image has edits
+        const hasEdits =
+          editingStatesCopy[normalizedImageUrl] &&
+          (editingStatesCopy[normalizedImageUrl].canvasData ||
+            (editingStatesCopy[normalizedImageUrl].shapes &&
+              editingStatesCopy[normalizedImageUrl].shapes.length > 0) ||
+            (editingStatesCopy[normalizedImageUrl].lines &&
+              editingStatesCopy[normalizedImageUrl].lines.length > 0));
+
+        console.log(`Image ${i + 1} has edits:`, hasEdits);
+
+        let finalImageUrl = normalizedImageUrl;
+
+        // If image has edits, switch to it and capture it
+        if (hasEdits) {
+          try {
+            // Set up the UI to show this image with its edits
+            setSelectedImage(normalizedImageUrl);
+            setBgImage(normalizedImageUrl);
+
+            // Apply edits to the hybrid container
+            if (hybridContainerRef.current) {
+              hybridContainerRef.current.setEditingState(
+                editingStatesCopy[normalizedImageUrl]
+              );
+              console.log(`Applied editing state to frag image ${i + 1}`);
+            }
+
+            // Wait for the rendering to complete
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Capture the image with its edits
+            if (imageContainerRef.current) {
+              console.log(`Capturing canvas for frag image ${i + 1}`);
+
+              const canvas = await html2canvas(imageContainerRef.current, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: null,
+                scale: 1,
+                logging: true,
+              });
+
+              finalImageUrl = canvas.toDataURL("image/png");
+              console.log(`Canvas captured for frag image ${i + 1}`);
+            }
+          } catch (err) {
+            console.error(`Error capturing frag image ${i + 1}:`, err);
+            finalImageUrl = normalizedImageUrl; // Fallback to original
+          }
+        }
+
+        try {
+          // Convert the image to a File and upload it
+          const blob = dataURLtoBlob(finalImageUrl);
+          const file = new File([blob], `editedFragImage_${i}.png`, {
+            type: blob.type,
+          });
+
+          const formDataUpload = new FormData();
+          formDataUpload.append("file", file);
+
+          const uploadResponse = await fetch(
+            "http://localhost:5180/api/Upload/upload",
+            {
+              method: "POST",
+              body: formDataUpload,
+            }
+          );
+
+          if (!uploadResponse.ok) {
+            throw new Error(
+              `Upload failed with status ${uploadResponse.status}`
+            );
+          }
+
+          const uploadResult = await uploadResponse.json();
+          processedImages.push(uploadResult.url);
+
+          // Save the file for fragmentation analysis
+          filesToAnalyze.push(file);
+
+          console.log(`Successfully uploaded frag image ${i + 1}`);
+        } catch (err) {
+          console.error(`Error uploading frag image ${i + 1}:`, err);
+          // If upload fails, use original image URL
+          processedImages.push(imageUrl);
+        }
+      }
+
+      // Update the imagesFrag in formData with processed images
+      updateFormData("imagesFrag", processedImages);
+
+      // Now call the fragmentation-analysis with all files
+      try {
+        const analysisFormData = new FormData();
+
+        // For each file, fetch it again from its URL and add to form data
+        for (let i = 0; i < filesToAnalyze.length; i++) {
+          analysisFormData.append("files", filesToAnalyze[i]);
+        }
+
+        // Compute parameters (K = Q/V)
+        const Q = parseFloat(formData.ammoniumNitrate) || 0;
+        const V = parseFloat(formData.blastingVolume) || 1;
+        const K = Q / V;
+
+        // Add analysis parameters to form data
+        analysisFormData.append("A", "5.955");
+        analysisFormData.append("K", K.toString());
+        analysisFormData.append("Q", formData.ammoniumNitrate);
+        analysisFormData.append("E", "100");
+        analysisFormData.append("n", "1.851");
+
+        // Use the conversion factor from the first fragmentation result
+        const conversion =
+          formData.fragmentationResults[0]?.conversionFactor || 1;
+        analysisFormData.append("conversion", conversion.toString());
+
+        console.log("Sending fragmentation analysis request with parameters:", {
+          files: filesToAnalyze.length,
+          A: "5.955",
+          K,
+          Q: formData.ammoniumNitrate,
+          E: "100",
+          n: "1.851",
+          conversion,
         });
 
-        const formDataUpload = new FormData();
-        formDataUpload.append("file", file);
-        const uploadResponse = await fetch(
-          "http://localhost:5180/api/Upload/upload",
+        // Call the API for analysis
+        const analysisResponse = await fetch(
+          "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
           {
             method: "POST",
-            body: formDataUpload,
+            body: analysisFormData,
           }
         );
-        if (!uploadResponse.ok) {
-          throw new Error("Upload failed with status " + uploadResponse.status);
+
+        if (!analysisResponse.ok) {
+          throw new Error(
+            `Analysis failed with status ${analysisResponse.status}`
+          );
         }
-        const uploadResult = await uploadResponse.json();
-        console.log("Uploaded image URL:", uploadResult.url);
-        uploadedUrls.push(uploadResult.url);
-      }
-      // (d) Now update imagesFrag with the permanent URLs.
-      updateFormData("imagesFrag", uploadedUrls);
 
-      // (e) For fragmentation-analysis, build one FormData by fetching each uploaded URL and converting to File.
-      const analysisFormData = new FormData();
-      for (let i = 0; i < uploadedUrls.length; i++) {
-        const url = uploadedUrls[i];
-        const res = await fetch(url);
-        const blob = await res.blob();
-        const file = new File([blob], `finalImage_${i}.png`, {
-          type: blob.type,
-        });
-        console.log("files", file)
-        analysisFormData.append("files", file);
-      }
+        const analysisResults = await analysisResponse.json();
+        console.log("Analysis results:", analysisResults);
 
-      // (f) Compute parameters (K = Q/V)
-      const Q = parseFloat(formData.ammoniumNitrate) || 0;
-      const V = parseFloat(formData.blastingVolume) || 1;
-      const K = Q / V;
-      analysisFormData.append("A", "5.955");
-      analysisFormData.append("K", K.toString());
-      analysisFormData.append("Q", formData.ammoniumNitrate);
-      analysisFormData.append("E", "100");
-      analysisFormData.append("n", "1.851");
+        // Save the results in formData
+        updateFormData("finalAnalysisResults", analysisResults);
 
-      // For conversion – if per image conversions are not individually supported,
-      // we send one value (e.g., use the first conversion factor).
-      const conversion =
-        formData.fragmentationResults[0]?.conversionFactor || 1;
-      analysisFormData.append("conversion", conversion.toString());
-
-      // (g) Call the fragmentation-analysis endpoint with all the files.
-      const analysisResponse = await fetch(
-        "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
-        {
-          method: "POST",
-          body: analysisFormData,
+        // Restore the original selected image if possible
+        if (originalImage) {
+          const originalIndex = formData.imagesFrag.indexOf(originalImage);
+          if (originalIndex >= 0 && originalIndex < processedImages.length) {
+            setSelectedImage(processedImages[originalIndex]);
+            setBgImage(processedImages[originalIndex]);
+          }
         }
-      );
-      if (!analysisResponse.ok) {
-        throw new Error(
-          "Fragmentation analysis failed with status " + analysisResponse.status
-        );
-      }
-      const analysisResults = await analysisResponse.json();
-      console.log("Analysis results:", analysisResults);
 
-      // (h) Save the analysis results in the formData. The array order should match.
-      updateFormData("finalAnalysisResults", analysisResults);
-
-      // Move on to the next step.
-      onNext();
-    } catch (error) {
-      console.error("Error during fragmentation analysis:", error);
+        // Move to the next step
+        onNext();
+      } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error("Fragmentation analysis error:", err);
+      alert(`Error during fragmentation analysis: ${msg}`);
     }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    console.error("General error during handleNext:", error);
+    alert(`Error: ${msg}`);
+  }
   };
 
   function handleHybridRefReady(hRef: HybridContainerRef | null) {
-    if (bgImage && editingStates[bgImage] && hRef) {
-      hRef.setEditingState(editingStates[bgImage]);
+    if (!hRef) return;
+
+    console.log("Hybrid ref is ready");
+
+    if (bgImage) {
+      const normalizedBgImage = normalizeBase64Image(bgImage);
+      console.log("Attempting to set editing state for:", normalizedBgImage);
+      console.log("Available states:", Object.keys(editingStates));
+
+      if (editingStates[normalizedBgImage]) {
+        console.log("Found editing state, applying it");
+        setTimeout(() => {
+          hRef.setEditingState(editingStates[normalizedBgImage]);
+        }, 50);
+      } else {
+        console.log("No editing state found for this image");
+        hRef.setEditingState({
+          canvasData: "",
+          shapes: [],
+          lines: [],
+        });
+      }
     }
   }
-
   function dataURLtoBlob(dataurl: string): Blob {
     const arr = dataurl.split(",");
     const mimeMatch = arr[0].match(/:(.*?);/);
@@ -383,7 +547,22 @@ const ImageUploadedFrag = forwardRef<
           </div>
         ))}
       </div>
-
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <div className="flex items-center mb-4">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <h3 className="font-semibold">{loadingMessage}</h3>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col p-6 mt-4">
         {/* Top Toolbar */}
         {bgImage && (
