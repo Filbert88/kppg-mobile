@@ -35,6 +35,8 @@ export type FragmentationFormData = {
     analysisResult?: any;
   }>;
   finalAnalysisResults: any[]; // Analysis results after calling fragmentation-analysis API
+  diggingTime?: string;
+  videoUri? : string;
 };
 
 interface MultiStepFormProps {
@@ -63,6 +65,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     editingFragStates: {},
     fragmentationResults: [],
     finalAnalysisResults: [],
+    diggingTime: undefined,
+    videoUri: undefined,
   });
 
   const updateFormData = (field: string, value: any) => {
@@ -94,9 +98,69 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     }
   }
 
-  const handleSave = () => {
-    console.log("Form data saved:", formData);
-    setActiveScreen("home");
+  const handleSave = async () => {
+    try {
+      // Build the DTO based on the formData
+      const dto = {
+        skala: formData.scale,
+        pilihan: formData.option,
+        ukuran: formData.size,
+        lokasi: formData.location,
+        tanggal: formData.date,
+        prioritas: parseInt(formData.priority),
+        litologi: formData.rockType,
+        ammoniumNitrate: formData.ammoniumNitrate,
+        volumeBlasting: formData.blastingVolume,
+        powderFactor: formData.powderFactor,
+        diggingTime: formData.diggingTime ?? null,
+        videoUri: formData.videoUri ?? null,
+        uploadedImageUrls: formData.images,
+        fragmentedImageUrls: formData.imagesFrag,
+        plotImageUrls: formData.finalAnalysisResults.map((a) =>
+          a.plot_image_base64.replace("localhost", "10.0.2.2")
+        ),
+        analysisJsonList: formData.finalAnalysisResults,
+      };
+
+      const response = await fetch("http://localhost:5180/api/Fragmentation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          const data = await response.json();
+          const newPriority = Math.max(...data.existingPriorities) + 1;
+          dto.prioritas = newPriority;
+          const retry = await fetch("http://localhost:5180/api/Fragmentation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(dto),
+          });
+
+          if (!retry.ok) throw new Error("Retry failed");
+          const result = await retry.json();
+          updateFormData("priority", newPriority.toString());
+          console.log("Saved with new priority", result);
+        } else {
+          const text = await response.text();
+          throw new Error(`Server Error ${response.status}: ${text}`);
+        }
+      } else {
+        const result = await response.json();
+        console.log("Successfully saved", result);
+      }
+
+      setActiveScreen("home");
+    } catch (error) {
+      console.error("Error saving form:", error);
+      alert("Gagal menyimpan data. Silakan coba lagi.");
+    }
   };
 
   const renderBackButton = () => (
