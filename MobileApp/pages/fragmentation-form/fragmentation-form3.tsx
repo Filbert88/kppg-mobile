@@ -30,7 +30,7 @@ export default function FragmentationForm3() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 
@@ -58,9 +58,9 @@ export default function FragmentationForm3() {
 
           {formData.isEdit && (
             <TouchableOpacity
-              className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+              className="px-4 py-3 bg-red-200 rounded-lg"
               onPress={handleCancelEdit}>
-              <Text className="text-red-800 font-medium text-lg text-center">
+              <Text className="text-red-800 font-medium text-md text-center">
                 Cancel Edit
               </Text>
             </TouchableOpacity>
@@ -68,7 +68,7 @@ export default function FragmentationForm3() {
           {/* Next Button */}
           <TouchableOpacity
             disabled={!isFormValid}
-            className={`w-full rounded-lg px-4 py-3 items-center mt-6 ${
+            className={`w-full rounded-lg px-4 py-3 items-center mt-3 ${
               isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
             }`}
             onPress={() => {

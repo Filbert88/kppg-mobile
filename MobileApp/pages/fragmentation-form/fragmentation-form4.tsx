@@ -26,6 +26,7 @@ import {RootStackParamList} from '../../types/navigation';
 import { useFocusEffect } from '@react-navigation/native';
 // Import your SQLite service singleton (adjust the path as needed)
 import {dbService} from '../../database/services/dbService';
+import { useToast } from '../../context/ToastContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -33,6 +34,7 @@ type NavigationProp = NativeStackNavigationProp<
 >;
 
 export default function FragmentationForm4() {
+  const { showToast } = useToast();
   const navigation = useNavigation<NavigationProp>();
   const {formData, updateForm, resetForm} = useContext(FormContext);
   const images = formData.rawImageUris;
@@ -208,12 +210,16 @@ export default function FragmentationForm4() {
 
       // Set loading state to false before navigation
       setIsLoading(false);
+      showToast('Fragmentation completed successfully!', 'success');
       navigation.navigate('FragmentationForm5');
     } catch (e) {
       console.error(e);
       // Set loading state to false on error
       setIsLoading(false);
-      Alert.alert('Error', 'Failed to process images');
+      showToast(
+        e instanceof Error ? e.message : 'Something went wrong during processing.',
+        'error'
+      );
     }
   };
 
@@ -222,7 +228,7 @@ export default function FragmentationForm4() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 

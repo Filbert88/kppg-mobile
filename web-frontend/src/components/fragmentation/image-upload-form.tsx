@@ -17,6 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
   Slash,
+  Loader2
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
@@ -71,7 +72,9 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     const [showThicknessPicker, setShowThicknessPicker] = useState(false);
     const [showCropModal, setShowCropModal] = useState(false);
     const [disablePan, setDisablePan] = useState(false);
-
+    const [isLoading, setIsLoading] = useState(false)
+    const [loadingProgress, setLoadingProgress] = useState(0)
+    const [loadingMessage, setLoadingMessage] = useState("")
     // React Cropper ref.
     const cropperRef = useRef<any>(null);
 
@@ -225,6 +228,9 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         return;
       }
       try {
+        setIsLoading(true)
+        setLoadingProgress(0)
+        setLoadingMessage("Saving editing state...")
         // (a) Save current editing state.
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
@@ -234,22 +240,27 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           }));
         }
         updateFormData("editingStates", editingStates);
-
+        setLoadingProgress(10)
         // (b) Capture the canvas.
+        setLoadingMessage("Capturing canvas...")
         const canvas = await html2canvas(imageContainerRef.current, {
           useCORS: true,
           logging: false,
         });
         const finalDataUrl = canvas.toDataURL("image/png");
+        setLoadingProgress(25)
 
         // (c) Replace the local image with the new captured version (only one image).
         updateFormData("images", [finalDataUrl]);
-
+        setLoadingProgress(30)
         // (d) Convert finalDataUrl to a File.
+        setLoadingMessage("Processing image...")
         const blob = dataURLtoBlob(finalDataUrl);
         const file = new File([blob], "editedImage.png", { type: blob.type });
+        setLoadingProgress(35)
 
         // (e) Upload the file to obtain a permanent URL.
+        setLoadingMessage("Uploading image...")
         const formDataUpload = new FormData();
         formDataUpload.append("file", file);
         const uploadResponse = await fetch(
@@ -264,11 +275,14 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         }
         const uploadResult = await uploadResponse.json();
         console.log("Uploaded image URL:", uploadResult.url);
+        setLoadingProgress(50)
 
         // (f) Replace local images with the permanent URL.
         updateFormData("images", [uploadResult.url]);
+        setLoadingProgress(55)
 
         // (g) Call the multi-fragment API with the same file.
+        setLoadingMessage("Analyzing fragmentation...")
         const formDataFragment = new FormData();
         formDataFragment.append("files", file);
         const fragmentResponse = await fetch(
@@ -285,10 +299,12 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         }
         const fragResult = await fragmentResponse.json();
         console.log("Fragmentation result:", fragResult);
+        setLoadingProgress(80)
 
         // (h) Parse the fragmentation result.
         // Assume the result is an array of objects as:
         // { filename: "...", result: { marker_properties: { conversion_factor: ... }, output_image: "..." } }
+        setLoadingMessage("Processing results...")
         const newImagesFrag: string[] = [];
         const newFragResults: Array<{
           image: string;
@@ -304,15 +320,26 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           newImagesFrag.push(rawBase64);
           newFragResults.push({ image: rawBase64, conversionFactor });
         });
+        setLoadingProgress(90)
 
         // (i) Replace formData.imagesFrag and fragmentationResults with new arrays.
         updateFormData("imagesFrag", newImagesFrag);
         updateFormData("fragmentationResults", newFragResults);
+        setLoadingProgress(100)
+        setLoadingMessage("Complete!")
 
         // Finally, move to the next step.
-        onNext();
+        setTimeout(() => {
+          setIsLoading(false)
+          // Finally, move to the next step.
+          onNext()
+        }, 100)
       } catch (error) {
         console.error("Error in handleNext:", error);
+        setLoadingMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+        setTimeout(() => {
+          setIsLoading(false)
+        }, 2000)
       }
     };
 

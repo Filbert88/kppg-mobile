@@ -48,6 +48,15 @@ export default function FragmentationForm1() {
   const skalaOptions = ['Skala Helm', 'Skala Bola', 'Skala Manual'];
   const pilihanOptions = ['Centimeter (cm)', 'Meter (m)', 'Decimeter (dm)'];
 
+  useEffect(() => {
+    const unblock = navigation.addListener('beforeRemove', e => {
+      if (formData.isEdit) {
+        e.preventDefault();
+      }
+    });
+    return unblock;
+  }, [navigation, formData.isEdit]);
+
   useFocusEffect(
     React.useCallback(() => {
       const subscription = BackHandler.addEventListener(
@@ -68,7 +77,7 @@ export default function FragmentationForm1() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 
@@ -284,46 +293,13 @@ export default function FragmentationForm1() {
                 <Edit stroke="#666" width={20} height={20} />
               </View>
             </View>
-
-            {/* Tanggal */}
-            <View className="gap-1">
-              <Text className="text-black font-black mb-1">Tanggal</Text>
-              <TouchableOpacity
-                className="w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center"
-                onPress={() => setShowDatePicker(true)}>
-                <Text
-                  className={`text-black ${!tanggal ? 'text-gray-400' : ''}`}>
-                  {tanggal || 'Masukkan tanggal...'}
-                </Text>
-                <Edit stroke="#666" width={20} height={20} />
-              </TouchableOpacity>
-
-              {/* Show the actual native date picker */}
-              {showDatePicker && (
-                <DateTimePicker
-                  value={tanggal ? new Date(tanggal) : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios'); // keep open on iOS
-                    if (selectedDate) {
-                      const formatted = selectedDate
-                        .toISOString()
-                        .split('T')[0];
-                      updateForm({tanggal: formatted});
-                    }
-                  }}
-                  maximumDate={new Date()}
-                />
-              )}
-            </View>
           </View>
 
           {formData.isEdit && (
             <TouchableOpacity
-              className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+              className="px-4 py-3 bg-red-200 rounded-lg mb-2 mt-4"
               onPress={handleCancelEdit}>
-              <Text className="text-red-800 font-medium text-lg text-center">
+              <Text className="text-red-800 font-medium text-md text-center">
                 Cancel Edit
               </Text>
             </TouchableOpacity>
@@ -333,7 +309,7 @@ export default function FragmentationForm1() {
           <TouchableOpacity
             disabled={!isFormValid}
             onPress={() => navigation.navigate('FragmentationForm2')}
-            className={`w-full rounded-lg px-4 py-3 items-center mt-6 mb-4 ${
+            className={`w-full rounded-lg px-4 py-3 items-center mt-2 mb-4 ${
               isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
             }`}>
             <Text className="text-white font-medium">Next</Text>

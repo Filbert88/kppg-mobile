@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {FormContext} from '../../context/FragmentationContext';
+
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'FragmentationForm2'
@@ -21,9 +22,29 @@ export default function FragmentationForm2() {
   const navigation = useNavigation<NavigationProp>();
   const {formData, updateForm, resetForm} = useContext(FormContext);
   const {litologi, ammoniumNitrate, volumeBlasting} = formData;
-  //   const [litologi, setLitologi] = useState('');
-  //   const [ammoniumNitrate, setAmmoniumNitrate] = useState('');
-  //   const [volumeBlasting, setVolumeBlasting] = useState('');
+
+  const currentPowderFactor = formData.powderFactor;
+
+  useEffect(() => {
+    if (ammoniumNitrate && volumeBlasting) {
+      const q = parseFloat(ammoniumNitrate);
+      const v = parseFloat(volumeBlasting);
+      if (!isNaN(q) && !isNaN(v) && v !== 0) {
+        const powderFactor = (q / v).toFixed(2); 
+        if (currentPowderFactor !== powderFactor) {
+          updateForm({powderFactor}); 
+        }
+      } else {
+        if (currentPowderFactor !== '') {
+          updateForm({powderFactor: ''}); 
+        }
+      }
+    } else {
+      if (currentPowderFactor !== '') {
+        updateForm({powderFactor: ''});
+      }
+    }
+  }, [ammoniumNitrate, volumeBlasting, currentPowderFactor, updateForm]);
 
   const isFormValid =
     litologi.trim() !== '' &&
@@ -35,9 +56,10 @@ export default function FragmentationForm2() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
+
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 justify-center items-center px-6">
@@ -94,17 +116,18 @@ export default function FragmentationForm2() {
 
           {formData.isEdit && (
             <TouchableOpacity
-              className="px-4 py-5 bg-red-200 rounded-lg mb-2"
+              className="px-4 py-3 bg-red-200 rounded-lg mb-2"
               onPress={handleCancelEdit}>
-              <Text className="text-red-800 font-medium text-lg text-center">
+              <Text className="text-red-800 font-medium text-md text-center">
                 Cancel Edit
               </Text>
             </TouchableOpacity>
           )}
+
           {/* Next Button */}
           <TouchableOpacity
             disabled={!isFormValid}
-            className={`w-full rounded-lg px-4 py-3 items-center mt-6 ${
+            className={`w-full rounded-lg px-4 py-3 items-center mt-3 ${
               isFormValid ? 'bg-green-700' : 'bg-gray-400 opacity-60'
             }`}
             onPress={() => {

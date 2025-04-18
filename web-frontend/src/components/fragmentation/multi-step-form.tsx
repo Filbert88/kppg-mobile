@@ -12,7 +12,7 @@ import SummaryScreen from "./summary-screen";
 import DatePriority from "../date-priority";
 import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
-
+import { fetchNextPriority } from "@/lib/function";
 // The full form data type used throughout the multi-step process.
 export type FragmentationFormData = {
   scale: string;
@@ -128,8 +128,12 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           <DatePriority
             date={formData.date}
             priority={formData.priority}
+            onDateChange={async (value) => {
+              updateFormData("date", value);
+              const next = await fetchNextPriority(value, "fragmentation");
+              if (next !== null) updateFormData("priority", next.toString());
+            }}
             onPriorityChange={(value) => updateFormData("priority", value)}
-            onDateChange={(value) => updateFormData("date", value)}
             onNext={handleNext}
             formType="fragmentation"
             label="Tanggal Fragmentasi"

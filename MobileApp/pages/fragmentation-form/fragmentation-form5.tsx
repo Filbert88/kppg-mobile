@@ -19,6 +19,7 @@ import EditingApp from './EditingApp';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
+import { useToast } from '../../context/ToastContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -26,6 +27,7 @@ type NavigationProp = NativeStackNavigationProp<
 >;
 
 export default function FragmentationForm5() {
+  const { showToast } = useToast();
   const navigation = useNavigation<NavigationProp>();
   const {formData, updateForm, resetForm} = useContext(FormContext);
 
@@ -210,14 +212,17 @@ export default function FragmentationForm5() {
 
         // Reset loading state
         setIsLoading(false);
-
+        showToast('Fragmentation completed successfully!', 'success');
         // 4) navigate forward
         navigation.navigate('FragmentationResult');
       }, 500);
     } catch (err) {
       console.error(err);
       setIsLoading(false);
-      Alert.alert('Error', 'Failed to run fragmentation analysis');
+      showToast(
+        err instanceof Error ? err.message : 'Something went wrong during processing.',
+        'error'
+      );
     }
   };
 
@@ -226,7 +231,7 @@ export default function FragmentationForm5() {
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
     } else {
-      navigation.navigate('FragmentationHistory'); // Go back to FragmentationHistory
+      navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
 
