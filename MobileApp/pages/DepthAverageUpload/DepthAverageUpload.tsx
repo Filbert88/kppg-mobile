@@ -16,6 +16,7 @@ import { ArrowRight, Save } from 'react-native-feather';
 import { requestPhotoPermission } from '../../components/requestPhotoPermission';
 import { DepthAverageContext } from '../../context/DepthAverageContext';
 import NetInfo from '@react-native-community/netinfo';
+import { useToast } from '../../context/ToastContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -23,6 +24,7 @@ type NavigationProp = NativeStackNavigationProp<
 >;
 
 const DepthAverageUpload = () => {
+  const { showToast } = useToast();
   const navigation = useNavigation<NavigationProp>();
   const { formData, setFormData, saveToDatabase, resetForm } = useContext(DepthAverageContext);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -136,10 +138,14 @@ const DepthAverageUpload = () => {
         kedalaman,
       });
 
+      showToast('OCR completed successfully!', 'success');
       navigation.navigate('FormDA1');
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert('Error', 'Gagal mengunggah atau memproses gambar.');
+      showToast(
+        error instanceof Error ? error.message : 'Something went wrong during processing.',
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
