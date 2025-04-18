@@ -98,7 +98,7 @@ export default function GraphScreen({
         <p>No final analysis results found.</p>
       ) : (
         formData.finalAnalysisResults.map((result, idx) => {
-          const { kuzram, threshold_percentages, plotFileUrl } = result;
+          const { kuzram, threshold_percentages, plot_image_base64 } = result;
 
           return (
             <div key={idx} className="border p-4 mb-4 rounded-md">
@@ -158,11 +158,11 @@ export default function GraphScreen({
                 </div>
               )}
 
-              {plotFileUrl && (
+              {plot_image_base64 && (
                 <div className="mt-4">
                   <h4 className="font-semibold mb-2">Plot Image</h4>
                   <img
-                    src={plotFileUrl}
+                    src={plot_image_base64}
                     alt={`Plot for result ${idx + 1}`}
                     className="border"
                     style={{ maxWidth: "400px", maxHeight: "300px" }}
