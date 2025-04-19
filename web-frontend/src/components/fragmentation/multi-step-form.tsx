@@ -292,9 +292,17 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         return (
           <DiggingTimePage
             onSaveDiggingData={(digTime, videoUrl) => {
-              updateFormData("diggingTime", digTime);
-              updateFormData("videoUri", videoUrl);
-              handleSave(); // <-- 🟢 Save to database immediately
+              setFormData((prev) => {
+                const updated = {
+                  ...prev,
+                  diggingTime: digTime,
+                  videoUri: videoUrl,
+                };
+                setTimeout(() => {
+                  handleSave(); 
+                }, 0);
+                return updated;
+              });
             }}
             onBack={() => setCurrentStep(10)}
           />
