@@ -534,7 +534,7 @@ export default function SummaryScreen({
                     </div>
 
                     <Button
-                      onClick={() => handleAddPhoto(item.id)}
+                      onClick={() => handleAddPhoto(item)}
                       className="bg-emerald-200 hover:bg-emerald-300 text-black font-medium py-1 px-4 rounded-full flex items-center"
                     >
                       <Plus className="h-4 w-4 mr-1" />

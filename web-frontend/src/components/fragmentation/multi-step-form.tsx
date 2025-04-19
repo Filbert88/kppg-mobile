@@ -104,12 +104,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     }
   }
 
-  const handleEditFromSummary = (data: FragmentationFormData) => {
-    setFormData(data);
-    setIsEdit(true);
-    setCurrentStep(6);
-  };
-
   const handleCancelEdit = () => {
     setIsEdit(false);
     setCurrentStep(10);
@@ -230,50 +224,50 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 3:
-        {
-          cancelButton;
-        }
         return (
-          <BasicInfoForm
-            formData={formData}
-            updateFormData={updateFormData}
-            onNext={handleNext}
-          />
+          <>
+            {cancelButton}
+            <BasicInfoForm
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={handleNext}
+            />
+          </>
         );
       case 4:
-        {
-          cancelButton;
-        }
         return (
-          <MaterialForm
-            formData={formData}
-            updateFormData={updateFormData}
-            onNext={handleNext}
-          />
+          <>
+            {cancelButton}
+            <MaterialForm
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={handleNext}
+            />
+          </>
         );
       case 5:
-        {
-          cancelButton;
-        }
         return (
-          <PowderFactorForm
-            formData={formData}
-            updateFormData={updateFormData}
-            onNext={handleNext}
-          />
+          <>
+            {cancelButton}
+            <PowderFactorForm
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={handleNext}
+            />
+          </>
         );
       case 6:
-        {
-          cancelButton;
-        }
         return (
-          <ImageUploadForm
-            key={currentStep}
-            ref={imageUploadFormRef}
-            formData={formData}
-            updateFormData={updateFormData}
-            onNext={handleNext}
-          />
+          <>
+            {cancelButton}
+            <ImageUploadForm
+              key={currentStep}
+              ref={imageUploadFormRef}
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={handleNext}
+            />
+          </>
         );
       case 7:
         return (
@@ -332,6 +326,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                 diggingTime: item.diggingTime ?? undefined,
                 videoUri: item.videoUri ?? undefined,
               };
+              console.log("🧪 Reconstructed formData", reconstructed);
               setFormData(reconstructed);
               setIsEdit(true);
               setCurrentStep(6);
