@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using aspnet.Data;
 using aspnet.Models;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
 namespace aspnet.Controllers
 {
@@ -11,7 +12,6 @@ namespace aspnet.Controllers
     public class DepthAverageController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-
         public DepthAverageController(ApplicationDbContext context)
         {
             _context = context;

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
 namespace aspnet.Controllers
 {
@@ -11,10 +12,11 @@ namespace aspnet.Controllers
     public class UploadController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;
-
-        public UploadController(IWebHostEnvironment env)
+        private readonly MyAppEnv _envSettings;
+        public UploadController(IWebHostEnvironment env,IOptions<MyAppEnv> envSettings)
         {
             _env = env;
+             _envSettings = envSettings.Value; 
         }
 
         // POST: api/Upload/upload

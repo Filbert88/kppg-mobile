@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,12 @@ namespace aspnet.Controllers
     [ApiController]
     public class KuzramController : ControllerBase
     {
+
+        private readonly MyAppEnv _envSettings;
+        public KuzramController(IOptions<MyAppEnv> envSettings )
+        {
+            _envSettings = envSettings.Value;
+        }
         [HttpPost("calculate")]
         public async Task<IActionResult> Calculate([FromBody] KuzramRequest request)
         {
@@ -20,8 +27,8 @@ namespace aspnet.Controllers
 
             var jsonPayload = JsonSerializer.Serialize(request);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-            var pythonUrl = "http://localhost:5000/kuzram";
+            var pythonApi = _envSettings.PythonBaseUrl;
+            var pythonUrl = $"{pythonApi}/kuzram";
             using (var httpClient = new HttpClient())
             {
                 var response = await httpClient.PostAsync(pythonUrl, content);

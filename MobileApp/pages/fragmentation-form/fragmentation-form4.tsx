@@ -172,6 +172,10 @@ export default function FragmentationForm4() {
           method: 'POST',
           body: form,
         });
+
+        if (!resp.ok) {
+          throw new Error(`Upload failed for image ${i}`);
+        }
         const body = await resp.json();
         uploadUrls.push(body.url);
       }
@@ -190,6 +194,12 @@ export default function FragmentationForm4() {
         `${API_BASE_URL}/api/Fragmentation/multi-fragment`,
         {method: 'POST', body: multiForm},
       );
+
+      if (!mfResp.ok) {
+        throw new Error('Multi-fragmentation API failed');
+      }
+
+      console.log("resp ", mfResp)
 
       // 3. Build your fragment URLs from mfResults
       //    e.g. your API returns just filename, so prefix with your static folder

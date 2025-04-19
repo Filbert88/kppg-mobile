@@ -5,6 +5,7 @@ using aspnet.Models;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 
 namespace aspnet.Controllers
 {
@@ -15,12 +16,14 @@ namespace aspnet.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
         private readonly IHttpClientFactory _clientFactory;
+        private readonly MyAppEnv _envSettings;
 
-        public FragmentationController(IWebHostEnvironment env, ApplicationDbContext context, IHttpClientFactory clientFactory)
+        public FragmentationController(IWebHostEnvironment env, ApplicationDbContext context, IHttpClientFactory clientFactory, IOptions<MyAppEnv> envSettings )
         {
             _env = env;
             _context = context;
             _clientFactory = clientFactory;
+            _envSettings = envSettings.Value;
         }
 
         [HttpGet]
@@ -198,6 +201,8 @@ namespace aspnet.Controllers
                 return BadRequest("No files uploaded.");
 
             var results = new List<object>();
+            var pythonApi = _envSettings.PythonBaseUrl;
+            Console.WriteLine($"MASUKK {pythonApi}");
 
             foreach (var file in files)
             {
@@ -224,7 +229,7 @@ namespace aspnet.Controllers
                     form.Add(imageContent, "file", inputFileName);
 
                     var client = _clientFactory.CreateClient("LongRunningClient");
-                    var response = await client.PostAsync("http://localhost:5000/fragmentation-red-outline", form);
+                    var response = await client.PostAsync($"{pythonApi}/fragmentation-red-outline", form);
 
                     if (!response.IsSuccessStatusCode)
                     {
@@ -286,8 +291,8 @@ namespace aspnet.Controllers
                 content.Add(new StringContent(E.ToString()), "E");
                 content.Add(new StringContent(n.ToString()), "n");
                 content.Add(new StringContent(conversion.ToString()), "conversion");
-
-                var response = await client.PostAsync("http://localhost:5000/fragmentation-analysis", content);
+                var pythonApi = _envSettings.PythonBaseUrl;
+                var response = await client.PostAsync($"{pythonApi}/fragmentation-analysis", content);
                 if (!response.IsSuccessStatusCode)
                 {
                     results.Add(new { filename = file.FileName, error = response.StatusCode });
