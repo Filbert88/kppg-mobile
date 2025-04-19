@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,7 +63,7 @@ interface SummaryScreenProps {
   hideSave?: boolean;
 }
 
-export default function SummaryScreen({
+export default function SummaryScreenFragDA({
   formData,
   onSave,
 }: SummaryScreenProps) {
@@ -123,20 +121,19 @@ export default function SummaryScreen({
   };
 
   const handleViewDepthAverage = (priority: number, tanggal: string) => {
-    const formattedDate = tanggal.split("T")[0]; // '2025-04-17'
+    const formattedDate = tanggal.split("T")[0]; 
     navigate(`/da-frag/${priority}/${formattedDate}`);
   };
 
+  // Handle edit
   const handleEdit = (id: string, resultId: string) => {
     console.log(`Edit item ${id}, result ${resultId}`);
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 w-full mt-8">
+    <div className="flex-1 flex flex-col w-full mt-8">
       <div className="flex-1">
-        <h2 className="text-xl font-bold mb-6">Fragmentasi Batuan</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {currentItems.map((item) => {
             const activeResultIndex = getActiveResultIndex(item.id);
             const activeResult = item.results[activeResultIndex];
@@ -584,7 +581,6 @@ export default function SummaryScreen({
           })}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-6">
             <Pagination>
