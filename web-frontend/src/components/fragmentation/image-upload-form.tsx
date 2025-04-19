@@ -661,7 +661,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
           {/* Image container captured by html2canvas */}
           <div
             ref={imageContainerRef}
-            className="flex border border-gray-300 rounded-md justify-center"
+            className="flex rounded-md justify-center"
             style={{ width: "fit-content", height: "fit-content" }}
           >
             {bgImage ? (

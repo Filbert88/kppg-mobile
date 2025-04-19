@@ -94,6 +94,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     }
     if(currentStep === 10 ){
       setCurrentStep(1);
+      return;
     }
     if (currentStep === 1 || currentStep === 8) {
       setActiveScreen("home");
@@ -274,13 +275,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         );
 
       case 10:
-        return (
-          <FragmentationSummaryPage
-            // formData={formData}
-            // hideSave={flow === "history"}
-            // onSave={handleSave}
-          />
-        );
+        return <FragmentationSummaryPage key={`summary-${currentStep}`} />;
       default:
         return null;
     }

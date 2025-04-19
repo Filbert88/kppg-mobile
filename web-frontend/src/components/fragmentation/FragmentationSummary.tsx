@@ -1,32 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SummaryScreen from "./summary-screen"; // your original component above, renamed
-
-fragmentationImageResults: Array<{
-  id: string;
-  result1: string; // or remove if not needed
-  result2: {
-    kuzram: {
-      P10: number;
-      P20: number;
-      P80: number;
-      P90: number;
-      X50: number;
-      percentage_above_60: number;
-      percentage_below_60: number;
-      sizes: number[];
-      distribution: number[];
-    };
-    plot_image_base64: string;
-  };
-  result3: string;
-  sizeDistributions?: Array<{
-    size: number;
-    percentage: number;
-  }>;
-  plotImageUrl?: string;
-}>;
+import SummaryScreen from "./summary-screen"; 
 
 export default function FragmentationSummaryPage() {
   const [fragmentationData, setFragmentationData] = useState<any[]>([]);
