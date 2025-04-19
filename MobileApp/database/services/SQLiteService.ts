@@ -30,6 +30,7 @@ export default class SQLiteService {
       await this.db.executeSql('DROP TABLE IF EXISTS FragmentationData;');
       console.log('FragmentationData table dropped successfully.');
     } catch (error) {
+
       console.error('Failed to drop FragmentationData table:', error);
     }
   }

@@ -14,7 +14,11 @@ const AddOrHistory = () => {
   const { type } = route.params;
 
   const handleTambahPress = () => {
-    navigation.navigate('DatePriority', { type });
+    if(type === 'DepthAverage'){
+      navigation.navigate('DatePriorityD')
+    }else if( type === 'FragmentasiForm1'){
+      navigation.navigate('DatePriorityF')
+    }
   };
 
   const handleRiwayatPress = () => {

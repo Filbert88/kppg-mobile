@@ -100,7 +100,6 @@ const FragmentationResultScreen = () => {
       })
       .catch(err => {
         console.error('Fetch error:', err);
-        showToast("Failed to get Fragmentation History", "error")
       })
       .finally(() => setLoading(false));
   }, []);

@@ -44,7 +44,7 @@ const defaultFormData: FormDataType = {
   tanggal: '',
   kedalaman: {},
   average: '',
-  prioritas: 0,
+  prioritas: NaN,
   isEdit: false,
   origin: '',
 };

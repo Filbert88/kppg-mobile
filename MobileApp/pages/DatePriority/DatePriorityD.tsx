@@ -3,106 +3,81 @@ import NetInfo from '@react-native-community/netinfo';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
   ScrollView,
   Platform,
 } from 'react-native';
-import {ArrowRight, Calendar, ChevronDown} from 'react-native-feather';
+import {Calendar, ChevronDown} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {DepthAverageContext} from '../../context/DepthAverageContext';
-import {FormContext} from '../../context/FragmentationContext';
-import { dbService } from '../../database/services/dbService';
-import { API_BASE_URL } from '@env';
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'DatePriority'
->;
-type RouteProps = RouteProp<RootStackParamList, 'DatePriority'>;
+import {dbService} from '../../database/services/dbService';
+import {API_BASE_URL} from '@env';
 
-const DatePriority = () => {
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'DatePriorityD'>;
+
+const DatePriorityD = () => {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProps>();
-  const {type} = route.params;
-
-  const {
-    formData,
-    updateForm,
-    resetForm: resetDepthForm,
-  } = useContext(FormContext);
-  const {resetForm: resetFragmentationForm} = useContext(FormContext);
+  const {formData, resetForm, setFormData} = useContext(DepthAverageContext);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   useEffect(() => {
-    // Reset the form based on the selected type
-    if (type === 'FragmentasiForm1') {
-      resetFragmentationForm();
-    } else if (type === 'DepthAverage') {
-      resetDepthForm();
+    if (!hasInitialized) {
+        console.log("reset")
+      resetForm();
+      setHasInitialized(true);
     }
-  }, [type]);
+  }, [hasInitialized]);
 
   const handleChange = (field: string, value: any) => {
-    updateForm({...formData, [field]: value});
+    setFormData({...formData, [field]: value});
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-        const formattedDate = selectedDate.toISOString().split('T')[0];
-        updateForm({ tanggal: formattedDate });
-        fetchNextPriority(formattedDate); 
-      }      
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+      setFormData({tanggal: formattedDate});
+      fetchNextPriority(formattedDate);
+    }
   };
 
   const fetchNextPriority = async (date: string) => {
     const isOnline = (await NetInfo.fetch()).isConnected;
-  
-    if (isOnline) {
-      const endpoint =
-        type === 'DepthAverage'
-          ? `${API_BASE_URL}/api/DepthAverage/next-priority?tanggal=${date}`
-          : `${API_BASE_URL}/api/Fragmentation/next-priority?tanggal=${date}`;
-  
-      try {
-        const response = await fetch(endpoint);
-        const nextPriority = await response.json();
-        console.log(nextPriority)
 
-        updateForm({ prioritas: nextPriority });
+    if (isOnline) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/DepthAverage/next-priority?tanggal=${date}`);
+        const nextPriority = await response.json();
+        setFormData({prioritas: nextPriority});
       } catch (error) {
         console.error('Failed to fetch next priority from API:', error);
       }
     } else {
-      const localData =
-        type === 'DepthAverage'
-          ? await dbService.getAllData()
-          : await dbService.getFragmentationData();
-  
+      const localData = await dbService.getAllData();
       const maxPriority = localData
         .filter((d: any) => d.tanggal === date)
         .reduce((max: number, curr: any) => Math.max(max, curr.prioritas ?? 0), 0);
-  
-      updateForm({ prioritas: maxPriority + 1 });
+
+      setFormData({prioritas: maxPriority + 1});
     }
   };
-  
+
   const isFormValid = formData.tanggal?.trim() !== '' && formData.prioritas > 0;
 
   return (
-    <SafeAreaView className="flex-1 ">
+    <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#e5e7eb" />
-
       <ScrollView className="flex-1 px-6 pt-6">
         <View className="gap-6">
-          {/* Tanggal */}
           <View className="space-y-2">
             <Text className="text-xl font-bold text-black mb-1">Tanggal</Text>
             <TouchableOpacity
@@ -121,9 +96,7 @@ const DatePriority = () => {
               className="bg-white rounded-full py-3 px-4 flex-row items-center justify-between"
               onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}>
               <Text className="text-gray-400">
-                {formData.prioritas
-                  ? formData.prioritas
-                  : 'Masukkan prioritas...'}
+                {formData.prioritas || 'Masukkan prioritas...'}
               </Text>
               <ChevronDown width={20} height={20} color="#6b7280" />
             </TouchableOpacity>
@@ -151,6 +124,7 @@ const DatePriority = () => {
           </View>
         </View>
       </ScrollView>
+
       {showDatePicker && (
         <DateTimePicker
           value={formData.tanggal ? new Date(formData.tanggal) : new Date()}
@@ -160,22 +134,14 @@ const DatePriority = () => {
           maximumDate={new Date()}
         />
       )}
-      {/* Next Button */}
+
       <View className="p-5 items-end">
         <TouchableOpacity
           disabled={!isFormValid}
           className={`px-6 py-3 rounded-none shadow-md flex-row items-center justify-center ${
             isFormValid ? 'bg-green-800' : 'bg-gray-400 opacity-60'
           }`}
-          onPress={() => {
-            if (isFormValid) {
-              if (type === 'FragmentasiForm1') {
-                navigation.navigate('FragmentationForm1');
-              } else if (type === 'DepthAverage') {
-                navigation.navigate('DepthAverageUpload');
-              }
-            }
-          }}>
+          onPress={() => navigation.navigate('DepthAverageUpload')}>
           <Text className="text-white font-semibold">Next</Text>
         </TouchableOpacity>
       </View>
@@ -183,4 +149,4 @@ const DatePriority = () => {
   );
 };
 
-export default DatePriority;
+export default DatePriorityD;
