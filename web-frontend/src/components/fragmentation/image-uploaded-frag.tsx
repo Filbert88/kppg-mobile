@@ -1,4 +1,4 @@
-"use client";
+import type React from "react";
 
 import {
   useState,
@@ -13,11 +13,11 @@ import {
   Eraser,
   ShapesIcon,
   PaintBucket,
-  Crop as CropIcon,
+  CropIcon,
   ZoomIn,
   ZoomOut,
   Slash,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
@@ -31,7 +31,10 @@ import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 
 // Image container for canvas drawing
 import ImageContainer from "./ImageContainer";
-import { HybridContainerRef, HybridContainerState } from "./HybridContainer";
+import type {
+  HybridContainerRef,
+  HybridContainerState,
+} from "./HybridContainer";
 
 export type Tool =
   | "none"
@@ -70,6 +73,16 @@ export interface ImageUploadFragRef {
 function normalizeBase64Image(base64Str: string): string {
   if (base64Str.startsWith("data:")) return base64Str;
   return "data:image/jpeg;base64," + base64Str;
+}
+
+function normalizeImageSource(img: string): string {
+  if (img.startsWith("data:image")) {
+    return img; // already base64 format
+  }
+  if (img.startsWith("http") || img.startsWith("/")) {
+    return img; // already URL
+  }
+  return `data:image/jpeg;base64,${img}`; // fallback: raw base64
 }
 
 const ImageUploadedFrag = forwardRef<
@@ -308,7 +321,9 @@ const ImageUploadedFrag = forwardRef<
   const handleNext = async () => {
     try {
       // Show loading state
-      // (You may want to add loading state variables like in the previous component)
+      setIsLoading(true);
+      setLoadingProgress(0);
+      setLoadingMessage("Preparing images...");
 
       // First, save the current editing state
       if (selectedImage && hybridContainerRef.current) {
@@ -320,6 +335,9 @@ const ImageUploadedFrag = forwardRef<
         setEditingStates(updatedStates);
         updateFormData("editingFragStates", updatedStates);
       }
+
+      setLoadingProgress(10);
+      setLoadingMessage("Processing edited images...");
 
       if (formData.imagesFrag.length === 1 && selectedImage) {
         console.log("Single image case detected - ensuring state is captured");
@@ -358,6 +376,8 @@ const ImageUploadedFrag = forwardRef<
       // Process all images
       const processedImages = [];
       const filesToAnalyze = [];
+
+      setLoadingProgress(20);
 
       // Process each image sequentially with proper rendering and capture
       for (let i = 0; i < formData.imagesFrag.length; i++) {
@@ -456,10 +476,20 @@ const ImageUploadedFrag = forwardRef<
           // If upload fails, use original image URL
           processedImages.push(imageUrl);
         }
+
+        // Calculate progress based on how many images we've processed
+        const progressIncrement = 40 / formData.imagesFrag.length;
+        setLoadingProgress((prev) => Math.min(60, prev + progressIncrement));
+        setLoadingMessage(
+          `Processing image ${i + 1}/${formData.imagesFrag.length}...`
+        );
       }
 
       // Update the imagesFrag in formData with processed images
       updateFormData("imagesFrag", processedImages);
+
+      setLoadingProgress(70);
+      setLoadingMessage("Analyzing fragmentation...");
 
       // Now call the fragmentation-analysis with all files
       try {
@@ -471,8 +501,8 @@ const ImageUploadedFrag = forwardRef<
         }
 
         // Compute parameters (K = Q/V)
-        const Q = parseFloat(formData.ammoniumNitrate) || 0;
-        const V = parseFloat(formData.blastingVolume) || 1;
+        const Q = Number.parseFloat(formData.ammoniumNitrate) || 0;
+        const V = Number.parseFloat(formData.blastingVolume) || 1;
         const K = Q / V;
 
         // Add analysis parameters to form data
@@ -518,6 +548,9 @@ const ImageUploadedFrag = forwardRef<
         // Save the results in formData
         updateFormData("finalAnalysisResults", analysisResults);
 
+        setLoadingProgress(90);
+        setLoadingMessage("Finalizing results...");
+
         // Restore the original selected image if possible
         if (originalImage) {
           const originalIndex = formData.imagesFrag.indexOf(originalImage);
@@ -527,14 +560,22 @@ const ImageUploadedFrag = forwardRef<
           }
         }
 
+        setLoadingProgress(100);
+        setLoadingMessage("Complete!");
+        // Small delay to show the 100% completion
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        setIsLoading(false);
+
         // Move to the next step
         onNext();
       } catch (err: unknown) {
+        setIsLoading(false);
         const msg = err instanceof Error ? err.message : "Unknown error";
         console.error("Fragmentation analysis error:", err);
         alert(`Error during fragmentation analysis: ${msg}`);
       }
     } catch (error: unknown) {
+      setIsLoading(false);
       const msg = error instanceof Error ? error.message : "Unknown error";
       console.error("General error during handleNext:", error);
       alert(`Error: ${msg}`);
@@ -593,7 +634,7 @@ const ImageUploadedFrag = forwardRef<
             onClick={() => switchImage(img)}
           >
             <img
-              src={normalizeBase64Image(img)}
+              src={normalizeImageSource(img) || "/placeholder.svg"}
               alt={`Thumbnail ${idx}`}
               className="w-full object-contain"
             />
@@ -601,17 +642,31 @@ const ImageUploadedFrag = forwardRef<
         ))}
       </div>
       {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <div className="flex items-center mb-4">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              <h3 className="font-semibold">{loadingMessage}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl max-w-md w-full shadow-2xl">
+            <div className="flex flex-col items-center mb-6">
+              <div className="relative mb-4">
+                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-blue-600 animate-pulse" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-lg text-center">
+                {loadingMessage || "Processing images..."}
+              </h3>
+              <p className="text-gray-500 text-sm mt-1 text-center">
+                Please don't close this window
+              </p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
               <div
-                className="bg-blue-600 h-2 rounded-full"
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-in-out"
                 style={{ width: `${loadingProgress}%` }}
               />
+            </div>
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Step {Math.ceil(loadingProgress / 20)} of 5</span>
+              <span>{loadingProgress}%</span>
             </div>
           </div>
         </div>
