@@ -13,6 +13,7 @@ import DatePriority from "../date-priority";
 import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
 import { fetchNextPriority } from "@/lib/function";
+import FragmentationSummaryPage from "./FragmentationSummary";
 // The full form data type used throughout the multi-step process.
 export type FragmentationFormData = {
   scale: string;
@@ -90,6 +91,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     }
     if (currentStep === 7) {
       imageUploadFragRef.current?.saveEditingState();
+    }
+    if(currentStep === 10 ){
+      setCurrentStep(1);
     }
     if (currentStep === 1 || currentStep === 8) {
       setActiveScreen("home");
@@ -183,7 +187,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             }}
             onRiwayatClick={() => {
               setFlow("history");
-              setCurrentStep(8);
+              setCurrentStep(10);
             }}
           />
         );
@@ -271,10 +275,10 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
 
       case 10:
         return (
-          <SummaryScreen
-            formData={formData}
-            hideSave={flow === "history"}
-            onSave={handleSave}
+          <FragmentationSummaryPage
+            // formData={formData}
+            // hideSave={flow === "history"}
+            // onSave={handleSave}
           />
         );
       default:

@@ -4,7 +4,8 @@ import Navbar from "./components/navbar";
 import HomeScreen from "./components/home-screen";
 import MultiStepForm from "./components/fragmentation/multi-step-form";
 import DepthAverageForm from "./components/depth-average/depth-average-form";
-import Help from "./pages/Help"; // Import Help page
+import Help from "./pages/Help"; 
+import FilteredDepthAveragePage from "./pages/da-frag/da-frag";
 import "./styles/App.css";
 
 export default function App() {
@@ -22,6 +23,10 @@ export default function App() {
         <Routes>
           {/* Route for Help Page */}
           <Route path="/help" element={<Help />} />
+          <Route
+            path="/da-frag/:priority/:tanggal"
+            element={<FilteredDepthAveragePage />}
+          />
           {/* Default App Layout */}
           <Route
             path="/"
