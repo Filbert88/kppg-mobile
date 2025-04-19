@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/pagination";
 import {
   Plus,
-  Edit,
   Clock,
   BarChart2,
   ChevronRight,
@@ -63,11 +62,13 @@ interface SummaryScreenProps {
   formData: any;
   onSave?: () => void;
   hideSave?: boolean;
+  onTambahFoto?: (data: any) => void;
 }
 
 export default function SummaryScreen({
   formData,
   onSave,
+  onTambahFoto,
 }: SummaryScreenProps) {
   const fragmentationData: FragmentationData[] = Array.isArray(formData)
     ? formData
@@ -117,18 +118,15 @@ export default function SummaryScreen({
     setCurrentPage(page);
   };
 
-  const handleAddPhoto = (id: string) => {
-    console.log(`Add photo for item ${id}`);
-    // Implement your photo adding logic here
+  const handleAddPhoto = (item: any) => {
+    if (onTambahFoto) {
+      onTambahFoto(item);
+    }
   };
 
   const handleViewDepthAverage = (priority: number, tanggal: string) => {
     const formattedDate = tanggal.split("T")[0]; // '2025-04-17'
     navigate(`/da-frag/${priority}/${formattedDate}`);
-  };
-
-  const handleEdit = (id: string, resultId: string) => {
-    console.log(`Edit item ${id}, result ${resultId}`);
   };
 
   return (
@@ -398,19 +396,6 @@ export default function SummaryScreen({
                                           </div>
                                         </div>
                                       </div>
-
-                                      <div className="flex justify-between mt-4">
-                                        <Button
-                                          variant="outline"
-                                          className="flex items-center gap-2"
-                                          onClick={() =>
-                                            handleEdit(item.id, result.id)
-                                          }
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                          Edit
-                                        </Button>
-                                      </div>
                                     </div>
                                   )}
                                 </TabsContent>
@@ -518,16 +503,6 @@ export default function SummaryScreen({
                                   </div>
 
                                   <div className="flex justify-between mt-4">
-                                    <Button
-                                      variant="outline"
-                                      className="flex items-center gap-2"
-                                      onClick={() =>
-                                        handleEdit(item.id, activeResult.id)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                      Edit
-                                    </Button>
                                     <Button
                                       variant="outline"
                                       className="flex items-center gap-2"

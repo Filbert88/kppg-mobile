@@ -8,7 +8,6 @@ import PowderFactorForm from "./powder-factor-form";
 import ImageUploadForm, { ImageUploadFormRef } from "./image-upload-form";
 import ImageUploadedFrag, { ImageUploadFragRef } from "./image-uploaded-frag";
 import GraphScreen from "./graph-screen";
-import SummaryScreen from "./summary-screen";
 import DatePriority from "../date-priority";
 import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
@@ -49,6 +48,7 @@ interface MultiStepFormProps {
 export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
   const [flow, setFlow] = useState<"tambah" | "history">("tambah");
   const [currentStep, setCurrentStep] = useState(1);
+  const [isEdit, setIsEdit] = useState(false);
   const [formData, setFormData] = useState<FragmentationFormData>({
     scale: "",
     option: "",
@@ -86,13 +86,14 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
   const imageUploadFragRef = useRef<ImageUploadFragRef>(null);
 
   function handleBack() {
+    if (isEdit && currentStep <= 3) return;
     if (currentStep === 6) {
       imageUploadFormRef.current?.saveEditingState();
     }
     if (currentStep === 7) {
       imageUploadFragRef.current?.saveEditingState();
     }
-    if(currentStep === 10 ){
+    if (currentStep === 10) {
       setCurrentStep(1);
       return;
     }
@@ -102,6 +103,17 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       setCurrentStep((prev) => prev - 1);
     }
   }
+
+  const handleEditFromSummary = (data: FragmentationFormData) => {
+    setFormData(data);
+    setIsEdit(true);
+    setCurrentStep(6);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEdit(false);
+    setCurrentStep(10);
+  };
 
   const handleSave = async () => {
     try {
@@ -178,6 +190,14 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
   );
 
   const renderStep = () => {
+    const cancelButton = isEdit && (
+      <button
+        onClick={handleCancelEdit}
+        className="absolute top-0 right-0 bg-red-500 text-white px-4 py-2 rounded-lg"
+      >
+        Cancel Edit
+      </button>
+    );
     switch (currentStep) {
       case 1:
         return (
@@ -210,6 +230,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 3:
+        {
+          cancelButton;
+        }
         return (
           <BasicInfoForm
             formData={formData}
@@ -218,6 +241,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 4:
+        {
+          cancelButton;
+        }
         return (
           <MaterialForm
             formData={formData}
@@ -226,6 +252,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 5:
+        {
+          cancelButton;
+        }
         return (
           <PowderFactorForm
             formData={formData}
@@ -234,6 +263,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           />
         );
       case 6:
+        {
+          cancelButton;
+        }
         return (
           <ImageUploadForm
             key={currentStep}
@@ -275,7 +307,37 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         );
 
       case 10:
-        return <FragmentationSummaryPage key={`summary-${currentStep}`} />;
+        return (
+          <FragmentationSummaryPage
+            onTambahFoto={(item) => {
+              const reconstructed: FragmentationFormData = {
+                scale: item.scale,
+                option: item.option || "",
+                size: item.size || "",
+                location: item.location,
+                date: item.date,
+                priority: item.prioritas,
+                rockType: item.rockType || "Claystone",
+                ammoniumNitrate: item.ammoniumNitrate || "",
+                blastingVolume: item.blastingVolume || "",
+                powderFactor: item.powderFactor || "25",
+                images:
+                  item.fragmentationImages?.map((img: any) => img.imageUri) ||
+                  [],
+                editingStates: {},
+                imagesFrag: [],
+                editingFragStates: {},
+                fragmentationResults: [],
+                finalAnalysisResults: [],
+                diggingTime: item.diggingTime ?? undefined,
+                videoUri: item.videoUri ?? undefined,
+              };
+              setFormData(reconstructed);
+              setIsEdit(true);
+              setCurrentStep(6);
+            }}
+          />
+        );
       default:
         return null;
     }

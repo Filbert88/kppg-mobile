@@ -143,16 +143,22 @@ export default function GraphScreen({
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(threshold_percentages).map(
-                        ([size, perc]) => (
+                      {Object.entries(threshold_percentages)
+                        .map(([size, perc]) => ({
+                          size: parseFloat(size),
+                          percentage: Number(perc),
+                        }))
+                        .sort((a, b) => a.size - b.size)
+                        .map(({ size, percentage }) => (
                           <tr key={size}>
-                            <td className="border px-2 py-1">{size}</td>
                             <td className="border px-2 py-1">
-                              {perc.toFixed(2)}
+                              {size.toFixed(2)}
+                            </td>
+                            <td className="border px-2 py-1">
+                              {percentage.toFixed(2)}
                             </td>
                           </tr>
-                        )
-                      )}
+                        ))}
                     </tbody>
                   </table>
                 </div>

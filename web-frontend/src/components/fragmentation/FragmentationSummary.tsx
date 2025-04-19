@@ -1,9 +1,11 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import SummaryScreen from "./summary-screen"; 
+import SummaryScreen from "./summary-screen";
 
-export default function FragmentationSummaryPage() {
+export default function FragmentationSummaryPage({
+  onTambahFoto,
+}: {
+  onTambahFoto?: (data: any) => void;
+}) {
   const [fragmentationData, setFragmentationData] = useState<any[]>([]);
 
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function FragmentationSummaryPage() {
             scale: item.skala,
             diggingTime: item.diggingTime || "-",
             depthAverage: item.depthAverage || 0,
+            fragmentationImages: item.fragmentationImages ?? [],
             results:
               item.fragmentationImages?.flatMap(
                 (img: any, idx: number) =>
@@ -65,5 +68,7 @@ export default function FragmentationSummaryPage() {
     fetchData();
   }, []);
 
-  return <SummaryScreen formData={fragmentationData} />;
+  return (
+    <SummaryScreen formData={fragmentationData} onTambahFoto={onTambahFoto} />
+  );
 }
