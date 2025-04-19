@@ -70,6 +70,8 @@ export default function DepthAverageForm({
   };
 
   const handleBack = () => {
+    if (isEdit && currentStep !== 6) return;
+    
     if (currentStep === 0) {
       setActiveScreen("home");
     } else if (currentStep === 6) {

@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +17,7 @@ import {
 } from "@/components/ui/pagination";
 import {
   Plus,
+  Edit,
   Clock,
   BarChart2,
   ChevronRight,
@@ -62,13 +61,11 @@ interface SummaryScreenProps {
   formData: any;
   onSave?: () => void;
   hideSave?: boolean;
-  onTambahFoto?: (data: any) => void;
 }
 
-export default function SummaryScreen({
+export default function SummaryScreenFragDA({
   formData,
   onSave,
-  onTambahFoto,
 }: SummaryScreenProps) {
   const fragmentationData: FragmentationData[] = Array.isArray(formData)
     ? formData
@@ -118,23 +115,25 @@ export default function SummaryScreen({
     setCurrentPage(page);
   };
 
-  const handleAddPhoto = (item: any) => {
-    if (onTambahFoto) {
-      onTambahFoto(item);
-    }
+  const handleAddPhoto = (id: string) => {
+    console.log(`Add photo for item ${id}`);
+    // Implement your photo adding logic here
   };
 
   const handleViewDepthAverage = (priority: number, tanggal: string) => {
-    const formattedDate = tanggal.split("T")[0]; // '2025-04-17'
+    const formattedDate = tanggal.split("T")[0]; 
     navigate(`/da-frag/${priority}/${formattedDate}`);
   };
 
-  return (
-    <div className="flex-1 flex flex-col p-6 w-full mt-8">
-      <div className="flex-1">
-        <h2 className="text-xl font-bold mb-6">Fragmentasi Batuan</h2>
+  // Handle edit
+  const handleEdit = (id: string, resultId: string) => {
+    console.log(`Edit item ${id}, result ${resultId}`);
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  return (
+    <div className="flex-1 flex flex-col w-full mt-8">
+      <div className="flex-1">
+        <div className="grid grid-cols-1 gap-4">
           {currentItems.map((item) => {
             const activeResultIndex = getActiveResultIndex(item.id);
             const activeResult = item.results[activeResultIndex];
@@ -396,6 +395,19 @@ export default function SummaryScreen({
                                           </div>
                                         </div>
                                       </div>
+
+                                      <div className="flex justify-between mt-4">
+                                        <Button
+                                          variant="outline"
+                                          className="flex items-center gap-2"
+                                          onClick={() =>
+                                            handleEdit(item.id, result.id)
+                                          }
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                          Edit
+                                        </Button>
+                                      </div>
                                     </div>
                                   )}
                                 </TabsContent>
@@ -507,6 +519,16 @@ export default function SummaryScreen({
                                       variant="outline"
                                       className="flex items-center gap-2"
                                       onClick={() =>
+                                        handleEdit(item.id, activeResult.id)
+                                      }
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      className="flex items-center gap-2"
+                                      onClick={() =>
                                         handleViewDepthAverage(
                                           Number(item.priority),
                                           item.date
@@ -559,7 +581,6 @@ export default function SummaryScreen({
           })}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-6">
             <Pagination>

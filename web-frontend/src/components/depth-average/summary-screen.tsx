@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pencil } from 'lucide-react';
 import DepthAverageDetailPopup from "./depthAverageDetailPopup";
+import { useNavigate } from "react-router-dom";
 
 interface DepthAverageItem {
   id: number;
@@ -19,6 +20,7 @@ interface SummaryScreenProps {
 }
 
 export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
+  const navigate = useNavigate();
   const [data, setData] = useState<DepthAverageItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DepthAverageItem | null>(null);
@@ -149,7 +151,7 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onEdit) {
-                      onEdit(item); // 🔥 Just use callback!
+                      onEdit(item); 
                     }
                   }}
                 >
@@ -161,7 +163,7 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
                   className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // View Fragmentation action
+                    navigate(`/frag-da/${item.prioritas}/${item.tanggal}`);
                   }}
                 >
                   Lihat Fragmentasi
