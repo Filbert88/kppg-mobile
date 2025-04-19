@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using aspnet.Data;
 using Microsoft.AspNetCore.Http.Features;
+using aspnet;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,8 @@ builder.Services.AddHttpClient("LongRunningClient", client =>
 {
     client.Timeout = TimeSpan.FromMinutes(50);
 });
+builder.Services.Configure<MyAppEnv>(
+    builder.Configuration.GetSection("MyAppEnv"));
 builder.WebHost.UseUrls("http://0.0.0.0:5180");
 var app = builder.Build();
 

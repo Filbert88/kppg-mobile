@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 
 namespace aspnet.Controllers
@@ -8,10 +9,12 @@ namespace aspnet.Controllers
     public class OcrController : ControllerBase
     {
         private readonly IWebHostEnvironment _env;
+        private readonly MyAppEnv _envSettings;
 
-        public OcrController(IWebHostEnvironment env)
+        public OcrController(IWebHostEnvironment env,IOptions<MyAppEnv> envSettings)
         {
             _env = env;
+            _envSettings = envSettings.Value;
         }
 
         [HttpPost]
@@ -30,8 +33,8 @@ namespace aspnet.Controllers
             {
                 await file.CopyToAsync(stream);
             }
-
-            var pythonUrl = "http://localhost:5000/ocr";
+            var pythonApi = _envSettings.PythonBaseUrl;
+            var pythonUrl = $"{pythonApi}/ocr";
             string ocrResultJson;
 
             using (var httpClient = new HttpClient())
