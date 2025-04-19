@@ -9,14 +9,13 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {FormContext} from '../../context/FragmentationContext';
-import { API_IP } from '@env';
-import { useToast } from '../../context/ToastContext';
+import {API_IP} from '@env';
+import {useToast} from '../../context/ToastContext';
 
 type NavProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -26,74 +25,99 @@ type NavProp = NativeStackNavigationProp<
 export default function FragmentationResult() {
   const navigation = useNavigation<NavProp>();
   const {formData, saveToDatabase} = useContext(FormContext);
-  const result = formData.finalAnalysisResults[0];
+  const {showToast} = useToast();
   const screenWidth = Dimensions.get('window').width;
-  const {showToast} = useToast()
-  // Replace localhost → 10.0.2.2 on Android emulator
-  const imageUri = result.plot_image_base64.replace('localhost', API_IP);
 
-  const summaryArray = Object.entries(result.threshold_percentages)
-    .map(([size, pct]) => ({size: parseFloat(size), pct}))
-    .sort((a, b) => b.size - a.size);
+  const result = formData?.finalAnalysisResults?.[0];
+
+  const imageUri =
+    result?.plot_image_base64?.replace?.('localhost', API_IP) ?? null;
+
+  const summaryArray =
+    result?.threshold_percentages
+      ? Object.entries(result.threshold_percentages)
+          .map(([size, pct]) => ({
+            size: parseFloat(size),
+            pct,
+          }))
+          .sort((a, b) => b.size - a.size)
+      : [];
 
   const onSave = async () => {
-    const ok = await saveToDatabase();
+    const ok = await saveToDatabase?.();
     if (ok) {
-      showToast("Save Fragmentation success", "success")
-      navigation.navigate('Homepage'); // or wherever
+      showToast('Save Fragmentation success', 'success');
+      navigation.navigate('Homepage');
     } else {
-      showToast("Failed saving fragmentation", "error")
+      showToast('Failed saving fragmentation', 'error');
     }
   };
+
+  const isValid = !!result && !!imageUri && summaryArray.length > 0;
 
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Image
-          source={{uri: imageUri}}
-          style={{
-            width: screenWidth - 32,
-            height: (screenWidth - 32) * 0.6,
-            borderRadius: 8,
-          }}
-          resizeMode="contain"
-        />
+        {!isValid ? (
+          <Text style={{color: 'red', textAlign: 'center'}}>
+            Data hasil fragmentasi tidak tersedia.
+          </Text>
+        ) : (
+          <>
+            <Image
+              source={{uri: imageUri}}
+              style={{
+                width: screenWidth - 32,
+                height: (screenWidth - 32) * 0.6,
+                borderRadius: 8,
+              }}
+              resizeMode="contain"
+            />
 
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Ringkasan</Text>
-        </View>
-
-        <View style={styles.table}>
-          <View style={[styles.row, styles.rowHeader]}>
-            <Text style={[styles.cell, styles.cellHeader]}>Size (mm)</Text>
-            <Text style={[styles.cell, styles.cellHeader]}>%</Text>
-          </View>
-          {summaryArray.map((row, idx) => (
-            <View
-              key={row.size}
-              style={[
-                styles.row,
-                idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
-              ]}>
-              <Text style={styles.cell}>{row.size.toFixed(3)}</Text>
-              <Text style={styles.cell}>{row.pct.toFixed(2)}</Text>
+            <View style={styles.header}>
+              <Text style={styles.headerText}>Ringkasan</Text>
             </View>
-          ))}
-        </View>
+
+            <View style={styles.table}>
+              <View style={[styles.row, styles.rowHeader]}>
+                <Text style={[styles.cell, styles.cellHeader]}>Size (mm)</Text>
+                <Text style={[styles.cell, styles.cellHeader]}>%</Text>
+              </View>
+              {summaryArray.map((row, idx) => (
+                <View
+                  key={row.size}
+                  style={[
+                    styles.row,
+                    idx % 2 === 0 ? styles.rowEven : styles.rowOdd,
+                  ]}>
+                  <Text style={styles.cell}>{row.size.toFixed(3)}</Text>
+                  <Text style={styles.cell}>{row.pct.toFixed(2)}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Bottom center: Tambah Digging Time */}
       <View style={styles.bottomCenter}>
         <TouchableOpacity
           style={styles.centerButton}
-          onPress={() => navigation.navigate('DiggingTimePage')}>
+          onPress={() => navigation.navigate('DiggingTimePage')}
+          disabled={!isValid}>
           <Text style={styles.centerText}>Tambah Digging Time</Text>
         </TouchableOpacity>
       </View>
 
       {/* Bottom right: Simpan */}
       <View style={styles.bottomRight}>
-        <TouchableOpacity style={styles.saveButton} onPress={onSave}>
+        <TouchableOpacity
+          style={[
+            styles.saveButton,
+            !isValid && {backgroundColor: '#9ca3af'},
+          ]}
+          onPress={onSave}
+          disabled={!isValid}>
           <Text style={styles.saveText}>Simpan</Text>
         </TouchableOpacity>
       </View>

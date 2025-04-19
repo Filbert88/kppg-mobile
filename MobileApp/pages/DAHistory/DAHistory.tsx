@@ -146,7 +146,6 @@ const DAHistory = () => {
         const loadedData = await loadData();
         setData(loadedData);
       } catch (error) {
-        showToast("Failed to fetch data", "error");
         console.error('Failed to load depth average data:', error);
       }
     };

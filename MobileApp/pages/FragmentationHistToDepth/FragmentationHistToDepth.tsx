@@ -165,7 +165,6 @@ const FragmentationDepthAverage = () => {
         }));
         setData(mappedData);
       } catch (error) {
-        showToast("Failed to fetch data")
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);

@@ -18,7 +18,7 @@ import FragmentationForm3 from './pages/fragmentation-form/fragmentation-form3';
 import FragmentationForm4 from './pages/fragmentation-form/fragmentation-form4';
 import FragmentationForm5 from './pages/fragmentation-form/fragmentation-form5';
 import FragmentationResult from './pages/FragmentationResult/FragmentationResult';
-import DatePriority from './pages/DatePriority/DatePriority';
+import DatePriority from './pages/DatePriority/DatePriorityF';
 import DAHistoryIncomplete from './pages/DAHistory/DAHistoryIncomplete';
 import Help from './pages/Help/Help';
 import {
@@ -39,6 +39,8 @@ import FragmentationDepthAverage from './pages/FragmentationHistToDepth/Fragment
 import DepthAverageFragmentation from './pages/DepthAverageFragmentation/DepthAverageFragmentation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 import {ToastProvider} from './context/ToastContext';
+import DatePriorityF from './pages/DatePriority/DatePriorityF';
+import DatePriorityD from './pages/DatePriority/DatePriorityD';
 
 export default function App() {
   const syncTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -158,9 +160,7 @@ export default function App() {
                   const backHandler = formData.isEdit
                     ? undefined
                     : () =>
-                        props.navigation.navigate('DatePriority', {
-                          type: 'DepthAverage',
-                        });
+                        props.navigation.navigate('DatePriorityD');
 
                   return (
                     <ScreenWrapper
@@ -171,18 +171,37 @@ export default function App() {
                   );
                 }}
               </Stack.Screen>
-              <Stack.Screen name="DatePriority">
+              <Stack.Screen name="DatePriorityF">
                 {(
                   props: NativeStackScreenProps<
                     RootStackParamList,
-                    'DatePriority'
+                    'DatePriorityF'
                   >,
                 ) => (
                   <ScreenWrapper
-                    component={DatePriority}
+                    component={DatePriorityF}
                     customBackAction={() =>
                       props.navigation.navigate('AddOrHistory', {
-                        type: props.route.params.type,
+                        type: 'FragmentasiForm1',
+                      })
+                    }
+                    {...props}
+                  />
+                )}
+              </Stack.Screen>
+
+              <Stack.Screen name="DatePriorityD">
+                {(
+                  props: NativeStackScreenProps<
+                    RootStackParamList,
+                    'DatePriorityD'
+                  >,
+                ) => (
+                  <ScreenWrapper
+                    component={DatePriorityD}
+                    customBackAction={() =>
+                      props.navigation.navigate('AddOrHistory', {
+                        type: 'DepthAverage',
                       })
                     }
                     {...props}
@@ -266,9 +285,7 @@ export default function App() {
                     ? undefined // Disable back button when editing
                     : () => {
                         // When not editing, navigate back to DatePriority
-                        props.navigation.navigate('DatePriority', {
-                          type: 'FragmentasiForm1',
-                        });
+                        props.navigation.navigate('DatePriorityF');
                       };
 
                   return (
