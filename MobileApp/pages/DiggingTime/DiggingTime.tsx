@@ -19,15 +19,13 @@ import Icon from 'react-native-vector-icons/Feather';
 import {FormContext} from '../../context/FragmentationContext';
 import { API_BASE_URL } from '@env';
 import { useToast } from '../../context/ToastContext';
+import { RootStackParamList } from '../../types/navigation';
 
-type RootStackParamList = {
-  Home: undefined;
-  DiggingTime: undefined;
-};
+
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'DiggingTime'
+  'DiggingTimePage'
 >;
 
 const DiggingTimePage = () => {
@@ -162,6 +160,7 @@ const DiggingTimePage = () => {
   
         if (success) {
           showToast(`Saved diggint time: ${savedTime}`, "success")
+          navigation.navigate("FragmentationHistoryDone");
         } else {
           showToast('Failed to save data', "error");
         }

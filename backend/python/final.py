@@ -26,6 +26,7 @@ def compute_kuz_ram_data(A, K, Q, E, n):
     else:
         percentage_below_60 = 0.0
     percentage_above_60 = 100 - percentage_below_60
+    top_size = sizes[-1]
     return {
         "sizes": sizes,
         "distribution": distribution,
@@ -35,7 +36,8 @@ def compute_kuz_ram_data(A, K, Q, E, n):
         "P80": P80,
         "P90": P90,
         "percentage_below_60": percentage_below_60,
-        "percentage_above_60": percentage_above_60
+        "percentage_above_60": percentage_above_60,
+        "top_size": top_size
     }
 
 
@@ -149,7 +151,6 @@ def extract_and_save_cutouts(image_path,conversion,output_dir="bw-cutout",invert
     else:
         for thresh in thresholds_mm:
             threshold_percentages[thresh] = 0.0
-    
     # Return the threshold percentages along with other data.
     return object_count, output_path, longest_sides_pixels, threshold_percentages
 

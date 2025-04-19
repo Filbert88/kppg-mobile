@@ -44,24 +44,32 @@ class SegmentAnythingPipeline:
         cv2.imwrite(output_path, result_mask)
         print(f"Saved segmentation result to {output_path}")
 
-    def save_cutouts(self, original_image, masks, save_dir, image_name):
-        os.makedirs(save_dir, exist_ok=True)
+    def save_cutouts(self, image, masks, output_dir, image_name):
+        # Create the output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
 
-        for idx, mask in enumerate(masks):
-            seg = mask['segmentation'].astype(np.uint8)
-            
-            # Create RGBA image (with alpha channel for transparency)
-            # Convert RGB to RGBA
-            rgba = cv2.cvtColor(original_image, cv2.COLOR_RGB2BGRA)
-            
-            # Set alpha channel to 0 (transparent) where mask is 0
-            rgba[:, :, 3] = seg * 255
-            
-            # Save as PNG to preserve transparency
-            output_file = os.path.join(save_dir, f"cutout_{image_name}_{idx}.png")
-            cv2.imwrite(output_file, rgba)
+        # Sort masks by area in descending order
+        sorted_masks = sorted(masks, key=lambda x: x['area'], reverse=True)
 
-        print(f"Saved {len(masks)} cutouts to {save_dir}")
+        for i, ann in enumerate(sorted_masks):
+            # Create a mask for the current object
+            object_mask = ann['segmentation']
+            
+            # Create a masked image for this object
+            masked_image = image.copy()
+            masked_image[~object_mask] = 255  # Set non-mask areas to white
+            
+            # Crop the image to the bounding box of the mask
+            y_indices, x_indices = np.where(object_mask)
+            y_min, y_max = y_indices.min(), y_indices.max()
+            x_min, x_max = x_indices.min(), x_indices.max()
+            
+            cropped_image = masked_image[y_min:y_max+1, x_min:x_max+1]
+            
+            # Save the cropped image
+            output_filename = os.path.join(output_dir,  f"cutout_{image_name}_{i+1}.png")
+            cv2.imwrite(output_filename, cv2.cvtColor(cropped_image, cv2.COLOR_RGB2BGR))
+            print(f"Saved object {i+1} to {output_filename}")
 
     def process_image(self, input_path, output_dir="output_frag"):
         # Get image name and extension
