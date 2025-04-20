@@ -16,10 +16,23 @@ export default function DepthMeasurementScreen({
   onUpdateDepth,
   onNext,
 }: DepthMeasurementScreenProps) {
-  const isFormValid = depths.every((depth) => depth.trim() !== "");
+  const validNumberRegex = /^\d+(\.\d+)?$/;
+
+  const invalidIndices = depths
+    .map((val, idx) => (!validNumberRegex.test(val.trim()) ? idx + 1 : null))
+    .filter((v) => v !== null) as number[];
+
+  const isFormValid =
+    depths.every((depth) => depth.trim() !== "") && invalidIndices.length === 0;
 
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full mt-10">
+      {invalidIndices.length > 0 && (
+        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded mb-4 font-medium">
+          Terdapat nilai tidak valid pada kedalaman lubang ke-{invalidIndices.join(", ")}
+        </div>
+      )}
+
       <div className="flex-1 space-y-2">
         {depths.map((depth, index) => (
           <div key={index} className="mb-4">

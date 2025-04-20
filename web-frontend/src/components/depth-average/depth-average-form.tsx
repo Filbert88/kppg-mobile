@@ -1,6 +1,3 @@
-// ✅ DepthAverageForm.tsx
-"use client";
-
 import { useState } from "react";
 import ImageUploadScreen from "./image-upload-screen";
 import HoleInfoScreen from "./hole-info-screen";
