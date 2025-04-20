@@ -127,8 +127,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         videoUri: formData.videoUri ?? null,
         uploadedImageUrls: formData.images,
         fragmentedImageUrls: formData.imagesFrag,
-        plotImageUrls: formData.finalAnalysisResults.map((a) =>
-          a.plot_image_base64.replace("localhost", "10.0.2.2")
+        plotImageUrls: formData.finalAnalysisResults.map(
+          (a) => a.plot_image_base64
         ),
         analysisJsonList: formData.finalAnalysisResults,
       };
@@ -144,7 +144,17 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       if (!response.ok) {
         if (response.status === 409) {
           const data = await response.json();
-          const newPriority = Math.max(...data.existingPriorities) + 1;
+          const existing = data.existingPriorities.sort(
+            (a: any, b: any) => a - b
+          );
+          let newPriority = 1;
+          for (let i = 0; i < existing.length; i++) {
+            if (existing[i] === newPriority) {
+              newPriority++;
+            } else if (existing[i] > newPriority) {
+              break;
+            }
+          }
           dto.prioritas = newPriority;
           const retry = await fetch("http://localhost:5180/api/Fragmentation", {
             method: "POST",
@@ -299,7 +309,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                   videoUri: videoUrl,
                 };
                 setTimeout(() => {
-                  handleSave(); 
+                  handleSave();
                 }, 0);
                 return updated;
               });
@@ -318,7 +328,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                 size: item.size || "",
                 location: item.location,
                 date: item.date,
-                priority: item.prioritas,
+                priority: item.priority,
                 rockType: item.rockType || "Claystone",
                 ammoniumNitrate: item.ammoniumNitrate || "",
                 blastingVolume: item.blastingVolume || "",
@@ -334,7 +344,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                 diggingTime: item.diggingTime ?? undefined,
                 videoUri: item.videoUri ?? undefined,
               };
-              console.log("🧪 Reconstructed formData", reconstructed);
               setFormData(reconstructed);
               setIsEdit(true);
               setCurrentStep(6);

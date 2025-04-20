@@ -23,7 +23,13 @@ export default function FragmentationSummaryPage({
             scale: item.skala,
             diggingTime: item.diggingTime || "-",
             depthAverage: item.depthAverage || 0,
+            option: item.pilihan || "",
+            size: item.ukuran || "",
+            ammoniumNitrate: item.ammoniumNitrate || "",
+            blastingVolume: item.volumeBlasting || "",
+            rockType: item.litologi || "Claystone",
             fragmentationImages: item.fragmentationImages ?? [],
+            powderFactor: item.powderFactor || "25",
             results:
               item.fragmentationImages?.flatMap(
                 (img: any, idx: number) =>

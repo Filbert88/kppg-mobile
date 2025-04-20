@@ -118,7 +118,28 @@ export default function FilteredFragmentationPage() {
           </div>
         </div>
       </div>
-      <SummaryScreenFragDA formData={fragmentationData} hideSave />
+      {fragmentationData.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center mt-6">
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Filter size={24} className="text-rose-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            No Data Found
+          </h3>
+          <p className="text-gray-600 mb-4">
+            No Fragmentation data with priority {priority} found for the
+            selected date.
+          </p>
+          <button
+            className="px-4 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium"
+            onClick={() => window.history.back()}
+          >
+            Go Back
+          </button>
+        </div>
+      ) : (
+        <SummaryScreenFragDA formData={fragmentationData} hideSave />
+      )}
     </div>
   );
 }

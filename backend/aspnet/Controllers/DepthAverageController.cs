@@ -117,14 +117,34 @@ namespace aspnet.Controllers
         }
 
         // GET: api/DepthAverage/next-priority?tanggal=2025-04-10
-        [HttpGet("next-priority")]  
+        [HttpGet("next-priority")]
         public async Task<IActionResult> GetNextPriority([FromQuery] DateTime tanggal)
         {
-            var maxPriority = await _context.DepthAverages
+            var priorities = await _context.DepthAverages
                 .Where(d => d.Tanggal.Date == tanggal.Date)
-                .MaxAsync(d => (int?)d.Prioritas) ?? 0;
+                .Select(d => d.Prioritas)
+                .OrderBy(p => p)
+                .ToListAsync();
 
-            return Ok(maxPriority + 1);
+            int next = 1;
+            foreach (var p in priorities)
+            {
+                if (p == next) next++;
+                else if (p > next) break;
+            }
+
+            return Ok(next);
+        }
+
+        [HttpGet("used-priorities")]
+        public async Task<IActionResult> GetUsedPriorities([FromQuery] DateTime tanggal)
+        {
+            var used = await _context.DepthAverages  
+                .Where(f => f.Tanggal.Date == tanggal.Date)
+                .Select(f => f.Prioritas)
+                .ToListAsync();
+
+            return Ok(used);
         }
 
         private async Task<bool> DepthAverageExists(int id)

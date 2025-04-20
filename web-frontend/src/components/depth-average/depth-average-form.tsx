@@ -1,6 +1,3 @@
-// ✅ DepthAverageForm.tsx
-"use client";
-
 import { useState } from "react";
 import ImageUploadScreen from "./image-upload-screen";
 import HoleInfoScreen from "./hole-info-screen";
@@ -71,7 +68,7 @@ export default function DepthAverageForm({
 
   const handleBack = () => {
     if (isEdit && currentStep !== 6) return;
-    
+
     if (currentStep === 0) {
       setActiveScreen("home");
     } else if (currentStep === 6) {
@@ -94,10 +91,13 @@ export default function DepthAverageForm({
       tanggal: formData.date,
       prioritas: Number(formData.priority),
       kedalaman: JSON.stringify(
-        formData.depths.reduce((acc: Record<string, string>, val: string, index: number) => {
-          acc[`kedalaman${index + 1}`] = val;
-          return acc;
-        }, {})
+        formData.depths.reduce(
+          (acc: Record<string, string>, val: string, index: number) => {
+            acc[`kedalaman${index + 1}`] = val;
+            return acc;
+          },
+          {}
+        )
       ),
       average: formData.average.replace(" cm", ""),
       imageUri: formData.image,
@@ -106,30 +106,67 @@ export default function DepthAverageForm({
 
     try {
       if (isEdit && formData.id) {
-        const res = await fetch(`http://localhost:5180/api/DepthAverage/${formData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          `http://localhost:5180/api/DepthAverage/${formData.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
         if (!res.ok) throw new Error("Failed to update");
       } else {
-        const res = await fetch("http://localhost:5180/api/DepthAverage", {
+        let res = await fetch("http://localhost:5180/api/DepthAverage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify([payload]),
         });
-        if (!res.ok) throw new Error("Failed to create");
+
+        if (res.status === 409) {
+          const data = await res.json();
+          const existing = data.existingPriorities.sort(
+            (a: number, b: number) => a - b
+          );
+
+          let newPriority = 1;
+          for (let i = 0; i < existing.length; i++) {
+            if (existing[i] === newPriority) newPriority++;
+            else if (existing[i] > newPriority) break;
+          }
+
+          payload.prioritas = newPriority;
+
+          res = await fetch("http://localhost:5180/api/DepthAverage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify([payload]),
+          });
+
+          if (!res.ok) throw new Error("Retry failed");
+
+          updateFormData("priority", newPriority.toString());
+          console.log("Saved with new priority:", newPriority);
+        } else if (!res.ok) {
+          throw new Error("Failed to create");
+        }
       }
+
       setActiveScreen("home");
     } catch (err) {
-      alert("Failed to save data");
+      console.error("Save error:", err);
+      alert("Gagal menyimpan data. Silakan coba lagi.");
     }
   };
 
   const handleEditFromSummary = (item: any) => {
-    const { id, lokasi, tanggal, prioritas, kedalaman, average, imageUri } = item;
+    const { id, lokasi, tanggal, prioritas, kedalaman, average, imageUri } =
+      item;
     const depthsArr = Object.entries(kedalaman)
-      .sort(([a], [b]) => parseInt(a.replace("kedalaman", "")) - parseInt(b.replace("kedalaman", "")))
+      .sort(
+        ([a], [b]) =>
+          parseInt(a.replace("kedalaman", "")) -
+          parseInt(b.replace("kedalaman", ""))
+      )
       .map(([, val]) => val);
 
     setFormData({
@@ -159,7 +196,12 @@ export default function DepthAverageForm({
 
     switch (currentStep) {
       case 0:
-        return <ActionScreenDA onTambahClick={() => setCurrentStep(1)} onRiwayatClick={() => setCurrentStep(6)} />;
+        return (
+          <ActionScreenDA
+            onTambahClick={() => setCurrentStep(1)}
+            onRiwayatClick={() => setCurrentStep(6)}
+          />
+        );
       case 1:
         return (
           <>

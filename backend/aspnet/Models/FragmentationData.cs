@@ -19,6 +19,7 @@ namespace aspnet.Models
         public string Ukuran { get; set; } = "";
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Prioritas must be at least 1")]
         public int Prioritas { get; set; } = 0;
 
         [Required]

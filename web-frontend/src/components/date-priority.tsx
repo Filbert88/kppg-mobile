@@ -1,5 +1,4 @@
-"use client";
-
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchUsedPriorities } from "@/lib/function";
 
 interface DatePriorityProps {
   date: string;
@@ -35,23 +35,43 @@ export default function DatePriority({
     (formType === "depthAverage" ? "Tanggal Pengukuran" : "Tanggal Fragmentasi");
 
   const isFormValid = date !== "" && priority !== "";
+  const [availablePriorities, setAvailablePriorities] = useState<string[]>([]);
+
+  useEffect(() => {
+    const updateAvailablePriorities = async () => {
+      if (!date) return;
+
+      const used = await fetchUsedPriorities(date, formType);
+      const available: number[] = [];
+      let current = 1;
+
+      while (available.length < 10) {
+        if (!used.includes(current)) {
+          available.push(current);
+        }
+        current++;
+      }
+
+      setAvailablePriorities(available.map(String));
+    };
+
+    updateAvailablePriorities();
+  }, [date, formType]);
 
   return (
     <div className="w-full max-w-md flex flex-col p-4 rounded-lg space-y-4 min-h-[600px]">
       <label htmlFor="date" className="block text-lg font-medium">
         {displayLabel}
       </label>
-      <div>
-        <input
-          type="date"
-          id="date"
-          value={date}
-          onChange={(e) => onDateChange(e.target.value)}
-          className="w-full p-3 bg-white rounded-full pl-4 pr-10 text-gray-400"
-          placeholder="Masukkan tanggal..."
-          required
-        />
-      </div>
+      <input
+        type="date"
+        id="date"
+        value={date}
+        onChange={(e) => onDateChange(e.target.value)}
+        className="w-full p-3 bg-white rounded-full pl-4 pr-10 text-gray-400"
+        placeholder="Masukkan tanggal..."
+        required
+      />
 
       <div className="flex flex-col">
         <label htmlFor="priority" className="block text-lg font-medium">
@@ -62,9 +82,9 @@ export default function DatePriority({
             <SelectValue placeholder="Pilih prioritas..." />
           </SelectTrigger>
           <SelectContent>
-            {[...Array(10)].map((_, index) => (
-              <SelectItem key={index + 1} value={(index + 1).toString()}>
-                {index + 1}
+            {availablePriorities.map((p) => (
+              <SelectItem key={p} value={p}>
+                {p}
               </SelectItem>
             ))}
           </SelectContent>
