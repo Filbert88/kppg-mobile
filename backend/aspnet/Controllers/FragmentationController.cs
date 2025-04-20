@@ -377,15 +377,31 @@ namespace aspnet.Controllers
         [HttpGet("next-priority")]
         public async Task<IActionResult> GetNextPriority([FromQuery] DateTime tanggal)
         {
-            // find the maximum existing priority for that date
-            var maxPriority = await _context.FragmentationDatas
+            var priorities = await _context.FragmentationDatas
                 .Where(f => f.Tanggal.Date == tanggal.Date)
-                .MaxAsync(f => (int?)f.Prioritas)
-                ?? 0;
+                .Select(f => f.Prioritas)
+                .OrderBy(p => p)
+                .ToListAsync();
 
-            // next one is max + 1
-            return Ok(maxPriority + 1);
+            int next = 1;
+            foreach (var p in priorities)
+            {
+                if (p == next) next++;
+                else if (p > next) break;
+            }
+
+            return Ok(next);
         }
 
+        [HttpGet("used-priorities")]
+        public async Task<IActionResult> GetUsedPriorities([FromQuery] DateTime tanggal)
+        {
+            var used = await _context.FragmentationDatas  
+                .Where(f => f.Tanggal.Date == tanggal.Date)
+                .Select(f => f.Prioritas)
+                .ToListAsync();
+
+            return Ok(used);
+        }
     }
 }

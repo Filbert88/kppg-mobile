@@ -15,6 +15,7 @@ namespace aspnet.Models
         public string JumlahLubang { get; set; } = "N/A";
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Prioritas must be at least 1")]
         public int Prioritas { get; set; } = 1;
 
         [Required]
