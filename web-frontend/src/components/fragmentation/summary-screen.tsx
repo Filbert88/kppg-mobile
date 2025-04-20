@@ -202,7 +202,11 @@ export default function SummaryScreen({
                       </p>
                       <p>
                         <span className="font-medium">Tanggal:</span>{" "}
-                        {item.date}
+                        {new Date(item.date).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       </p>
                       <p>
                         <span className="font-medium">Skala:</span> {item.scale}
@@ -500,22 +504,6 @@ export default function SummaryScreen({
                                         />
                                       </div>
                                     </div>
-                                  </div>
-
-                                  <div className="flex justify-between mt-4">
-                                    <Button
-                                      variant="outline"
-                                      className="flex items-center gap-2"
-                                      onClick={() =>
-                                        handleViewDepthAverage(
-                                          Number(item.priority),
-                                          item.date
-                                        )
-                                      }
-                                    >
-                                      <BarChart2 className="h-4 w-4" />
-                                      Lihat Depth Average
-                                    </Button>
                                   </div>
                                 </div>
                               )}

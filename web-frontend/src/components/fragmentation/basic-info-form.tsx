@@ -118,9 +118,9 @@ export default function BasicInfoForm({
                 <SelectValue placeholder="Masukkan pilihan..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cm">Centimeter (cm)</SelectItem>
-                <SelectItem value="dm">Decimeter (dm)</SelectItem>
-                <SelectItem value="m">Meter (m)</SelectItem>
+                <SelectItem value="Centimeter (cm)">Centimeter (cm)</SelectItem>
+                <SelectItem value="Decimeter (dm)">Decimeter (dm)</SelectItem>
+                <SelectItem value="Meter (m)">Meter (m)</SelectItem>
               </SelectContent>
             </Select>
           </div>

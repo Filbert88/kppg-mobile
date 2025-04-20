@@ -328,7 +328,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                 size: item.size || "",
                 location: item.location,
                 date: item.date,
-                priority: item.prioritas,
+                priority: item.priority,
                 rockType: item.rockType || "Claystone",
                 ammoniumNitrate: item.ammoniumNitrate || "",
                 blastingVolume: item.blastingVolume || "",
@@ -344,7 +344,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
                 diggingTime: item.diggingTime ?? undefined,
                 videoUri: item.videoUri ?? undefined,
               };
-              console.log("🧪 Reconstructed formData", reconstructed);
               setFormData(reconstructed);
               setIsEdit(true);
               setCurrentStep(6);

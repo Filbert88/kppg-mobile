@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil } from 'lucide-react';
+import { Pencil } from "lucide-react";
 import DepthAverageDetailPopup from "./depthAverageDetailPopup";
 import { useNavigate } from "react-router-dom";
 
@@ -39,9 +39,10 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
           lokasi: item.lokasi,
           tanggal: item.tanggal.split("T")[0],
           average: `${item.average} cm`,
-          kedalaman: typeof item.kedalaman === "string"
-            ? JSON.parse(item.kedalaman)
-            : item.kedalaman,
+          kedalaman:
+            typeof item.kedalaman === "string"
+              ? JSON.parse(item.kedalaman)
+              : item.kedalaman,
         }));
 
         setData(mapped);
@@ -56,7 +57,6 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
   }, []);
 
   const handleCardClick = (item: DepthAverageItem) => {
-    console.log("hai")
     setSelectedItem(item);
     setIsPopupOpen(true);
   };
@@ -88,15 +88,15 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
           {data.map((item, index) => (
             <div
               key={item.id}
-              className="bg-rose-50 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-rose-50 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow flex flex-col h-full"
               onClick={() => handleCardClick(item)}
             >
-              <div className="p-4">
+              <div className="p-4 flex-1 flex flex-col">
                 <h2 className="text-lg font-bold mb-3">
                   Depth Average {index + 1}
                 </h2>
 
-                <div className="flex gap-4 flex-col sm:flex-row">
+                <div className="flex gap-4 flex-col sm:flex-row flex-1">
                   <div className="w-full sm:w-24 h-24 bg-white rounded-lg flex items-center justify-center border border-gray-200 shrink-0">
                     {item.imageUri ? (
                       <img
@@ -131,7 +131,9 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
                     </p>
                     <p className="grid grid-cols-[80px_1fr]">
                       <span className="font-medium">Lokasi:</span>
-                      <span className="break-words">{item.lokasi}</span>
+                      <span className="break-words max-h-[4.5rem] overflow-hidden">
+                        {item.lokasi}
+                      </span>
                     </p>
                     <p className="grid grid-cols-[80px_1fr]">
                       <span className="font-medium">Tanggal:</span>
@@ -145,13 +147,13 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
                 </div>
               </div>
 
-              <div className="flex border-t border-rose-100 mt-2">
-                <button 
+              <div className="flex border-t border-rose-100">
+                <button
                   className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors flex items-center justify-center gap-1.5"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onEdit) {
-                      onEdit(item); 
+                      onEdit(item);
                     }
                   }}
                 >
@@ -159,7 +161,7 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
                   <span>Edit</span>
                 </button>
                 <div className="w-px bg-rose-100"></div>
-                <button 
+                <button
                   className="flex-1 py-2.5 text-sm font-medium text-green-700 hover:bg-rose-100 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
