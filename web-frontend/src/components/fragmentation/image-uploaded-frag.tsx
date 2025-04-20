@@ -325,50 +325,115 @@ const ImageUploadedFrag = forwardRef<
       setLoadingProgress(0);
       setLoadingMessage("Preparing images...");
 
-      // First, save the current editing state
+      // Important: Save ALL images' editing states, not just the selected one
+      // Create a copy of our current editing states
+      let updatedEditingStates = { ...editingStates };
+
+      // First, save the current image's editing state
       if (selectedImage && hybridContainerRef.current) {
         const currentState = hybridContainerRef.current.getEditingState();
-        const updatedStates = {
-          ...editingStates,
-          [selectedImage]: currentState,
+        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+        updatedEditingStates = {
+          ...updatedEditingStates,
+          [normalizedSelectedImage]: currentState,
         };
-        setEditingStates(updatedStates);
-        updateFormData("editingFragStates", updatedStates);
+        console.log(
+          `Saved current editing state for: ${normalizedSelectedImage}`
+        );
       }
 
-      setLoadingProgress(10);
-      setLoadingMessage("Processing edited images...");
+      // Now, we need to go through each image and ensure its editing state is captured
+      // even if the user never clicked on it in the sidebar
+      const originalImage = selectedImage;
 
-      if (formData.imagesFrag.length === 1 && selectedImage) {
-        console.log("Single image case detected - ensuring state is captured");
+      // Process each image to ensure we have its editing state
+      for (let i = 0; i < formData.imagesFrag.length; i++) {
+        const imageUrl = formData.imagesFrag[i];
+        const normalizedImageUrl = normalizeBase64Image(imageUrl);
 
-        // Force a refresh of the HybridContainer ref if needed
+        // Skip current image as we already saved it
+        if (normalizedImageUrl === normalizeBase64Image(selectedImage || "")) {
+          console.log(
+            `Skipping already processed current image: ${normalizedImageUrl}`
+          );
+          continue;
+        }
+
+        console.log(
+          `Temporarily switching to image: ${normalizedImageUrl} to capture its state`
+        );
+
+        // Switch to this image temporarily to get its state
+        setSelectedImage(normalizedImageUrl);
+        setBgImage(normalizedImageUrl);
+
+        // Apply any existing editing state
         if (hybridContainerRef.current) {
-          // Directly get the current state one more time to be certain
-          const freshState = hybridContainerRef.current.getEditingState();
-          const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+          if (updatedEditingStates[normalizedImageUrl]) {
+            hybridContainerRef.current.setEditingState(
+              updatedEditingStates[normalizedImageUrl]
+            );
+            console.log(
+              `Applied existing editing state to image: ${normalizedImageUrl}`
+            );
+          } else {
+            hybridContainerRef.current.setEditingState({
+              canvasData: "",
+              shapes: [],
+              lines: [],
+            });
+            console.log(`Applied empty state to image: ${normalizedImageUrl}`);
+          }
+        }
 
-          // Log the fresh state for debugging
-          console.log("Fresh edit state for single image:", freshState);
+        // Wait for the UI to update
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-          // Update directly on the copy we'll use for processing
-          const updatedStates = {
-            ...editingStates,
-            [normalizedSelectedImage]: freshState,
+        // Now capture the state
+        if (hybridContainerRef.current) {
+          const currState = hybridContainerRef.current.getEditingState();
+          updatedEditingStates = {
+            ...updatedEditingStates,
+            [normalizedImageUrl]: currState,
           };
-          setEditingStates(updatedStates);
-          updateFormData("editingFragStates", updatedStates);
-
-          // Small delay to ensure state is updated
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          console.log(
+            `Captured editing state for image: ${normalizedImageUrl}`
+          );
         }
       }
 
-      // Store the original selected image to restore later
-      const originalImage = selectedImage;
+      // Now all images have had their state captured, update the form data
+      setEditingStates(updatedEditingStates);
+      updateFormData("editingFragStates", updatedEditingStates); // Use the correct field name
+      console.log("Updated all editing states in form data");
 
-      // Create a copy of editing states to work with
-      const editingStatesCopy = JSON.parse(JSON.stringify(editingStates));
+      // Return to the original image
+      if (originalImage) {
+        console.log(`Returning to original image: ${originalImage}`);
+        const normalizedOriginalImage = normalizeBase64Image(originalImage);
+        setSelectedImage(normalizedOriginalImage);
+        setBgImage(normalizedOriginalImage);
+
+        if (
+          hybridContainerRef.current &&
+          updatedEditingStates[normalizedOriginalImage]
+        ) {
+          hybridContainerRef.current.setEditingState(
+            updatedEditingStates[normalizedOriginalImage]
+          );
+        }
+
+        // Small delay to ensure UI is updated
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      setLoadingProgress(20);
+      setLoadingMessage("Processing edited images...");
+
+      // Create a copy of editing states to work with during processing
+      const editingStatesCopy = JSON.parse(
+        JSON.stringify(updatedEditingStates)
+      );
 
       console.log("ALL FRAG IMAGES TO PROCESS:", formData.imagesFrag);
       console.log("ALL FRAG EDITING STATES:", editingStatesCopy);
@@ -376,8 +441,6 @@ const ImageUploadedFrag = forwardRef<
       // Process all images
       const processedImages = [];
       const filesToAnalyze = [];
-
-      setLoadingProgress(20);
 
       // Process each image sequentially with proper rendering and capture
       for (let i = 0; i < formData.imagesFrag.length; i++) {
@@ -401,7 +464,7 @@ const ImageUploadedFrag = forwardRef<
 
         let finalImageUrl = normalizedImageUrl;
 
-        // If image has edits, switch to it and capture it
+        // Rest of your processing code remains the same...
         if (hasEdits) {
           try {
             // Set up the UI to show this image with its edits
@@ -440,6 +503,7 @@ const ImageUploadedFrag = forwardRef<
           }
         }
 
+        // Rest of your existing processing code for files...
         try {
           // Convert the image to a File and upload it
           const blob = dataURLtoBlob(finalImageUrl);
@@ -493,6 +557,7 @@ const ImageUploadedFrag = forwardRef<
 
       // Now call the fragmentation-analysis with all files
       try {
+        // Rest of your analysis code remains the same...
         const analysisFormData = new FormData();
 
         // For each file, fetch it again from its URL and add to form data

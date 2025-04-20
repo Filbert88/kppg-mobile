@@ -268,36 +268,110 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         setLoadingProgress(0);
         setLoadingMessage("Preparing process...");
 
-        // First, save the current editing state
+        // Important: We need to save ALL images' editing states, not just the selected one
+        // Create a copy of our current editing states
+        let updatedEditingStates = { ...editingStates };
+
+        // First, save the current image's editing state
         if (selectedImage && hybridContainerRef.current) {
           const currentState = hybridContainerRef.current.getEditingState();
-          const updatedStates = {
-            ...editingStates,
+          updatedEditingStates = {
+            ...updatedEditingStates,
             [selectedImage]: currentState,
           };
-          setEditingStates(updatedStates);
-          updateFormData("editingStates", updatedStates);
+          console.log(
+            `Saved editing state for currently selected image: ${selectedImage}`
+          );
         }
 
-        // Store the original selected image to restore later
+        // Now, we need to go through each image and ensure its editing state is captured
+        // even if the user never clicked on it in the sidebar
         const originalImage = selectedImage;
 
-        // Make a copy of editing states
-        const editingStatesCopy = JSON.parse(JSON.stringify(editingStates));
+        // Process each image to ensure we have its editing state
+        for (let i = 0; i < formData.images.length; i++) {
+          const imageUrl = formData.images[i];
+
+          // Skip current image as we already saved it
+          if (imageUrl === selectedImage) {
+            console.log(
+              `Skipping already processed current image: ${imageUrl}`
+            );
+            continue;
+          }
+
+          console.log(
+            `Temporarily switching to image: ${imageUrl} to capture its state`
+          );
+
+          // Switch to this image temporarily to get its state
+          setSelectedImage(imageUrl);
+          setBgImage(imageUrl);
+
+          // Apply any existing editing state
+          if (hybridContainerRef.current) {
+            if (updatedEditingStates[imageUrl]) {
+              hybridContainerRef.current.setEditingState(
+                updatedEditingStates[imageUrl]
+              );
+              console.log(
+                `Applied existing editing state to image: ${imageUrl}`
+              );
+            } else {
+              hybridContainerRef.current.setEditingState({
+                canvasData: "",
+                shapes: [],
+                lines: [],
+              });
+              console.log(`Applied empty state to image: ${imageUrl}`);
+            }
+          }
+
+          // Wait for the UI to update
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          // Now capture the state
+          if (hybridContainerRef.current) {
+            const currState = hybridContainerRef.current.getEditingState();
+            updatedEditingStates = {
+              ...updatedEditingStates,
+              [imageUrl]: currState,
+            };
+            console.log(`Captured editing state for image: ${imageUrl}`);
+          }
+        }
+
+        // Now all images have had their state captured, update the form data
+        setEditingStates(updatedEditingStates);
+        updateFormData("editingStates", updatedEditingStates);
+        console.log("Updated all editing states in form data");
+
+        // Return to the original image
+        if (originalImage) {
+          console.log(`Returning to original image: ${originalImage}`);
+          setSelectedImage(originalImage);
+          setBgImage(originalImage);
+
+          if (
+            hybridContainerRef.current &&
+            updatedEditingStates[originalImage]
+          ) {
+            hybridContainerRef.current.setEditingState(
+              updatedEditingStates[originalImage]
+            );
+          }
+
+          // Small delay to ensure UI is updated
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+
+        // Make a deep copy of our updated editing states for processing
+        const editingStatesCopy = JSON.parse(
+          JSON.stringify(updatedEditingStates)
+        );
 
         console.log("ALL IMAGES TO PROCESS:", formData.images);
         console.log("ALL EDITING STATES:", editingStatesCopy);
-
-        if (formData.images.length === 1 && selectedImage) {
-          console.log(
-            "Single image case detected, ensuring edits are captured"
-          );
-          // Force a refresh of the editing state to ensure it's the most current
-          if (hybridContainerRef.current) {
-            const freshState = hybridContainerRef.current.getEditingState();
-            editingStatesCopy[selectedImage] = freshState;
-          }
-        }
 
         const processedImages = [];
         const filesToProcess = [];
@@ -314,7 +388,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             `Processing image ${imageIdx}: ${imageUrl.substring(0, 30)}...`
           );
 
-          // Check if this image has edits
+          // Check if this image has edits using our updated states
           const hasEdits =
             editingStatesCopy[imageUrl] &&
             (editingStatesCopy[imageUrl].canvasData ||
@@ -419,7 +493,6 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
         // Update form data with all processed images
         updateFormData("images", processedImages);
 
-        // Process all files with the multi-fragment API
         if (filesToProcess.length > 0) {
           try {
             setLoadingMessage("Analyzing fragmentation for all images...");
@@ -450,9 +523,12 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             // Process all fragmentation results
             const newImagesFrag: string[] = [];
-            const newFragResults: { image: string; conversionFactor: number }[] = [];
+            const newFragResults: {
+              image: string;
+              conversionFactor: number;
+            }[] = [];
 
-            fragResults.forEach((item:any) => {
+            fragResults.forEach((item: any) => {
               let rawBase64 = item.result.output_image;
               if (!rawBase64.startsWith("data:image")) {
                 rawBase64 = "data:image/jpeg;base64," + rawBase64;

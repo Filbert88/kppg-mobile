@@ -15,6 +15,7 @@ import { fetchNextPriority } from "@/lib/function";
 import FragmentationSummaryPage from "./FragmentationSummary";
 // The full form data type used throughout the multi-step process.
 export type FragmentationFormData = {
+  id?: number;
   scale: string;
   option: string;
   size: string;
@@ -111,7 +112,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
 
   const handleSave = async () => {
     try {
-      // Build the DTO based on the formData
       const dto = {
         skala: formData.scale,
         pilihan: formData.option,
@@ -133,8 +133,14 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         analysisJsonList: formData.finalAnalysisResults,
       };
 
-      const response = await fetch("http://localhost:5180/api/Fragmentation", {
-        method: "POST",
+      const url =
+        isEdit && formData.id
+          ? `http://localhost:5180/api/Fragmentation/${formData.id}`
+          : "http://localhost:5180/api/Fragmentation";
+      const method = isEdit && formData.id ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -142,18 +148,15 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       });
 
       if (!response.ok) {
-        if (response.status === 409) {
+        if (response.status === 409 && !isEdit) {
           const data = await response.json();
           const existing = data.existingPriorities.sort(
             (a: any, b: any) => a - b
           );
           let newPriority = 1;
           for (let i = 0; i < existing.length; i++) {
-            if (existing[i] === newPriority) {
-              newPriority++;
-            } else if (existing[i] > newPriority) {
-              break;
-            }
+            if (existing[i] === newPriority) newPriority++;
+            else if (existing[i] > newPriority) break;
           }
           dto.prioritas = newPriority;
           const retry = await fetch("http://localhost:5180/api/Fragmentation", {
@@ -323,6 +326,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           <FragmentationSummaryPage
             onTambahFoto={(item) => {
               const reconstructed: FragmentationFormData = {
+                id: item.id, 
                 scale: item.scale,
                 option: item.option || "",
                 size: item.size || "",
