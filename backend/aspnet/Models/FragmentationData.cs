@@ -43,7 +43,7 @@ namespace aspnet.Models
         [Required]
         public int Synced { get; set; } = 0;
 
-        public string? DiggingTime { get; set; } // ✅ NEW
+        public string? DiggingTime { get; set; } 
 
         public string? VideoUri { get; set; }
 

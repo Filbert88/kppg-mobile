@@ -147,6 +147,21 @@ namespace aspnet.Controllers
             return Ok(used);
         }
 
+        // DELETE: api/DepthAverage/clear-all
+        [HttpDelete("clear-all")]
+        public async Task<IActionResult> ClearAll()
+        {
+            var all = await _context.DepthAverages.ToListAsync();
+
+            if (!all.Any())
+                return Ok("No data to delete.");
+
+            _context.DepthAverages.RemoveRange(all);
+            await _context.SaveChangesAsync();
+
+            return Ok("All depth average data has been deleted.");
+        }
+        
         private async Task<bool> DepthAverageExists(int id)
         {
             return await _context.DepthAverages.AnyAsync(e => e.Id == id);
