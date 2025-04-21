@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Pencil, Loader2, Filter, Calendar } from "lucide-react";
 import DepthAverageDetailPopup from "@/components/depth-average/depthAverageDetailPopup";
+import { apiUrl } from "@/lib/function";
 
 interface DepthAverageItem {
   id: number;
@@ -34,7 +35,7 @@ export default function FilteredDepthAveragePage() {
       try {
         setIsLoading(true);
         const res = await fetch(
-          `http://localhost:5180/api/DepthAverage/today?tanggal=${tanggal}&priority=${priority}`
+          `${apiUrl}/DepthAverage/today?tanggal=${tanggal}&priority=${priority}`
         );
         if (!res.ok) {
           setData([]);

@@ -13,6 +13,7 @@ import DiggingTimePage from "./digging-time";
 import { HybridContainerState } from "./HybridContainer";
 import { fetchNextPriority } from "@/lib/function";
 import FragmentationSummaryPage from "./FragmentationSummary";
+import { apiUrl } from "@/lib/function";
 // The full form data type used throughout the multi-step process.
 export type FragmentationFormData = {
   id?: number;
@@ -135,8 +136,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
 
       const url =
         isEdit && formData.id
-          ? `http://localhost:5180/api/Fragmentation/${formData.id}`
-          : "http://localhost:5180/api/Fragmentation";
+          ? `${apiUrl}/Fragmentation/${formData.id}`
+          : `${apiUrl}/Fragmentation`;
       const method = isEdit && formData.id ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -159,7 +160,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             else if (existing[i] > newPriority) break;
           }
           dto.prioritas = newPriority;
-          const retry = await fetch("http://localhost:5180/api/Fragmentation", {
+          const retry = await fetch(`${apiUrl}/Fragmentation`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

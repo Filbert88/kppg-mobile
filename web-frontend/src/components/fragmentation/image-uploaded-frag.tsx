@@ -35,6 +35,7 @@ import type {
   HybridContainerRef,
   HybridContainerState,
 } from "./HybridContainer";
+import { apiUrl } from "@/lib/function";
 
 export type Tool =
   | "none"
@@ -515,7 +516,7 @@ const ImageUploadedFrag = forwardRef<
           formDataUpload.append("file", file);
 
           const uploadResponse = await fetch(
-            "http://localhost:5180/api/Upload/upload",
+            `${apiUrl}/Upload/upload`,
             {
               method: "POST",
               body: formDataUpload,
@@ -594,7 +595,7 @@ const ImageUploadedFrag = forwardRef<
 
         // Call the API for analysis
         const analysisResponse = await fetch(
-          "http://localhost:5180/api/Fragmentation/fragmentation-analysis",
+          `${apiUrl}/Fragmentation/fragmentation-analysis`,
           {
             method: "POST",
             body: analysisFormData,

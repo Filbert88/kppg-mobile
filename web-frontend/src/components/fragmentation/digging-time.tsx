@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Trash2,
 } from "lucide-react";
+import { apiUrl } from "@/lib/function";
 
 interface DiggingTimePageProps {
   onSaveDiggingData: (diggingTime: string, videoUrl: string) => void;
@@ -104,7 +105,7 @@ export default function DiggingTimePage({
         formData.append("file", videoFile);
 
         const uploadRes = await fetch(
-          "http://localhost:5180/api/Upload/upload-video",
+          `${apiUrl}/Upload/upload-video`,
           {
             method: "POST",
             body: formData,

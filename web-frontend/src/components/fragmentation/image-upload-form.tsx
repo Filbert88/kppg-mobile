@@ -33,6 +33,8 @@ import ThicknessPickerModal from "./modal/ThicknessPickerModal";
 import ImageContainer from "./ImageContainer";
 import { HybridContainerRef, HybridContainerState } from "./HybridContainer";
 import { FragmentationFormData } from "./multi-step-form";
+import { apiUrl } from "@/lib/function";
+
 export interface ImageUploadFormRef {
   saveEditingState: () => void;
 }
@@ -461,7 +463,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             formDataUpload.append("file", file);
 
             const uploadResponse = await fetch(
-              "http://localhost:5180/api/Upload/upload",
+              `${apiUrl}/Upload/upload`,
               {
                 method: "POST",
                 body: formDataUpload,
@@ -505,7 +507,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             // Call the multi-fragment API with all files at once
             const fragmentResponse = await fetch(
-              "http://localhost:5180/api/Fragmentation/multi-fragment",
+              `${apiUrl}/Fragmentation/multi-fragment`,
               {
                 method: "POST",
                 body: formDataFragment,

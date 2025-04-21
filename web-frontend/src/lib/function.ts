@@ -1,3 +1,5 @@
+export const apiUrl = import.meta.env.VITE_API_URL;
+
 export const fetchNextPriority = async (
     date: string,
     formType: "depthAverage" | "fragmentation"
@@ -5,8 +7,8 @@ export const fetchNextPriority = async (
     try {
       const endpoint =
         formType === "depthAverage"
-          ? `http://localhost:5180/api/DepthAverage/next-priority?tanggal=${date}`
-          : `http://localhost:5180/api/Fragmentation/next-priority?tanggal=${date}`;
+          ? `${apiUrl}/DepthAverage/next-priority?tanggal=${date}`
+          : `${apiUrl}/Fragmentation/next-priority?tanggal=${date}`;
   
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error("Failed to fetch");
@@ -26,8 +28,8 @@ export const fetchNextPriority = async (
     try {
       const endpoint =
         formType === "depthAverage"
-          ? `http://localhost:5180/api/DepthAverage/used-priorities?tanggal=${date}`
-          : `http://localhost:5180/api/Fragmentation/used-priorities?tanggal=${date}`;
+          ? `${apiUrl}/DepthAverage/used-priorities?tanggal=${date}`
+          : `${apiUrl}/Fragmentation/used-priorities?tanggal=${date}`;
   
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error("Failed to fetch");

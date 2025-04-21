@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import SummaryScreenFragDA from "./summary-screen-frag-da";
 import { ArrowLeft, Filter, Calendar } from "lucide-react";
+import { apiUrl } from "@/lib/function";
 
 export default function FilteredFragmentationPage() {
   const { priority, tanggal } = useParams<{
@@ -16,7 +17,7 @@ export default function FilteredFragmentationPage() {
 
       try {
         const res = await fetch(
-          `http://localhost:5180/api/Fragmentation/today?priority=${priority}&tanggal=${tanggal}`
+          `${apiUrl}/Fragmentation/today?priority=${priority}&tanggal=${tanggal}`
         );
 
         if (!res.ok) {

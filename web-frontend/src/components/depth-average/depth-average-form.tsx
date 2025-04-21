@@ -7,6 +7,7 @@ import SummaryScreen from "./summary-screen";
 import ActionScreenDA from "./action-da";
 import DatePriority from "../date-priority";
 import { fetchNextPriority } from "@/lib/function";
+import { apiUrl } from "@/lib/function";
 
 const initialEmptyForm = {
   numberOfHoles: 0,
@@ -107,7 +108,7 @@ export default function DepthAverageForm({
     try {
       if (isEdit && formData.id) {
         const res = await fetch(
-          `http://localhost:5180/api/DepthAverage/${formData.id}`,
+          `${apiUrl}/DepthAverage/${formData.id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -116,7 +117,7 @@ export default function DepthAverageForm({
         );
         if (!res.ok) throw new Error("Failed to update");
       } else {
-        let res = await fetch("http://localhost:5180/api/DepthAverage", {
+        let res = await fetch(`${apiUrl}/DepthAverage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify([payload]),
@@ -136,7 +137,7 @@ export default function DepthAverageForm({
 
           payload.prioritas = newPriority;
 
-          res = await fetch("http://localhost:5180/api/DepthAverage", {
+          res = await fetch(`${apiUrl}/DepthAverage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify([payload]),
