@@ -3,7 +3,7 @@ import React, {createContext, useState, FC, ReactNode, useEffect} from 'react';
 import {dbService} from '../database/services/dbService';
 import {Alert} from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { API_BASE_URL, API_IP } from '@env';
+import {API_BASE_URL, API_IP} from '@env';
 export interface KuzramMetrics {
   P10: number;
   P20: number;
@@ -230,7 +230,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
         // 2) make sure prioritas is a real integer
         if (!payload.prioritas || isNaN(payload.prioritas)) {
           const dateParam = encodeURIComponent(payload.tanggal);
-          console.log(dateParam)
+          console.log(dateParam);
           const prioRes = await fetch(
             `${API_BASE_URL}/api/Fragmentation/next-priority?tanggal=${dateParam}`,
           );
@@ -273,7 +273,14 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
         // 5) conflict handling
         if (res.status === 409) {
           const {existingPriorities} = await res.json();
-          const newPrio = Math.max(...existingPriorities) + 1;
+          const sorted = existingPriorities.sort(
+            (a: number, b: number) => a - b,
+          );
+          let newPrio = 1;
+          for (let i = 0; i < sorted.length; i++) {
+            if (sorted[i] === newPrio) newPrio++;
+            else if (sorted[i] > newPrio) break;
+          }
           return new Promise(resolve => {
             Alert.alert(
               'Priority Conflict',
