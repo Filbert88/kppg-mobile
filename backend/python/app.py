@@ -5,6 +5,8 @@ import logging
 import matplotlib
 matplotlib.use('Agg')
 from flask import Flask, request, jsonify, send_file
+import requests
+from dotenv import load_dotenv
 # Import the fragmentation functions from your module
 from frag import fragmentation_to_outline
 from ocr import OCR
@@ -21,7 +23,12 @@ import io
 import base64
 from final import compute_kuz_ram_data, extract_and_save_cutouts, combined_plot
 from matplotlib import pyplot as plt
-import requests
+
+load_dotenv()
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5180").rstrip("/")
+
+app = Flask(__name__)
 
 def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: float, E: float, n: float, conversion: float):
     # Compute the Kuz-Ram data.
@@ -68,8 +75,10 @@ def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: floa
     plt.savefig(buffer, format="png", dpi=300)
     plt.close()
     buffer.seek(0)
+
+    upload_url = f"{API_BASE_URL}/api/Upload/upload"
     upload_resp = requests.post(
-        "http://localhost:5180/api/Upload/upload",
+        upload_url,
         files={"file": ("plot.png", buffer, "image/png")}
     )
     upload_resp.raise_for_status()
