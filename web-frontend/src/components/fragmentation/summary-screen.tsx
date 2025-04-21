@@ -17,15 +17,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Plus,
-  Clock,
-  BarChart2,
-  ChevronRight,
-  ChevronLeft,
-} from "lucide-react";
+import { Plus, Clock, ChevronRight, ChevronLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
+import ImageViewerModal from "./image-viewer-modal";
 
 interface ResultData {
   id: string;
@@ -129,6 +124,14 @@ export default function SummaryScreen({
     navigate(`/da-frag/${priority}/${formattedDate}`);
   };
 
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState("");
+
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setImageViewerOpen(true);
+  };
+
   return (
     <div className="flex-1 flex flex-col p-6 w-full mt-8">
       <div className="flex-1">
@@ -161,29 +164,35 @@ export default function SummaryScreen({
                     <div className="w-1/3 relative">
                       <div className="relative w-24 h-24">
                         <img
-                          src={activeResult.imageUrl || "/placeholder.svg"}
+                          src={activeResult.imageUrl}
                           alt="Rock"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() =>
+                            handleImageClick(activeResult.imageUrl)
+                          }
                         />
+
                         {hasMultipleResults && (
-                          <div className="absolute inset-0 flex items-center justify-between">
+                          <div className="absolute inset-0 flex items-center justify-between px-1 pointer-events-none">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 rounded-full bg-white/80 shadow-sm"
-                              onClick={() =>
-                                prevResult(item.id, item.results.length)
-                              }
+                              className="h-6 w-6 rounded-full bg-white/80 shadow-sm pointer-events-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                prevResult(item.id, item.results.length);
+                              }}
                             >
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 rounded-full bg-white/80 shadow-sm"
-                              onClick={() =>
-                                nextResult(item.id, item.results.length)
-                              }
+                              className="h-6 w-6 rounded-full bg-white/80 shadow-sm pointer-events-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                nextResult(item.id, item.results.length);
+                              }}
                             >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -220,27 +229,31 @@ export default function SummaryScreen({
                       <img
                         src={activeResult.graphUrl || "/placeholder.svg"}
                         alt="Graph"
-                        className="w-full h-32 object-contain"
+                        className="w-full h-32 object-contain cursor-pointer"
+                        onClick={() => handleImageClick(activeResult.graphUrl)}
                       />
+
                       {hasMultipleResults && (
-                        <div className="absolute inset-0 flex items-center justify-between px-1">
+                        <div className="absolute inset-0 flex items-center justify-between px-1 pointer-events-none">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 rounded-full bg-white/80 shadow-sm"
-                            onClick={() =>
-                              prevResult(item.id, item.results.length)
-                            }
+                            className="h-6 w-6 rounded-full bg-white/80 shadow-sm pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              prevResult(item.id, item.results.length);
+                            }}
                           >
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 rounded-full bg-white/80 shadow-sm"
-                            onClick={() =>
-                              nextResult(item.id, item.results.length)
-                            }
+                            className="h-6 w-6 rounded-full bg-white/80 shadow-sm pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              nextResult(item.id, item.results.length);
+                            }}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
@@ -273,7 +286,7 @@ export default function SummaryScreen({
                           </svg>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
+                      <DialogContent className="sm:max-w-md bg-white">
                         <DialogHeader>
                           <DialogTitle>
                             Ringkasan Fragmentasi Batuan {item.id}
@@ -392,10 +405,12 @@ export default function SummaryScreen({
                                             <img
                                               src={
                                                 result.graphUrl ||
+                                                "/placeholder.svg" ||
                                                 "/placeholder.svg"
                                               }
                                               alt="Graph"
-                                              className="w-full h-32 object-contain border"
+                                              className="w-full h-32 object-contain border hover:cursor-pointer"
+                                              onClick={() => handleImageClick(result.graphUrl)}
                                             />
                                           </div>
                                         </div>
@@ -497,6 +512,7 @@ export default function SummaryScreen({
                                         <img
                                           src={
                                             activeResult.graphUrl ||
+                                            "/placeholder.svg" ||
                                             "/placeholder.svg"
                                           }
                                           alt="Graph"
@@ -600,6 +616,12 @@ export default function SummaryScreen({
           </Button>
         </div>
       )}
+      {/* Image Viewer Modal */}
+      <ImageViewerModal
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        imageUrl={selectedImage}
+      />
     </div>
   );
 }

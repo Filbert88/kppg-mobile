@@ -41,7 +41,7 @@ export default function FragmentationSummaryPage({
                         size: parseFloat(size),
                         percentage: percentage as number,
                       }))
-                      .sort((a, b) => a.size - b.size);
+                      .sort((a, b) => b.size - a.size);
 
                     return {
                       id: `${item.id}-${idx}-${i}`,
