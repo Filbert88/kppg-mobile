@@ -28,9 +28,13 @@ type FormDataType = {
   origin: string;
 };
 
+type SetFormDataArg =
+  | Partial<FormDataType>
+  | ((prev: FormDataType) => FormDataType);
+
 type DepthAverageContextType = {
   formData: FormDataType;
-  setFormData: (data: Partial<FormDataType>) => void;
+  setFormData: (data: SetFormDataArg) => void;
   saveToDatabase: (overrideData?: Partial<FormDataType>) => Promise<boolean>;
   loadData: () => Promise<DepthAverageData[]>;
   resetForm: () => void;
@@ -64,9 +68,13 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     loadData();
   }, []);
 
-  const setFormData = (data: Partial<FormDataType>) => {
-    setFormDataState(prev => ({...prev, ...data}));
-  };
+  const setFormData = (dataOrUpdater: SetFormDataArg) => {
+    if (typeof dataOrUpdater === 'function') {
+      setFormDataState(prev => dataOrUpdater(prev));
+    } else {
+      setFormDataState(prev => ({ ...prev, ...dataOrUpdater }));
+    }
+  };  
 
   const saveToDatabase = async (
     overrideData?: Partial<FormDataType>,

@@ -305,6 +305,8 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       case 9:
         return (
           <DiggingTimePage
+            initialDiggingTime={formData.diggingTime}
+            initialVideoUri={formData.videoUri}
             onSaveDiggingData={(digTime, videoUrl) => {
               setFormData((prev) => {
                 const updated = {
@@ -327,7 +329,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           <FragmentationSummaryPage
             onTambahFoto={(item) => {
               const reconstructed: FragmentationFormData = {
-                id: item.id, 
+                id: item.id,
                 scale: item.scale,
                 option: item.option || "",
                 size: item.size || "",
