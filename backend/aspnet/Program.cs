@@ -53,7 +53,15 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("AllowReactApp");
 
 app.UseAuthorization();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+    }
+});
 app.MapControllers();
 
 app.Run();
