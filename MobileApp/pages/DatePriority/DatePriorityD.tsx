@@ -18,7 +18,10 @@ import {DepthAverageContext} from '../../context/DepthAverageContext';
 import {dbService} from '../../database/services/dbService';
 import {API_BASE_URL} from '@env';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'DatePriorityD'>;
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'DatePriorityD'
+>;
 
 const DatePriorityD = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -28,10 +31,11 @@ const DatePriorityD = () => {
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [availablePriorities, setAvailablePriorities] = useState<number[]>([]);
 
   useEffect(() => {
     if (!hasInitialized) {
-        console.log("reset")
+      console.log('reset');
       resetForm();
       setHasInitialized(true);
     }
@@ -55,19 +59,42 @@ const DatePriorityD = () => {
 
     if (isOnline) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/DepthAverage/next-priority?tanggal=${date}`);
-        const nextPriority = await response.json();
-        setFormData({prioritas: nextPriority});
+        const response = await fetch(
+          `${API_BASE_URL}/api/DepthAverage/used-priorities?tanggal=${date}`,
+        );
+        const used: number[] = await response.json();
+
+        let nextPriority = 1;
+        const allAvailable: number[] = [];
+        while (allAvailable.length < 10) {
+          if (!used.includes(nextPriority)) {
+            allAvailable.push(nextPriority);
+          }
+          nextPriority++;
+        }
+
+        setFormData({prioritas: allAvailable[0]});
+        setAvailablePriorities(allAvailable);
       } catch (error) {
-        console.error('Failed to fetch next priority from API:', error);
+        console.error('Failed to fetch used priorities:', error);
       }
     } else {
       const localData = await dbService.getAllData();
-      const maxPriority = localData
+      const used = localData
         .filter((d: any) => d.tanggal === date)
-        .reduce((max: number, curr: any) => Math.max(max, curr.prioritas ?? 0), 0);
+        .map((d: any) => d.prioritas);
 
-      setFormData({prioritas: maxPriority + 1});
+      const available: number[] = [];
+      let current = 1;
+      while (available.length < 10) {
+        if (!used.includes(current)) {
+          available.push(current);
+        }
+        current++;
+      }
+
+      setFormData({prioritas: available[0]});
+      setAvailablePriorities(available);
     }
   };
 
@@ -104,20 +131,17 @@ const DatePriorityD = () => {
             {showPriorityDropdown && (
               <View className="bg-white rounded-lg mt-1 shadow-md max-h-60">
                 <ScrollView>
-                  {[...Array(10)].map((_, index) => {
-                    const priority = index + 1;
-                    return (
-                      <TouchableOpacity
-                        key={priority}
-                        className="py-3 px-4 border-b border-gray-100"
-                        onPress={() => {
-                          handleChange('prioritas', priority);
-                          setShowPriorityDropdown(false);
-                        }}>
-                        <Text>{priority}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {availablePriorities.map(priority => (
+                    <TouchableOpacity
+                      key={priority}
+                      className="py-3 px-4 border-b border-gray-100"
+                      onPress={() => {
+                        handleChange('prioritas', priority);
+                        setShowPriorityDropdown(false);
+                      }}>
+                      <Text>{priority}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </ScrollView>
               </View>
             )}

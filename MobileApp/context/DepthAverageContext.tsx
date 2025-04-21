@@ -2,7 +2,7 @@ import React, {createContext, useState, ReactNode, useEffect} from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import {dbService} from '../database/services/dbService';
 import {Alert} from 'react-native';
-import { API_BASE_URL } from '@env';
+import {API_BASE_URL} from '@env';
 
 export type DepthAverageData = {
   id: number;
@@ -72,9 +72,9 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
     if (typeof dataOrUpdater === 'function') {
       setFormDataState(prev => dataOrUpdater(prev));
     } else {
-      setFormDataState(prev => ({ ...prev, ...dataOrUpdater }));
+      setFormDataState(prev => ({...prev, ...dataOrUpdater}));
     }
-  };  
+  };
 
   const saveToDatabase = async (
     overrideData?: Partial<FormDataType>,
@@ -104,7 +104,17 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
         if (!response.ok) {
           if (response.status === 409) {
             const errorData = await response.json();
-            const nextPriority = Math.max(...errorData.existingPriorities) + 1;
+            const existing = errorData.existingPriorities.sort(
+              (a: number, b: number) => a - b,
+            );
+            let nextPriority = 1;
+            for (let i = 0; i < existing.length; i++) {
+              if (existing[i] === nextPriority) {
+                nextPriority++;
+              } else if (existing[i] > nextPriority) {
+                break;
+              }
+            }
 
             return new Promise(resolve => {
               Alert.alert(
