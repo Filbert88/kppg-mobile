@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, CheckCircle2, ImagePlus } from "lucide-react";
+import { apiUrl } from "@/lib/function";
 
 interface ImageUploadScreenProps {
   image: string | null;
@@ -64,7 +65,7 @@ export default function ImageUploadScreen({
       /* 1. Upload */
       const fd = new FormData();
       fd.append("file", file);
-      const uploadRes = await fetch("http://localhost:5180/api/Upload/upload", {
+      const uploadRes = await fetch(`${apiUrl}/Upload/upload`, {
         method: "POST",
         body: fd,
       });
@@ -75,7 +76,7 @@ export default function ImageUploadScreen({
       setLoadingStage("processing");
       const ocrFd = new FormData();
       ocrFd.append("file", file);
-      const ocrRes = await fetch("http://localhost:5180/api/ocr", {
+      const ocrRes = await fetch(`${apiUrl}/ocr`, {
         method: "POST",
         body: ocrFd,
       });

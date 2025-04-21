@@ -157,6 +157,113 @@ namespace aspnet.Controllers
             });
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] FragmentationDataDto dto)
+        {
+            var existing = await _context.FragmentationDatas
+                .Include(fd => fd.FragmentationImages)
+                    .ThenInclude(fi => fi.FragmentationImageResults)
+                .FirstOrDefaultAsync(fd => fd.Id == id);
+
+            if (existing == null)
+                return NotFound();
+
+            foreach (var image in existing.FragmentationImages)
+            {
+                // Delete imageUri
+                DeleteIfExists(image.ImageUri);
+
+                foreach (var result in image.FragmentationImageResults)
+                {
+                    // Delete result1
+                    DeleteIfExists(result.Result1);
+
+                    // Delete plot_image_base64 if present inside result2
+                    var deserialized = SafeDeserialize(result.Result2);
+                    if (deserialized is JsonElement elem && elem.TryGetProperty("plot_image_base64", out var plotEl))
+                    {
+                        string plotUrl = plotEl.GetString() ?? "";
+                        DeleteIfExists(plotUrl);
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(existing.VideoUri) && existing.VideoUri != dto.VideoUri)
+            {
+                DeleteIfExists(existing.VideoUri);
+            }
+
+            existing.Skala = dto.Skala;
+            existing.Pilihan = dto.Pilihan;
+            existing.Ukuran = dto.Ukuran;
+            existing.Prioritas = dto.Prioritas;
+            existing.Lokasi = dto.Lokasi;
+            existing.Tanggal = dto.Tanggal;
+            existing.Litologi = dto.Litologi;
+            existing.AmmoniumNitrate = dto.AmmoniumNitrate;
+            existing.VolumeBlasting = dto.VolumeBlasting;
+            existing.PowderFactor = dto.PowderFactor;
+            existing.DiggingTime = dto.DiggingTime;
+            existing.VideoUri = dto.VideoUri;
+
+            _context.FragmentationImageResults.RemoveRange(existing.FragmentationImages.SelectMany(img => img.FragmentationImageResults));
+            _context.FragmentationImages.RemoveRange(existing.FragmentationImages);
+            existing.FragmentationImages.Clear();
+
+            for (int i = 0; i < dto.UploadedImageUrls.Count; i++)
+            {
+                var image = new FragmentationImage
+                {
+                    ImageUri = dto.UploadedImageUrls[i],
+                    Synced = 1
+                };
+
+                if (i < dto.FragmentedImageUrls.Count && i < dto.AnalysisJsonList.Count)
+                {
+                    image.FragmentationImageResults.Add(new FragmentationImageResult
+                    {
+                        Result1 = dto.FragmentedImageUrls[i],
+                        Result2 = JsonSerializer.Serialize(dto.AnalysisJsonList[i]),
+                        Synced = 1
+                    });
+                }
+
+                existing.FragmentationImages.Add(image);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Updated successfully",
+                id = existing.Id,
+                prioritas = existing.Prioritas,
+                tanggal = existing.Tanggal
+            });
+        }
+
+        private void DeleteIfExists(string? fileUrl)
+        {
+            if (string.IsNullOrEmpty(fileUrl)) return;
+
+            try
+            {
+                var uri = new Uri(fileUrl);
+                var localPath = uri.LocalPath.TrimStart('/'); 
+                var fullPath = Path.Combine(_env.WebRootPath, localPath);
+
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                    Console.WriteLine($"Deleted file: {fullPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to delete file from URL '{fileUrl}': {ex.Message}");
+            }
+        }
+
         [HttpDelete("clear-all")]
         public async Task<IActionResult> ClearAllData()
         {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import SummaryScreen from "./summary-screen";
+import { apiUrl } from "@/lib/function";
 
 export default function FragmentationSummaryPage({
   onTambahFoto,
@@ -11,7 +12,7 @@ export default function FragmentationSummaryPage({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:5180/api/Fragmentation");
+        const res = await fetch(`${apiUrl}/Fragmentation`);
         const rawData = await res.json();
 
         const formattedData = rawData.map((item: any) => {

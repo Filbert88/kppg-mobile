@@ -76,7 +76,7 @@ def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: floa
     plot_url = upload_resp.json()["url"]
     
     # Delete only the unique output folder (bw-cutout_{uuid}) after processing.
-    # shutil.rmtree(unique_output, ignore_errors=True)
+    shutil.rmtree(unique_output, ignore_errors=True)
     
     return {
         "kuzram": {
@@ -221,7 +221,7 @@ def fragmentation_red_outline():
             "marker_properties": marker_data
         }
 
-        # shutil.rmtree(output_folder, ignore_errors=True)
+        shutil.rmtree(output_folder, ignore_errors=True)
         return jsonify(response)
 
     except Exception as e:

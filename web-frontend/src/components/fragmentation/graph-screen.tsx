@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/function";
 
 interface GraphScreenProps {
   formData: {
@@ -57,7 +58,7 @@ export default function GraphScreen({
             const formDataUpload = new FormData();
             formDataUpload.append("file", file);
 
-            const res = await fetch("http://localhost:5180/api/Upload/upload", {
+            const res = await fetch(`${apiUrl}/Upload/upload`, {
               method: "POST",
               body: formDataUpload,
             });
