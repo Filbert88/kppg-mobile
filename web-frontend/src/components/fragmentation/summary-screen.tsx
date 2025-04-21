@@ -21,6 +21,7 @@ import { Plus, Clock, ChevronRight, ChevronLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import ImageViewerModal from "./image-viewer-modal";
+import { VideoViewerModal } from "./video-viewer-modal";
 
 interface ResultData {
   id: string;
@@ -49,6 +50,7 @@ interface FragmentationData {
   date: string;
   scale: string;
   diggingTime: string;
+  videoUri: string;
   depthAverage: number;
   results: ResultData[];
 }
@@ -74,6 +76,9 @@ export default function SummaryScreen({
   const [activeResultIndices, setActiveResultIndices] = useState<
     Record<string, number>
   >({});
+
+  const [videoViewerOpen, setVideoViewerOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   const getActiveResultIndex = (itemId: string) => {
     return activeResultIndices[itemId] || 0;
@@ -410,7 +415,11 @@ export default function SummaryScreen({
                                               }
                                               alt="Graph"
                                               className="w-full h-32 object-contain border hover:cursor-pointer"
-                                              onClick={() => handleImageClick(result.graphUrl)}
+                                              onClick={() =>
+                                                handleImageClick(
+                                                  result.graphUrl
+                                                )
+                                              }
                                             />
                                           </div>
                                         </div>
@@ -545,6 +554,18 @@ export default function SummaryScreen({
                       <span>Tambah Foto</span>
                     </Button>
                   </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => {
+                        setSelectedVideo(item.videoUri);
+                        setVideoViewerOpen(true);
+                      }}
+                      className="bg-blue-100 hover:bg-blue-200 text-black font-medium py-1 px-4 rounded-full flex items-center mt-2"
+                      disabled={!item.videoUri}
+                    >
+                      🎥 Lihat Video
+                    </Button>
+                  </div>
 
                   <div className="mt-3">
                     <Button
@@ -621,6 +642,11 @@ export default function SummaryScreen({
         isOpen={imageViewerOpen}
         onClose={() => setImageViewerOpen(false)}
         imageUrl={selectedImage}
+      />
+      <VideoViewerModal
+        isOpen={videoViewerOpen}
+        onClose={() => setVideoViewerOpen(false)}
+        videoUrl={selectedVideo}
       />
     </div>
   );

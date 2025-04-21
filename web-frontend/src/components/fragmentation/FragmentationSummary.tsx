@@ -31,6 +31,7 @@ export default function FragmentationSummaryPage({
             rockType: item.litologi || "Claystone",
             fragmentationImages: item.fragmentationImages ?? [],
             powderFactor: item.powderFactor || "25",
+            videoUri: item.videoUri || null,
             results:
               item.fragmentationImages?.flatMap(
                 (img: any, idx: number) =>
