@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useRef, useEffect } from "react";
 import {
   Clock,
@@ -17,11 +15,16 @@ import { apiUrl } from "@/lib/function";
 interface DiggingTimePageProps {
   onSaveDiggingData: (diggingTime: string, videoUrl: string) => void;
   onBack: () => void;
+  initialDiggingTime?: string;
+  initialVideoUri?: string;
 }
+
 
 export default function DiggingTimePage({
   onSaveDiggingData,
   onBack,
+  initialDiggingTime,
+  initialVideoUri
 }: DiggingTimePageProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
@@ -35,6 +38,16 @@ export default function DiggingTimePage({
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
   const [savedTime, setSavedTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialDiggingTime) {
+      setSavedTime(initialDiggingTime);
+    }
+  
+    if (initialVideoUri) {
+      setVideoPreview(initialVideoUri);
+    }
+  }, [initialDiggingTime, initialVideoUri]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
