@@ -1,4 +1,4 @@
-"use client";
+import type React from "react";
 
 import { useState, useRef, useEffect } from "react";
 import {
@@ -11,18 +11,25 @@ import {
   RotateCcw,
   CheckCircle,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { apiUrl } from "@/lib/function";
 
 interface DiggingTimePageProps {
   onSaveDiggingData: (diggingTime: string, videoUrl: string) => void;
   onBack: () => void;
+  initialDiggingTime?: string;
+  initialVideoUri?: string;
 }
 
 export default function DiggingTimePage({
   onSaveDiggingData,
   onBack,
+  initialDiggingTime,
+  initialVideoUri,
 }: DiggingTimePageProps) {
+  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB in bytes
+
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [isStopwatchOpen, setIsStopwatchOpen] = useState(false);
@@ -35,6 +42,17 @@ export default function DiggingTimePage({
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
   const [savedTime, setSavedTime] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialDiggingTime) {
+      setSavedTime(initialDiggingTime);
+    }
+
+    if (initialVideoUri) {
+      setVideoPreview(initialVideoUri);
+    }
+  }, [initialDiggingTime, initialVideoUri]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -62,6 +80,22 @@ export default function DiggingTimePage({
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Clear previous errors
+    setUploadError(null);
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError(
+        "Video size exceeds the maximum limit of 500 MB. Please upload a smaller video."
+      );
+      // Reset the input to allow re-uploading
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setVideoFile(file);
     setVideoPreview(URL.createObjectURL(file));
   };
@@ -69,6 +103,10 @@ export default function DiggingTimePage({
   const handleRemoveVideo = () => {
     setVideoFile(null);
     setVideoPreview(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const startStopwatch = () => setIsRunning(true);
@@ -104,14 +142,11 @@ export default function DiggingTimePage({
         const formData = new FormData();
         formData.append("file", videoFile);
 
-        const uploadRes = await fetch(
-          `${apiUrl}/Upload/upload-video`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-console.log(uploadRes)
+        const uploadRes = await fetch(`${apiUrl}/Upload/upload-video`, {
+          method: "POST",
+          body: formData,
+        });
+        console.log(uploadRes);
         if (!uploadRes.ok) throw new Error("Video upload failed");
 
         const data = await uploadRes.json();
@@ -123,7 +158,7 @@ console.log(uploadRes)
         return;
       }
 
-      onSaveDiggingData(savedTime, videoUrl); 
+      onSaveDiggingData(savedTime, videoUrl);
       onBack(); // return to SummaryScreen
     } catch (err) {
       console.error("Save failed:", err);
@@ -136,7 +171,7 @@ console.log(uploadRes)
       <div className="flex flex-col p-6 mt-4 w-full">
         {/* Video Upload */}
         <div
-          className="border-2 border-gray-300 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer bg-white mb-6 h-48 relative"
+          className="border-2 border-gray-300 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer bg-white mb-2 h-48 relative"
           onClick={() => fileInputRef.current?.click()}
         >
           {videoPreview ? (
@@ -173,6 +208,22 @@ console.log(uploadRes)
             onChange={handleVideoUpload}
           />
         </div>
+
+        {/* File size warning */}
+        <div className="flex items-center mb-4 text-sm text-gray-600">
+          <AlertCircle className="h-4 w-4 mr-1 text-amber-500" />
+          <span>Maximum video size: 500 MB</span>
+        </div>
+
+        {/* Error message */}
+        {uploadError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 text-red-500 flex-shrink-0 mt-0.5" />
+              <span>{uploadError}</span>
+            </div>
+          </div>
+        )}
 
         {/* Digging Time */}
         <div className="mb-6">

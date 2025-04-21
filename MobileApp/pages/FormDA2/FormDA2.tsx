@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -24,18 +24,41 @@ const FormDA2 = () => {
   const navigation = useNavigation<NavigationProp>();
   const {formData, setFormData, resetForm} = useContext(DepthAverageContext);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [invalidFields, setInvalidFields] = useState<number[]>([]);
 
   const jumlahLubang = parseInt(formData.jumlahLubang, 10) || 0;
 
+  useEffect(() => {
+    const currentInvalids: number[] = [];
+    for (let i = 1; i <= jumlahLubang; i++) {
+      const value = formData.kedalaman[`kedalaman${i}`];
+      const cleaned = String(value || '').replace(/[^0-9.]/g, '');
+      if (!/^\d*\.?\d*$/.test(cleaned) || cleaned.trim() === '') {
+        currentInvalids.push(i);
+      }
+    }
+    setInvalidFields(currentInvalids);
+  }, []);
+
   const handleChange = (field: string, value: string) => {
     const cleaned = value.replace(/[^0-9.]/g, '');
-    if (/^\d*\.?\d*$/.test(cleaned)) {
-      setFormData({
+    const index = parseInt(field.replace('kedalaman', ''), 10); // extract number
+
+    const isValidNumber = /^\d*\.?\d*$/.test(cleaned) && cleaned.trim() !== '';
+
+    if (isValidNumber) {
+      setFormData(prev => ({
+        ...prev,
         kedalaman: {
-          ...formData.kedalaman,
+          ...prev.kedalaman,
           [field]: cleaned,
         },
-      });
+      }));
+      setInvalidFields(prev => prev.filter(i => i !== index)); // remove if exists
+    } else {
+      if (!invalidFields.includes(index)) {
+        setInvalidFields(prev => [...prev, index]);
+      }
     }
   };
 
@@ -65,7 +88,7 @@ const FormDA2 = () => {
   };
 
   const renderDepthInput = (number: number, field: string) => (
-    <View className="space-y-2.5" key={field}>
+    <View className="space-y-2" key={field}>
       <Text className="text-2xl font-bold text-black px-1 mb-1">
         Kedalaman Lubang ke-{number}
       </Text>
@@ -114,12 +137,21 @@ const FormDA2 = () => {
   return (
     <SafeAreaView className="flex-1">
       <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
+      {invalidFields.length > 0 && (
+        <Text className="text-red-600 font-medium text-base mb-2 px-6 pt-2">
+          {`Terdapat nilai tidak valid pada kedalaman lubang ke-${[
+            ...invalidFields,
+          ]
+            .sort((a, b) => a - b)
+            .join(', ')}`}
+        </Text>
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{flex: 1}}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView className="flex-1 px-6 pt-8">
+          <ScrollView className="flex-1 px-6 pt-2">
             <View className="gap-6">
               {Array.from({length: jumlahLubang}, (_, i) =>
                 renderDepthInput(i + 1, `kedalaman${i + 1}`),
