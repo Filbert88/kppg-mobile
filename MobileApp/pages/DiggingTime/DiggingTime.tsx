@@ -8,29 +8,32 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Platform,
   Alert,
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Video from 'react-native-video';
 import {launchImageLibrary} from 'react-native-image-picker';
-import Icon from 'react-native-vector-icons/Feather';
 import {FormContext} from '../../context/FragmentationContext';
-import { API_BASE_URL } from '@env';
-import { useToast } from '../../context/ToastContext';
-import { RootStackParamList } from '../../types/navigation';
+import {API_BASE_URL} from '@env';
+import {useToast} from '../../context/ToastContext';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../types/navigation';
 
-
-
+// Navigation prop type
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DiggingTimePage'
 >;
 
-const DiggingTimePage = () => {
+const {width} = Dimensions.get('window');
+
+export default function DiggingTimePage() {
   const navigation = useNavigation<NavigationProp>();
   const {saveToDatabase} = useContext(FormContext);
+  const {showToast} = useToast();
+
   const [videoFile, setVideoFile] = useState<any>(null);
   const [isStopwatchOpen, setIsStopwatchOpen] = useState(false);
   const [isManualInputOpen, setIsManualInputOpen] = useState(false);
@@ -41,375 +44,407 @@ const DiggingTimePage = () => {
   const [minutes, setMinutes] = useState('');
   const [seconds, setSeconds] = useState('');
   const [savedTime, setSavedTime] = useState<string | null>(null);
-  const {showToast} = useToast()
+
+  // Stopwatch ticker
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: NodeJS.Timeout;
     if (isRunning) {
-      interval = setInterval(() => {
-        setElapsedTime(prevTime => prevTime + 1);
-      }, 1000);
+      interval = setInterval(() => setElapsedTime(prev => prev + 1), 1000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [isRunning]);
 
+  // Format elapsedTime
   useEffect(() => {
-    const hours = Math.floor(elapsedTime / 3600);
-    const minutes = Math.floor((elapsedTime % 3600) / 60);
-    const seconds = elapsedTime % 60;
+    const h = Math.floor(elapsedTime / 3600);
+    const m = Math.floor((elapsedTime % 3600) / 60);
+    const s = elapsedTime % 60;
     setTime(
-      `${hours.toString().padStart(2, '0')}:${minutes
-        .toString()
-        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+      `${h.toString().padStart(2, '0')}:` +
+        `${m.toString().padStart(2, '0')}:` +
+        `${s.toString().padStart(2, '0')}`,
     );
   }, [elapsedTime]);
 
-  const handleVideoUpload = () => {
-    launchImageLibrary(
-      {
-        mediaType: 'video',
-        includeBase64: false,
-      },
-      response => {
-        if (response.didCancel) return;
-        if (response.errorCode) {
-          Alert.alert(
-            'Error',
-            response.errorMessage || 'Unknown error occurred',
-          );
-          return;
-        }
-        if (response.assets && response.assets[0]) {
-          setVideoFile(response.assets[0]);
-        }
-      },
-    );
-  };
+  // Pick video
+  function handleVideoUpload() {
+    launchImageLibrary({mediaType: 'video'}, response => {
+      if (response.didCancel) return;
+      if (response.errorCode) {
+        Alert.alert('Error', response.errorMessage || 'Unknown error');
+        return;
+      }
+      if (response.assets && response.assets[0]) {
+        setVideoFile(response.assets[0]);
+      }
+    });
+  }
 
-  const handleRemoveVideo = () => setVideoFile(null);
-  const startStopwatch = () => setIsRunning(true);
-  const stopStopwatch = () => setIsRunning(false);
-  const resetStopwatch = () => {
-    setIsRunning(false);
-    setElapsedTime(0);
-  };
-  const resumeStopwatch = () => setIsRunning(true);
-  const saveStopwatchTime = () => {
+  // Remove video
+  function handleRemoveVideo() {
+    setVideoFile(null);
+  }
+
+  // Save stopwatch time
+  function saveStopwatchTime() {
     setSavedTime(time);
     setIsStopwatchOpen(false);
-  };
+  }
 
-  const saveManualTime = () => {
-    const h = hours.padStart(2, '0') || '00';
-    const m = minutes.padStart(2, '0') || '00';
-    const s = seconds.padStart(2, '0') || '00';
-    setSavedTime(`${h}:${m}:${s}`);
+    const resetStopwatch = () => {
+      setIsRunning(false);
+      setElapsedTime(0);
+    };
+
+  // Save manual time
+  function saveManualTime() {
+    const hh = hours.padStart(2, '0') || '00';
+    const mm = minutes.padStart(2, '0') || '00';
+    const ss = seconds.padStart(2, '0') || '00';
+    setSavedTime(`${hh}:${mm}:${ss}`);
     setIsManualInputOpen(false);
-  };
+  }
 
-  const handleDeleteSavedTime = () => setSavedTime(null);
+  // Delete recorded time
+  function handleDeleteSavedTime() {
+    setSavedTime(null);
+  }
 
-  const handleSave = async () => {
+  // Validate inputs
+  function validateTimeInput(
+    text: string,
+    setter: React.Dispatch<React.SetStateAction<string>>,
+  ) {
+    const num = text.replace(/[^0-9]/g, '');
+    if (num.length <= 2) setter(num);
+  }
+
+  // Final save
+  async function handleSave() {
     if (!savedTime) {
-      showToast("No time recorded", "error")
+      showToast('No time recorded', 'error');
       return;
     }
-  
     try {
       let uploadedVideoUrl = null;
-  
       if (videoFile?.uri && !videoFile.uploadedUrl) {
-        const formData = new FormData();
-        formData.append('file', {
-          uri: videoFile.uri,
+        const fd = new FormData();
+        fd.append('file', {
+          uri: videoFile.uri.startsWith('content://')
+            ? 'file://' + videoFile.uri
+            : videoFile.uri,
           type: videoFile.type || 'video/mp4',
           name: videoFile.fileName || 'video.mp4',
         });
-  
-        const uploadResponse = await fetch(
-          `${API_BASE_URL}/api/upload/upload-video`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            body: formData,
-          },
-        );
-  
-        const uploadJson = await uploadResponse.json();
-        uploadedVideoUrl = uploadJson.url;
+        const res = await fetch(`${API_BASE_URL}/api/upload/upload-video`, {
+          method: 'POST',
+          headers: {'Content-Type': 'multipart/form-data'},
+          body: fd,
+        });
+        const json = await res.json();
+        uploadedVideoUrl = json.url;
       } else if (videoFile?.uploadedUrl) {
         uploadedVideoUrl = videoFile.uploadedUrl;
       }
-  
-      // Optional: update videoFile state with uploadedUrl
-      if (uploadedVideoUrl && !videoFile?.uploadedUrl) {
+      if (uploadedVideoUrl && !videoFile.uploadedUrl) {
         setVideoFile({...videoFile, uploadedUrl: uploadedVideoUrl});
       }
-  
-      // Now call saveToDatabase with digging time and video URL
-      // Assuming useFormContext or similar
-      // You might need to import and use your FormContext to get saveToDatabase
-      if (typeof saveToDatabase === 'function') {
-        const success = await saveToDatabase({
-          diggingTime: savedTime,
-          videoUri: uploadedVideoUrl,
-        });
-  
-        if (success) {
-          showToast(`Saved diggint time: ${savedTime}`, "success")
-          navigation.navigate("FragmentationHistoryDone");
-        } else {
-          showToast('Failed to save data', "error");
-        }
+      const success = await saveToDatabase({
+        diggingTime: savedTime,
+        videoUri: uploadedVideoUrl,
+      });
+      if (success) {
+        showToast(`Saved digging time: ${savedTime}`, 'success');
+        navigation.navigate('FragmentationHistoryDone');
       } else {
-        showToast('Failed to save data',"error")
+        showToast('Failed to save data', 'error');
       }
-    } catch (err: any) {
-      console.error('Save failed:', err);
-      showToast("Failed to save data", "error")
+    } catch {
+      showToast('Failed to save data', 'error');
     }
-  };
-  
-
-  const validateTimeInput = (
-    text: string,
-    setter: React.Dispatch<React.SetStateAction<string>>,
-  ) => {
-    const numericValue = text.replace(/[^0-9]/g, '');
-    if (numericValue.length <= 2) {
-      setter(numericValue);
-    }
-  };
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#e5e7eb" />
-      <ScrollView className="flex-1 px-6 pt-6">
-        <TouchableOpacity
-          className="border-2 border-gray-300 border-dashed rounded-lg p-6 flex items-center justify-center bg-white mb-6 h-48"
-          onPress={handleVideoUpload}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Video Upload */}
+        <TouchableOpacity style={styles.uploadBox} onPress={handleVideoUpload}>
           {videoFile ? (
-            <View className="w-full h-full relative">
+            <View style={styles.videoWrapper}>
               <Video
-                source={{uri: videoFile.uri}}
-                className="w-full h-full rounded"
+                source={{
+                  uri: videoFile.uri.startsWith('content://')
+                    ? `file://${videoFile.uri}`
+                    : videoFile.uri,
+                }}
+                style={styles.video}
                 resizeMode="cover"
                 controls
               />
               <TouchableOpacity
-                onPress={e => {
-                  e.stopPropagation();
-                  handleRemoveVideo();
-                }}
-                className="absolute top-2 right-2 bg-red-600 rounded-full p-1">
-                <Icon name="trash-2" size={16} color="#ffffff" />
+                style={styles.btnTextOnly}
+                onPress={handleRemoveVideo}>
+                <Text style={styles.textOnly}>Delete</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View className="items-center">
-              <View className="flex-row items-center mb-2">
-                <Icon name="video" size={24} color="#9ca3af" />
-                <Icon name="plus" size={20} color="#9ca3af" />
-              </View>
-              <Text className="text-gray-400 text-center">Upload video...</Text>
+            <View style={styles.placeholder}>
+              <Text style={styles.placeholderText}>Upload video...</Text>
             </View>
           )}
         </TouchableOpacity>
 
-        <View className="mb-6">
-          <Text className="text-xl font-bold mb-4 text-black">
-            Digging Time
-          </Text>
+        {/* Digging Time Section */}
+        <View style={styles.section}>
+          <Text style={styles.heading}>Digging Time</Text>
 
           {savedTime && (
-            <View className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Icon name="check-circle" size={20} color="#10b981" />
-                <View className="ml-3">
-                  <Text className="text-green-800 font-medium">
-                    Time recorded
-                  </Text>
-                  <Text className="text-green-700 text-xl font-bold">
-                    {savedTime}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={handleDeleteSavedTime}>
-                <Icon name="trash-2" size={18} color="#dc2626" />
+            <View style={styles.recorded}>
+              <Text style={styles.textOnly}>{savedTime}</Text>
+              <TouchableOpacity
+                onPress={handleDeleteSavedTime}
+                style={styles.btnTextOnly}>
+                <Text style={styles.textOnly}>Delete</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <TouchableOpacity
-            className="w-full bg-emerald-500 py-3 px-4 rounded-lg mb-2 flex-row items-center justify-center"
+            style={styles.btnPrimary}
             onPress={() => setIsStopwatchOpen(true)}>
-            <Icon name="clock" size={18} color="#ffffff" />
-            <Text className="text-white font-medium ml-2">Mulai Stopwatch</Text>
+            <Text style={styles.btnPrimaryText}>Start Stopwatch</Text>
           </TouchableOpacity>
 
-          <View className="items-center my-2">
-            <Text className="text-gray-500">atau</Text>
-          </View>
+          <Text style={styles.or}>atau</Text>
 
           <TouchableOpacity
-            className="w-full bg-white py-3 px-4 rounded-lg border border-gray-300 flex-row items-center justify-center"
+            style={styles.btnSecondary}
             onPress={() => setIsManualInputOpen(true)}>
-            <Icon name="plus" size={18} color="#374151" />
-            <Text className="text-gray-700 font-medium ml-2">
-              Tambah Manual
-            </Text>
+            <Text style={styles.btnSecondaryText}>Add Manual</Text>
           </TouchableOpacity>
         </View>
 
-        <View className="items-center mt-6 mb-6">
-          <TouchableOpacity
-            className={`bg-green-700 py-3 px-4 rounded-md ${
-              !savedTime ? 'opacity-50' : ''
-            }`}
-            onPress={handleSave}
-            disabled={!savedTime}>
-            <Text className="text-white font-bold">Simpan</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[styles.btnSave, !savedTime && styles.btnDisabled]}
+          disabled={!savedTime}
+          onPress={handleSave}>
+          <Text style={styles.btnSaveText}>Save</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Stopwatch Modal */}
-      <Modal
-        visible={isStopwatchOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsStopwatchOpen(false)}>
-        <View className="flex-1 bg-black bg-opacity-50 items-center justify-center px-4">
-          <View className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-              <Text className="text-lg font-bold text-black">Stopwatch</Text>
-              <TouchableOpacity onPress={() => setIsStopwatchOpen(false)}>
-                <Icon name="x" size={20} color="#6b7280" />
+      <Modal visible={isStopwatchOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Stopwatch</Text>
+              <TouchableOpacity
+                style={styles.btnTextOnly}
+                onPress={() => setIsStopwatchOpen(false)}>
+                <Text style={styles.textOnly}>Close</Text>
               </TouchableOpacity>
             </View>
-            <View className="p-6">
-              <View className="items-center mb-6">
-                <View className="bg-gray-100 py-6 rounded-lg w-full">
-                  <Text className="text-5xl font-bold text-center text-black tracking-wider">
-                    {time}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row flex-wrap mb-6">
+            <Text style={styles.stopwatchTime}>{time}</Text>
+            {/* <<< Updated control row >>> */}
+            <View style={styles.controlRow}>
+              <TouchableOpacity
+                style={styles.btnControl}
+                onPress={() => {
+                  resetStopwatch();
+                }}>
+                <Text style={styles.btnControlText}>Reset</Text>
+              </TouchableOpacity>
+
+              {!isRunning ? (
                 <TouchableOpacity
-                  className="bg-gray-100 py-3 px-4 rounded-lg flex-row items-center justify-center mr-3 flex-1"
-                  onPress={resetStopwatch}>
-                  <Icon name="rotate-ccw" size={16} color="#374151" />
-                  <Text className="text-gray-700 font-medium ml-2">Reset</Text>
+                  style={styles.btnControl}
+                  onPress={() => setIsRunning(true)}>
+                  <Text style={styles.btnControlText}>Start</Text>
                 </TouchableOpacity>
-                {!isRunning ? (
-                  <TouchableOpacity
-                    className="bg-green-500 py-3 px-4 rounded-lg flex-row items-center justify-center flex-1"
-                    onPress={startStopwatch}>
-                    <Icon name="play" size={16} color="#ffffff" />
-                    <Text className="text-white font-medium ml-2">Start</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    className="bg-red-500 py-3 px-4 rounded-lg flex-row items-center justify-center flex-1"
-                    onPress={stopStopwatch}>
-                    <Icon name="square" size={16} color="#ffffff" />
-                    <Text className="text-white font-medium ml-2">Stop</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {!isRunning && elapsedTime > 0 && (
+              ) : (
                 <TouchableOpacity
-                  className="bg-green-500 py-3 px-4 rounded-lg flex-row items-center justify-center mb-6"
-                  onPress={resumeStopwatch}>
-                  <Icon name="play" size={16} color="#ffffff" />
-                  <Text className="text-white font-medium ml-2">Resume</Text>
+                  style={styles.btnControl}
+                  onPress={() => setIsRunning(false)}>
+                  <Text style={styles.btnControlText}>Pause</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                className="border border-gray-300 py-3 px-4 rounded-lg flex-row items-center justify-center"
-                onPress={saveStopwatchTime}>
-                <Icon name="plus" size={16} color="#374151" />
-                <Text className="text-gray-700 font-medium ml-2">
-                  Simpan Waktu
-                </Text>
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={saveStopwatchTime}>
+              <Text style={styles.btnPrimaryText}>Save Time</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Manual Time Input Modal */}
-      <Modal
-        visible={isManualInputOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsManualInputOpen(false)}>
-        <View className="flex-1 bg-black bg-opacity-50 items-center justify-center px-4">
-          <View className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-              <Text className="text-lg font-bold text-black">Input waktu</Text>
-              <TouchableOpacity onPress={() => setIsManualInputOpen(false)}>
-                <Icon name="x" size={20} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-            <View className="p-6">
-              <View className="flex-row justify-center items-center space-x-2 mb-8">
-                {[
-                  {value: hours, setter: setHours, label: 'Hours'},
-                  {value: minutes, setter: setMinutes, label: 'Minutes'},
-                  {value: seconds, setter: setSeconds, label: 'Seconds'},
-                ].map(({value, setter, label}, i, arr) => (
-                  <React.Fragment key={i}>
-                    <View className="items-center">
-                      <TextInput
-                        value={value}
-                        onChangeText={text => validateTimeInput(text, setter)}
-                        placeholder="00"
-                        keyboardType="numeric"
-                        maxLength={2}
-                        onBlur={() => {
-                          if (value.length === 0) setter('00');
-                          else if (value.length === 1) setter('0' + value);
-                        }}
-                        onFocus={e => {
-                          if (Platform.OS === 'web') {
-                            // @ts-ignore
-                            e.target.select();
-                          }
-                        }}
-                        className="w-16 h-16 text-center text-2xl border border-gray-300 rounded-lg"
-                        style={{fontFamily: 'monospace'}}
-                      />
-                      <Text className="text-xs text-gray-500 mt-1 text-center">
-                        {label}
-                      </Text>
-                    </View>
-                    {i < arr.length - 1 && (
-                      <Text className="text-3xl font-bold text-gray-400">
-                        :
-                      </Text>
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
+      {/* Manual Input Modal */}
+      <Modal visible={isManualInputOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Input Time</Text>
               <TouchableOpacity
-                className="border border-gray-300 py-3 px-4 rounded-lg flex-row items-center justify-center"
-                onPress={saveManualTime}>
-                <Icon name="plus" size={16} color="#374151" />
-                <Text className="text-gray-700 font-medium ml-2">
-                  Simpan Waktu
-                </Text>
+                style={styles.btnTextOnly}
+                onPress={() => setIsManualInputOpen(false)}>
+                <Text style={styles.textOnly}>Close</Text>
               </TouchableOpacity>
             </View>
+            <View style={styles.manualRow}>
+              {[
+                {val: hours, set: setHours, lbl: 'Hrs'},
+                {val: minutes, set: setMinutes, lbl: 'Min'},
+                {val: seconds, set: setSeconds, lbl: 'Sec'},
+              ].map(({val, set, lbl}, i) => (
+                <View key={i} style={styles.inputGroup}>
+                  <TextInput
+                    value={val}
+                    onChangeText={t => validateTimeInput(t, set)}
+                    placeholder="00"
+                    keyboardType="numeric"
+                    maxLength={2}
+                    style={styles.input}
+                    onBlur={() => {
+                      if (!val) set('00');
+                      else if (val.length === 1) set('0' + val);
+                    }}
+                  />
+                  <Text style={styles.inputLabel}>{lbl}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={saveManualTime}>
+              <Text style={styles.btnPrimaryText}>Save Time</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
     </SafeAreaView>
   );
-};
+}
 
-export default DiggingTimePage;
+const styles = StyleSheet.create({
+  container: {flex: 1, backgroundColor: '#f3f4f6'},
+  scroll: {padding: 16},
+  uploadBox: {
+    height: 300,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  placeholder: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+  placeholderText: {color: '#9ca3af'},
+  videoWrapper: {flex: 1},
+  video: {width: '100%', height: '100%'},
+  btnTextOnly: {position: 'absolute', top: 8, right: 8, padding: 8},
+  textOnly: {fontSize: 14, color: '#dc2626'},
+
+  section: {marginBottom: 24},
+  heading: {fontSize: 20, fontWeight: '700', marginBottom: 12},
+  recorded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d1fae5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  recordedText: {fontSize: 16, fontWeight: '600', marginRight: 12},
+  deleteText: {color: '#dc2626', fontSize: 14},
+
+  btnPrimary: {
+    backgroundColor: '#10b981',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  btnPrimaryText: {color: '#fff', fontSize: 16, fontWeight: '600'},
+  btnSecondary: {
+    borderWidth: 1,
+    borderColor: '#10b981',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  btnSecondaryText: {color: '#10b981', fontSize: 16, fontWeight: '600'},
+
+  or: {textAlign: 'center', color: '#6b7280', marginVertical: 12},
+
+  btnSave: {
+    backgroundColor: '#047857',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  btnSaveText: {color: '#fff', fontSize: 16, fontWeight: '700'},
+  btnDisabled: {opacity: 0.5},
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    width: width - 40,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {fontSize: 18, fontWeight: '600'},
+
+  stopwatchTime: {fontSize: 48, textAlign: 'center', marginVertical: 16},
+  controlRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+
+  manualRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  inputGroup: {alignItems: 'center'},
+  input: {
+    width: 48,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  inputLabel: {fontSize: 12, color: '#6b7280'},
+  btnControl: {
+    backgroundColor: '#10b981',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  btnControlText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  btnClose: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

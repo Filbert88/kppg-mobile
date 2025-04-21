@@ -11,13 +11,15 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  FlatList,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
-import { FormContext } from '../../context/FragmentationContext';
-import { API_BASE_URL } from '@env';
-import { useToast } from '../../context/ToastContext';
+import {FormContext} from '../../context/FragmentationContext';
+import {API_BASE_URL} from '@env';
+import {useToast} from '../../context/ToastContext';
+import Video from 'react-native-video';
 
 export interface FragmentationResponse {
   id: number;
@@ -78,14 +80,20 @@ type NavigationProp = NativeStackNavigationProp<
 const {width, height} = Dimensions.get('window');
 
 const FragmentationResultScreen = () => {
-    const {formData, updateForm} = useContext(FormContext);
+  const {formData, updateForm} = useContext(FormContext);
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<FragmentationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSummary, setShowSummary] = useState(false);
   const [selectedItem, setSelectedItem] =
     useState<FragmentationResponse | null>(null);
-      const {showToast} = useToast();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentVideoUri, setCurrentVideoUri] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageModalUri, setImageModalUri] = useState<string | null>(null);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const {showToast} = useToast();
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/Fragmentation`)
@@ -96,7 +104,6 @@ const FragmentationResultScreen = () => {
       .then(json => {
         console.log('Parsed JSON:', json);
         setData(json);
-        
       })
       .catch(err => {
         console.error('Fetch error:', err);
@@ -113,41 +120,41 @@ const FragmentationResultScreen = () => {
     navigation.goBack();
   };
 
-const handleEdit = (id: number) => {
-  // Find the item in the state data by its id
-  const item = data.find(d => d.id === id);
-  if (!item) return;
+  const handleEdit = (id: number) => {
+    // Find the item in the state data by its id
+    const item = data.find(d => d.id === id);
+    if (!item) return;
 
-  // Seed the form context with the selected record and set `isEdit` to true
-  updateForm({
-    id: item.id,
-    imageUris: item.fragmentationImages.map(image => image.imageUri) || [],
-    skala: item.skala || '',
-    pilihan: item.pilihan || '',
-    ukuran: item.ukuran || '',
-    prioritas: item.prioritas,
-    lokasi: item.lokasi,
-    tanggal: item.tanggal,
-    litologi: item.litologi,
-    ammoniumNitrate: item.ammoniumNitrate,
-    volumeBlasting: item.volumeBlasting,
-    powderFactor: item.powderFactor,
-    rawImageUris: item.fragmentationImages.map(image => image.imageUri) || [],
-    uploadedImageUrls:
-      item.fragmentationImages.map(image => image.imageUri) || [],
-    fragmentedResults: [],
-    finalAnalysisResults: [],
-    diggingTime: item.diggingTime ?? undefined, // Set `undefined` if `diggingTime` is `null`
-    videoUri: item.videoUri ?? undefined,
-    isEdit: true, // Set `isEdit` to true
-  });
+    // Seed the form context with the selected record and set `isEdit` to true
+    updateForm({
+      id: item.id,
+      imageUris: item.fragmentationImages.map(image => image.imageUri) || [],
+      skala: item.skala || '',
+      pilihan: item.pilihan || '',
+      ukuran: item.ukuran || '',
+      prioritas: item.prioritas,
+      lokasi: item.lokasi,
+      tanggal: item.tanggal,
+      litologi: item.litologi,
+      ammoniumNitrate: item.ammoniumNitrate,
+      volumeBlasting: item.volumeBlasting,
+      powderFactor: item.powderFactor,
+      rawImageUris: item.fragmentationImages.map(image => image.imageUri) || [],
+      uploadedImageUrls:
+        item.fragmentationImages.map(image => image.imageUri) || [],
+      fragmentedResults: [],
+      finalAnalysisResults: [],
+      diggingTime: item.diggingTime ?? undefined, // Set `undefined` if `diggingTime` is `null`
+      videoUri: item.videoUri ?? undefined,
+      isEdit: true, // Set `isEdit` to true
+    });
 
-  // Navigate to the FragmentationForm4 screen
-  navigation.navigate('FragmentationForm4');
-};
+    // Navigate to the FragmentationForm4 screen
+    navigation.navigate('FragmentationForm4');
+  };
 
   const handleViewDepthAverage = (item: FragmentationResponse) => {
-    console.log("tanggal ", item.tanggal)
+    console.log('tanggal ', item.tanggal);
     navigation.navigate('FragmentionDepthAverage', {
       priority: item.prioritas,
       tanggal: item.tanggal,
@@ -163,6 +170,41 @@ const handleEdit = (id: number) => {
       month: '2-digit',
       year: 'numeric',
     });
+  };
+
+  const handleViewVideo = (uri: string | null) => {
+    if (!uri) {
+      showToast('No video available');
+      return;
+    }
+    setCurrentVideoUri(
+      uri.startsWith('http://localhost')
+        ? uri.replace('http://localhost:5180', API_BASE_URL)
+        : uri,
+    );
+    setShowVideoModal(true);
+  };
+
+  const handleImagePress = (uri: string | undefined) => {
+    if (!uri) return ;
+    setImageModalUri(
+      uri.startsWith('http://localhost')
+        ? uri.replace('http://localhost:5180', API_BASE_URL)
+        : uri,
+    );
+    setShowImageModal(true);
+  };
+
+  const handleGalleryPress = (uris: string[]) => {
+    if (!uris.length) return ;
+    setGalleryImages(
+      uris.map(u =>
+        u.startsWith('http://localhost')
+          ? u.replace('http://localhost:5180', API_BASE_URL)
+          : u,
+      ),
+    );
+    setShowGalleryModal(true);
   };
 
   if (loading) {
@@ -189,111 +231,148 @@ const handleEdit = (id: number) => {
 
   return (
     <View style={styles.container}>
-
       <ScrollView style={styles.scrollView}>
-        {Array.isArray(data) && data.length > 0 && data.map(item => {
-          const firstImage = item.fragmentationImages[0];
-          const firstResult = firstImage?.fragmentationImageResults[0];
-          let analysisData: AnalysisJson | null = null;
+        {Array.isArray(data) &&
+          data.length > 0 &&
+          data.map(item => {
+            const firstImage = item.fragmentationImages[0];
+            const firstResult = firstImage?.fragmentationImageResults[0];
+            let analysisData: AnalysisJson | null = null;
 
-          if (firstResult && typeof firstResult.result2 === 'string') {
-            try {
-              analysisData = JSON.parse(firstResult.result2) as AnalysisJson;
-            } catch (e) {
-              console.warn('Parsing result2 failed', e);
+            if (firstResult && typeof firstResult.result2 === 'string') {
+              try {
+                analysisData = JSON.parse(firstResult.result2) as AnalysisJson;
+              } catch (e) {
+                console.warn('Parsing result2 failed', e);
+              }
+            } else if (firstResult) {
+              analysisData = firstResult.result2 as AnalysisJson;
             }
-          } else if (firstResult) {
-            analysisData = firstResult.result2 as AnalysisJson;
-          }
 
-          return (
-            <View key={item.id} style={styles.contentCard}>
-              {/* Title with ID and Date */}
-              <View style={styles.titleContainer}>
-                <Text style={styles.title}>Fragmentasi Batuan #{item.id}</Text>
-                <Text style={styles.dateText}>{formatDate(item.tanggal)}</Text>
-              </View>
+            const graphUri = analysisData?.plot_image_base64.startsWith(
+              'http://localhost',
+            )
+              ? analysisData.plot_image_base64.replace(
+                  'http://localhost:5180',
+                  `${API_BASE_URL}`,
+                )
+              : analysisData?.plot_image_base64;
 
-              {/* Image and Info Side by Side */}
-              <View style={styles.imageAndInfoContainer}>
-                {/* Left side - Image */}
-                <View style={styles.imageContainer}>
-                  {firstImage && (
-                    <Image
-                      source={{uri: firstImage.imageUri}}
-                      style={styles.fragmentationImage}
-                      resizeMode="contain"
-                    />
-                  )}
+            return (
+              <View key={item.id} style={styles.contentCard}>
+                {/* Title with ID and Date */}
+                <View style={styles.titleContainer}>
+                  <Text style={styles.title}>
+                    Fragmentasi Batuan #{item.id}
+                  </Text>
+                  <Text style={styles.dateText}>
+                    {formatDate(item.tanggal)}
+                  </Text>
+                </View>
+                {/* Priority Display */}
+                <View style={styles.priorityContainer}>
+                  <Text style={styles.priorityText}>
+                    Prioritas: {item.prioritas}
+                  </Text>
                 </View>
 
-                {/* Right side - Digging Time and Buttons */}
-                <View style={styles.infoContainer}>
-                  <View style={styles.diggingTimeContainerNew}>
-                    <Text style={styles.diggingTimeLabel}>Digging Time</Text>
-                    <Text style={styles.diggingTimeValue}>
-                      {item.diggingTime || '07:23'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.actionButtonsContainerNew}>
-                    <TouchableOpacity
-                      style={styles.addPhotoButton}
-                      onPress={() => handleEdit(item.id)}>
-                      <Text style={styles.addPhotoButtonText}>
-                        + Tambah Foto
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.depthAverageButton}
-                      onPress={() => handleViewDepthAverage(item)}>
-                      <Text style={styles.depthAverageButtonText}>
-                        Lihat Depth Average
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-
-              <Text style={styles.sectionTitle}>Grafik</Text>
-
-              {/* Graph Image and Summary Button Side by Side */}
-              <View style={styles.graphAndSummaryContainer}>
-                {/* Left side - Graph Image */}
-                <View style={styles.graphContainer}>
-                  {analysisData && (
-                    <Image
-                      source={{
-                        uri: analysisData.plot_image_base64.startsWith(
-                          'http://localhost',
-                        )
-                          ? analysisData.plot_image_base64.replace(
-                              'http://localhost:5180',
-                              `${API_BASE_URL}`,
-                            )
-                          : analysisData.plot_image_base64,
-                      }}
-                      style={styles.graphImage}
-                      resizeMode="contain"
-                    />
-                  )}
-                </View>
-
-                {/* Right side - Summary Button */}
-                <View style={styles.summaryContainer}>
+                {/* Image and Info Side by Side */}
+                <View style={styles.imageAndInfoContainer}>
+                  {/* Left side - Image */}
                   <TouchableOpacity
-                    style={styles.summaryButtonNew}
-                    onPress={() => handleShowSummary(item)}>
-                    <Text style={styles.summaryButtonText}>
-                      Lihat Ringkasan
-                    </Text>
+                    style={styles.imageContainer}
+                    onPress={() =>
+                      handleGalleryPress(
+                        item.fragmentationImages.map(img => img.imageUri),
+                      )
+                    }>
+                    {firstImage && (
+                      <Image
+                        source={{uri: firstImage.imageUri}}
+                        style={styles.fragmentationImage}
+                        resizeMode="contain"
+                      />
+                    )}
                   </TouchableOpacity>
+
+                  {/* Right side - Digging Time and Buttons */}
+                  <View style={styles.infoContainer}>
+                    <View style={styles.diggingTimeContainerNew}>
+                      <Text style={styles.diggingTimeLabel}>Digging Time</Text>
+                      <Text style={styles.diggingTimeValue}>
+                        {item.diggingTime || '00:00'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.actionButtonsContainerNew}>
+                      <TouchableOpacity
+                        style={styles.addPhotoButton}
+                        onPress={() => handleEdit(item.id)}>
+                        <Text style={styles.addPhotoButtonText}>
+                          + Tambah Foto
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.depthAverageButton}
+                        onPress={() => handleViewDepthAverage(item)}>
+                        <Text style={styles.depthAverageButtonText}>
+                          Lihat Depth Average
+                        </Text>
+                      </TouchableOpacity>
+                      {item.videoUri ? (
+                        <TouchableOpacity
+                          style={styles.viewVideoButton}
+                          onPress={() => handleViewVideo(item.videoUri)}>
+                          <Text style={styles.viewVideoButtonText}>
+                            View Video
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={styles.sectionTitle}>Grafik</Text>
+
+                {/* Graph Image and Summary Button Side by Side */}
+                <View style={styles.graphAndSummaryContainer}>
+                  {/* Left side - Graph Image */}
+                  <TouchableOpacity
+                    style={styles.graphContainer}
+                    onPress={() => handleImagePress(graphUri)}>
+                    {analysisData && (
+                      <Image
+                        source={{
+                          uri: analysisData.plot_image_base64.startsWith(
+                            'http://localhost',
+                          )
+                            ? analysisData.plot_image_base64.replace(
+                                'http://localhost:5180',
+                                `${API_BASE_URL}`,
+                              )
+                            : analysisData.plot_image_base64,
+                        }}
+                        style={styles.graphImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Right side - Summary Button */}
+                  <View style={styles.summaryContainer}>
+                    <TouchableOpacity
+                      style={styles.summaryButtonNew}
+                      onPress={() => handleShowSummary(item)}>
+                      <Text style={styles.summaryButtonText}>
+                        Lihat Ringkasan
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })}
       </ScrollView>
 
       {/* Summary Modal */}
@@ -412,6 +491,101 @@ const handleEdit = (id: number) => {
               </TouchableOpacity>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Video Modal */}
+      <Modal
+        visible={showVideoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVideoModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.videoModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Video Preview</Text>
+            </View>
+            {currentVideoUri && (
+              <Video
+                source={{uri: currentVideoUri}}
+                style={styles.videoPlayer}
+                controls
+              />
+            )}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowVideoModal(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Single Image Modal */}
+      <Modal
+        visible={showImageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowImageModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.imageModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Image Preview</Text>
+            </View>
+            {imageModalUri && (
+              <Image
+                source={{uri: imageModalUri}}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            )}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowImageModal(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Gallery Modal */}
+      <Modal
+        visible={showGalleryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGalleryModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.galleryModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Image Gallery</Text>
+            </View>
+            <FlatList
+              data={galleryImages}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(uri, idx) => uri + idx}
+              renderItem={({item, index}) => (
+                <View style={styles.galleryImageContainer}>
+                  <Image
+                    source={{uri: item}}
+                    style={styles.galleryImage}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.galleryPagination}>
+                    <Text style={styles.galleryPaginationText}>
+                      {index + 1}/{galleryImages.length}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowGalleryModal(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -612,6 +786,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalHeader: {
+    backgroundColor: '#8CD4BC',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    alignItems: 'center',
+  },
   modalScrollView: {
     maxHeight: height * 0.8,
     width: width * 0.8,
@@ -658,10 +840,21 @@ const styles = StyleSheet.create({
     color: '#00613B',
   },
   closeButton: {
-    backgroundColor: '#00613B',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    backgroundColor: '#8CD4BC',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    alignSelf: 'center',
+    marginVertical: 15,
+    marginBottom: 20, // Add more bottom margin
+    width: 'auto', // Don't take full width
+    minWidth: 120, // Set a minimum width
+    alignItems: 'center', // Center text
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
   },
   closeButtonText: {
     color: 'white',
@@ -676,6 +869,100 @@ const styles = StyleSheet.create({
   noDataText: {
     fontSize: 16,
     color: '#666',
+  },
+  priorityContainer: {
+    marginVertical: 8,
+  },
+  priorityText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  viewVideoButton: {
+    backgroundColor: '#8CD4BC',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 1,
+    marginTop: 8,
+  },
+  viewVideoButtonText: {
+    color: '#000',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  videoPlayer: {
+    width: width * 0.85,
+    height: width * 0.85 * 0.6,
+    backgroundColor: '#000',
+  },
+  modalImage: {
+    width: width * 0.85,
+    height: width * 0.85,
+    backgroundColor: '#f8f8f8',
+  },
+  galleryImageContainer: {
+    width: width * 0.9,
+    height: height * 0.55,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  galleryImage: {
+    width: width * 0.85,
+    height: height * 0.5,
+    backgroundColor: '#f8f8f8',
+  },
+  galleryPagination: {
+    position: 'absolute',
+    bottom: 10,
+    backgroundColor: 'rgba(140, 212, 188, 0.8)',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 15,
+  },
+  galleryPaginationText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  videoModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: width * 0.85,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  imageModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: width * 0.85,
+    maxHeight: height * 0.8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    paddingBottom: 20,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  galleryModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: width * 0.9,
+    height: height * 0.7,
+    overflow: 'hidden',
+    shadowColor: '#000',
+
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
 });
 
