@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,15 +16,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
-  Plus,
-  Edit,
   Clock,
-  BarChart2,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
+import { VideoViewerModal } from "@/components/fragmentation/video-viewer-modal";
 
 interface ResultData {
   id: string;
@@ -53,6 +51,7 @@ interface FragmentationData {
   date: string;
   scale: string;
   diggingTime: string;
+  videoUri: string;
   depthAverage: number;
   results: ResultData[];
 }
@@ -103,7 +102,8 @@ export default function SummaryScreenFragDA({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
   const totalPages = Math.ceil(fragmentationData.length / itemsPerPage);
-
+  const [videoViewerOpen, setVideoViewerOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = fragmentationData.slice(
@@ -115,20 +115,20 @@ export default function SummaryScreenFragDA({
     setCurrentPage(page);
   };
 
-  const handleAddPhoto = (id: string) => {
-    console.log(`Add photo for item ${id}`);
-    // Implement your photo adding logic here
-  };
+  // const handleAddPhoto = (id: string) => {
+  //   console.log(`Add photo for item ${id}`);
+  //   // Implement your photo adding logic here
+  // };
 
   const handleViewDepthAverage = (priority: number, tanggal: string) => {
-    const formattedDate = tanggal.split("T")[0]; 
+    const formattedDate = tanggal.split("T")[0];
     navigate(`/da-frag/${priority}/${formattedDate}`);
   };
 
   // Handle edit
-  const handleEdit = (id: string, resultId: string) => {
-    console.log(`Edit item ${id}, result ${resultId}`);
-  };
+  // const handleEdit = (id: string, resultId: string) => {
+  //   console.log(`Edit item ${id}, result ${resultId}`);
+  // };
 
   return (
     <div className="flex-1 flex flex-col w-full mt-8">
@@ -201,7 +201,11 @@ export default function SummaryScreenFragDA({
                       </p>
                       <p>
                         <span className="font-medium">Tanggal:</span>{" "}
-                        {item.date}
+                        {new Date(item.date).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       </p>
                       <p>
                         <span className="font-medium">Skala:</span> {item.scale}
@@ -268,7 +272,7 @@ export default function SummaryScreenFragDA({
                           </svg>
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
+                      <DialogContent className="sm:max-w-md bg-white">
                         <DialogHeader>
                           <DialogTitle>
                             Ringkasan Fragmentasi Batuan {item.id}
@@ -395,19 +399,6 @@ export default function SummaryScreenFragDA({
                                           </div>
                                         </div>
                                       </div>
-
-                                      <div className="flex justify-between mt-4">
-                                        <Button
-                                          variant="outline"
-                                          className="flex items-center gap-2"
-                                          onClick={() =>
-                                            handleEdit(item.id, result.id)
-                                          }
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                          Edit
-                                        </Button>
-                                      </div>
                                     </div>
                                   )}
                                 </TabsContent>
@@ -513,32 +504,6 @@ export default function SummaryScreenFragDA({
                                       </div>
                                     </div>
                                   </div>
-
-                                  <div className="flex justify-between mt-4">
-                                    <Button
-                                      variant="outline"
-                                      className="flex items-center gap-2"
-                                      onClick={() =>
-                                        handleEdit(item.id, activeResult.id)
-                                      }
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      className="flex items-center gap-2"
-                                      onClick={() =>
-                                        handleViewDepthAverage(
-                                          Number(item.priority),
-                                          item.date
-                                        )
-                                      }
-                                    >
-                                      <BarChart2 className="h-4 w-4" />
-                                      Lihat Depth Average
-                                    </Button>
-                                  </div>
                                 </div>
                               )}
                             </>
@@ -554,14 +519,25 @@ export default function SummaryScreenFragDA({
                       <span className="font-medium">Digging Time</span>
                       <span>{item.diggingTime}</span>
                     </div>
-
-                    <Button
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => {
+                          setSelectedVideo(item.videoUri);
+                          setVideoViewerOpen(true);
+                        }}
+                        className="bg-blue-100 hover:bg-blue-200 text-black font-medium py-1 px-4 rounded-full flex items-center mt-2"
+                        disabled={!item.videoUri}
+                      >
+                        🎥 Lihat Video
+                      </Button>
+                    </div>
+                    {/* <Button
                       onClick={() => handleAddPhoto(item.id)}
                       className="bg-emerald-200 hover:bg-emerald-300 text-black font-medium py-1 px-4 rounded-full flex items-center"
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       <span>Tambah Foto</span>
-                    </Button>
+                    </Button> */}
                   </div>
 
                   <div className="mt-3">
@@ -633,6 +609,11 @@ export default function SummaryScreenFragDA({
           </Button>
         </div>
       )}
+      <VideoViewerModal
+        isOpen={videoViewerOpen}
+        onClose={() => setVideoViewerOpen(false)}
+        videoUrl={selectedVideo}
+      />
     </div>
   );
 }

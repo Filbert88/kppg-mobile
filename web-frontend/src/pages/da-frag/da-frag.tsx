@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, Loader2, Filter, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, Filter, Calendar } from "lucide-react";
 import DepthAverageDetailPopup from "@/components/depth-average/depthAverageDetailPopup";
 import { apiUrl } from "@/lib/function";
 
@@ -219,7 +219,7 @@ export default function FilteredDepthAveragePage() {
                     </div>
                   </div>
 
-                  <div className="flex border-t border-rose-100">
+                  {/* <div className="flex border-t border-rose-100">
                     <button
                       className="flex-1 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5"
                       onClick={(e) => {
@@ -231,7 +231,7 @@ export default function FilteredDepthAveragePage() {
                       <Pencil size={16} />
                       <span>Edit Data</span>
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               ))}
             </div>
