@@ -35,6 +35,7 @@ export default function FilteredFragmentationPage() {
             date: item.tanggal,
             scale: item.skala,
             diggingTime: item.diggingTime || "-",
+            videoUri: item.videoUri || null,
             depthAverage: item.depthAverage || 0,
             results: item.fragmentationImages?.flatMap(
               (img: any, idx: number) =>
@@ -45,7 +46,7 @@ export default function FilteredFragmentationPage() {
                       size: parseFloat(size),
                       percentage: percentage as number,
                     }))
-                    .sort((a, b) => a.size - b.size);
+                    .sort((a, b) => b.size - a.size);
 
                   return {
                     id: `${item.id}-${idx}-${i}`,
