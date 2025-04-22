@@ -301,7 +301,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
         return (
           <GraphScreen
             formData={formData}
-            updateFormData={updateFormData}
             onSave={handleSave}
             onDiggingTimeClick={() => setCurrentStep(9)}
           />
@@ -320,7 +319,6 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
               }));
               handleSave({ diggingTime: digTime, videoUri: videoUrl });
             }}
-            onBack={() => setCurrentStep(10)}
           />
         );
 

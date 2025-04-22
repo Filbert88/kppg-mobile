@@ -1,3 +1,5 @@
+"use client";
+
 import type React from "react";
 
 import { useState, useRef, useEffect } from "react";
@@ -12,19 +14,19 @@ import {
   CheckCircle,
   Trash2,
   AlertCircle,
+  Loader,
 } from "lucide-react";
 import { apiUrl } from "@/lib/function";
+import { toast } from "@/hooks/use-toast";
 
 interface DiggingTimePageProps {
   onSaveDiggingData: (diggingTime: string, videoUrl: string) => void;
-  onBack: () => void;
   initialDiggingTime?: string;
   initialVideoUri?: string;
 }
 
 export default function DiggingTimePage({
   onSaveDiggingData,
-  onBack,
   initialDiggingTime,
   initialVideoUri,
 }: DiggingTimePageProps) {
@@ -43,6 +45,7 @@ export default function DiggingTimePage({
   const [seconds, setSeconds] = useState("");
   const [savedTime, setSavedTime] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (initialDiggingTime) {
@@ -136,6 +139,7 @@ export default function DiggingTimePage({
 
   const handleSave = async () => {
     try {
+      setIsLoading(true);
       let videoUrl = "";
 
       if (videoFile) {
@@ -154,15 +158,29 @@ export default function DiggingTimePage({
       }
 
       if (!savedTime) {
-        alert("Please set a digging time first.");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please set a digging time first.",
+        });
+        setIsLoading(false);
         return;
       }
 
       onSaveDiggingData(savedTime, videoUrl);
-      onBack(); // return to SummaryScreen
+      toast({
+        title: "Success",
+        description: "Digging time and video saved successfully.",
+        variant: "default",
+      });
     } catch (err) {
       console.error("Save failed:", err);
-      alert("Failed to save. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Failed to save. Please try again.",
+      });
+      setIsLoading(false);
     }
   };
 
@@ -271,11 +289,18 @@ export default function DiggingTimePage({
         {/* Save Button */}
         <div className="mt-auto flex justify-center">
           <button
-            className="bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-4 rounded-md transition-colors"
+            className="bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-4 rounded-md transition-colors flex items-center justify-center"
             onClick={handleSave}
-            disabled={!savedTime}
+            disabled={!savedTime || isLoading}
           >
-            Simpan
+            {isLoading ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Simpan"
+            )}
           </button>
         </div>
       </div>
