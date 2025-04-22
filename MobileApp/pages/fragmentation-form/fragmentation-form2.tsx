@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect} from 'react';
+import React, {useContext, useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
+  Animated,
 } from 'react-native';
 import {ChevronDown} from 'react-native-feather';
 import {useNavigation} from '@react-navigation/native';
@@ -25,18 +26,30 @@ export default function FragmentationForm2() {
 
   const currentPowderFactor = formData.powderFactor;
 
+  const [litologiOpen, setLitologiOpen] = useState(false);
+  const litologiOptions = ['Claystone', 'Sandstone', 'Siltstone', 'Others'];
+  const litologiHeight = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(litologiHeight, {
+      toValue: litologiOpen ? litologiOptions.length * 44 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [litologiOpen]);
+
   useEffect(() => {
     if (ammoniumNitrate && volumeBlasting) {
       const q = parseFloat(ammoniumNitrate);
       const v = parseFloat(volumeBlasting);
       if (!isNaN(q) && !isNaN(v) && v !== 0) {
-        const powderFactor = (q / v).toFixed(2); 
+        const powderFactor = (q / v).toFixed(2);
         if (currentPowderFactor !== powderFactor) {
-          updateForm({powderFactor}); 
+          updateForm({powderFactor});
         }
       } else {
         if (currentPowderFactor !== '') {
-          updateForm({powderFactor: ''}); 
+          updateForm({powderFactor: ''});
         }
       }
     } else {
@@ -67,18 +80,44 @@ export default function FragmentationForm2() {
           contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}
           className="w-full my-20">
           <View className="flex-1 mt-4 gap-4">
-            {/* Litologi Dropdown (input simulation for now) */}
-            <View className="gap-1">
-              <Text className="text-black font-black mb-1">
-                Litologi Batuan
-              </Text>
-              <TextInput
-                placeholder="Masukkan jenis..."
-                value={litologi}
-                onChangeText={text => updateForm({litologi: text})}
-                placeholderTextColor="#9CA3AF"
-                className="w-full bg-rose-50 rounded-lg px-4 py-3 text-black"
-              />
+            {/* Litologi Dropdown */}
+            <View className="mb-6 z-20">
+              <Text className="text-black font-bold mb-2">Litologi Batuan</Text>
+              <TouchableOpacity
+                onPress={() => setLitologiOpen(o => !o)}
+                className={`w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center ${
+                  litologiOpen ? 'rounded-b-none' : ''
+                }`}>
+                <Text
+                  className={`${litologi ? 'text-black' : 'text-gray-400'}`}>
+                  {litologi || 'Pilih Litologi...'}
+                </Text>
+                <ChevronDown
+                  stroke="#666"
+                  width={20}
+                  height={20}
+                  style={{
+                    transform: [{rotate: litologiOpen ? '180deg' : '0deg'}],
+                  }}
+                />
+              </TouchableOpacity>
+              <Animated.View
+                style={{height: litologiHeight, overflow: 'hidden'}}
+                className="w-full bg-white border border-t-0 border-gray-300 rounded-b-lg">
+                {litologiOptions.map((opt, idx) => (
+                  <TouchableOpacity
+                    key={opt}
+                    onPress={() => {
+                      updateForm({litologi: opt});
+                      setLitologiOpen(false);
+                    }}
+                    className={`px-4 py-3 border-b border-gray-100 ${
+                      idx === litologiOptions.length - 1 ? 'border-b-0' : ''
+                    }`}>
+                    <Text className="text-black">{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
             </View>
 
             {/* Amonium Nitrat */}
