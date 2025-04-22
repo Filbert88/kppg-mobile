@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { apiUrl } from "@/lib/function";
+import { Loader,Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface GraphScreenProps {
   formData: {
@@ -21,201 +22,155 @@ interface GraphScreenProps {
       threshold_percentages?: Record<string, number>;
     }>;
   };
-  updateFormData: (field: string, value: any) => void;
   onSave: () => void;
   onDiggingTimeClick: () => void;
 }
 
 export default function GraphScreen({
   formData,
-  updateFormData,
   onSave,
   onDiggingTimeClick,
 }: GraphScreenProps) {
-  const [updatedResults, setUpdatedResults] = useState(
-    formData.finalAnalysisResults || []
-  );
-  const [uploading, setUploading] = useState(false);
-  const hasUploaded = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const uploadAllPlots = async () => {
-      if (hasUploaded.current) return;
-      hasUploaded.current = true;
+  const [isSaving, setIsSaving] = useState(false);
 
-      setUploading(true);
-      const newResults = await Promise.all(
-        (formData.finalAnalysisResults || []).map(async (result, index) => {
-          if (result.plotFileUrl || !result.plot_image_base64) return result;
-
-          try {
-            const blob = dataURLtoBlob(
-              `data:image/png;base64,${result.plot_image_base64}`
-            );
-            const file = new File([blob], `plot_${index}.png`, {
-              type: blob.type,
-            });
-            const formDataUpload = new FormData();
-            formDataUpload.append("file", file);
-
-            const res = await fetch(`${apiUrl}/Upload/upload`, {
-              method: "POST",
-              body: formDataUpload,
-            });
-
-            if (!res.ok) {
-              console.error("Upload failed for plot image", res.status);
-              return result;
-            }
-
-            const data = await res.json();
-            console.log("data: ", data);
-            const correctedUrl = data.url.replace(
-              "http://localhost:5180/",
-              import.meta.env.VITE_API_IP
-            );
-            console.log("corrected url: ",correctedUrl);
-            return {
-              ...result,
-              plotFileUrl: correctedUrl,
-              plot_image_base64: correctedUrl,
-            };
-          } catch (err) {
-            console.error("Error uploading plot image:", err);
-            return result;
-          }
-        })
-      );
-
-      setUpdatedResults(newResults);
-      updateFormData("finalAnalysisResults", newResults);
-      setUploading(false);
-    };
-
-    uploadAllPlots();
-  }, []);
-
-  console.log(import.meta.env.VITE_API_IP);
+  const handleSaveClick = async () => {
+    setIsLoading(true);
+    setIsSaving(true);
+    try {
+      await onSave();
+      toast({
+        title: "Data saved",
+        description: "Your fragmentation data was saved successfully.",
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description:
+          err instanceof Error ? err.message : "An unknown error occurred.",
+      });
+    } finally {
+      setIsSaving(false);
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="p-4 bg-white w-[70%]">
       <h2 className="text-xl font-bold mb-4">Graph Screen</h2>
 
-      {uploading ? (
-        <p className="text-blue-500">Uploading plot images...</p>
-      ) : updatedResults.length === 0 ? (
-        <p>No final analysis results found.</p>
-      ) : (
-        formData.finalAnalysisResults.map((result, idx) => {
-          const { kuzram, threshold_percentages, plot_image_base64 } = result;
-          console.log("url: ", plot_image_base64);
-          return (
-            <div key={idx} className="border p-4 mb-4 rounded-md">
-              <h3 className="font-semibold text-lg">Result {idx + 1}</h3>
+      {formData.finalAnalysisResults.map((result, idx) => {
+        const { kuzram, threshold_percentages, plot_image_base64 } = result;
+        console.log("url: ", plot_image_base64);
+        return (
+          <div key={idx} className="border p-4 mb-4 rounded-md">
+            <h3 className="font-semibold text-lg">Result {idx + 1}</h3>
 
-              {kuzram && (
-                <div className="mt-2">
-                  <p>
-                    <strong>X50</strong>: {kuzram.X50?.toFixed(2) ?? "N/A"} cm
-                  </p>
-                  <p>
-                    <strong>P10</strong>: {kuzram.P10?.toFixed(2) ?? "N/A"}
-                  </p>
-                  <p>
-                    <strong>P20</strong>: {kuzram.P20?.toFixed(2) ?? "N/A"}
-                  </p>
-                  <p>
-                    <strong>P80</strong>: {kuzram.P80?.toFixed(2) ?? "N/A"}
-                  </p>
-                  <p>
-                    <strong>P90</strong>: {kuzram.P90?.toFixed(2) ?? "N/A"}
-                  </p>
-                  <p>
-                    <strong>% Above 60</strong>:{" "}
-                    {kuzram.percentage_above_60?.toFixed(2) ?? "N/A"}%
-                  </p>
-                  <p>
-                    <strong>% Below 60</strong>:{" "}
-                    {kuzram.percentage_below_60?.toFixed(2) ?? "N/A"}%
-                  </p>
-                </div>
-              )}
+            {kuzram && (
+              <div className="mt-2">
+                <p>
+                  <strong>X50</strong>: {kuzram.X50?.toFixed(2) ?? "N/A"} cm
+                </p>
+                <p>
+                  <strong>P10</strong>: {kuzram.P10?.toFixed(2) ?? "N/A"}
+                </p>
+                <p>
+                  <strong>P20</strong>: {kuzram.P20?.toFixed(2) ?? "N/A"}
+                </p>
+                <p>
+                  <strong>P80</strong>: {kuzram.P80?.toFixed(2) ?? "N/A"}
+                </p>
+                <p>
+                  <strong>P90</strong>: {kuzram.P90?.toFixed(2) ?? "N/A"}
+                </p>
+                <p>
+                  <strong>% Above 60</strong>:{" "}
+                  {kuzram.percentage_above_60?.toFixed(2) ?? "N/A"}%
+                </p>
+                <p>
+                  <strong>% Below 60</strong>:{" "}
+                  {kuzram.percentage_below_60?.toFixed(2) ?? "N/A"}%
+                </p>
+              </div>
+            )}
 
-              {threshold_percentages && (
-                <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Threshold Percentages</h4>
-                  <table className="border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="border px-2 py-1">Size (mm)</th>
-                        <th className="border px-2 py-1">%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(threshold_percentages)
-                        .map(([size, perc]) => ({
-                          size: parseFloat(size),
-                          percentage: Number(perc),
-                        }))
-                        .sort((a, b) => b.size - a.size)
-                        .map(({ size, percentage }) => (
-                          <tr key={size}>
-                            <td className="border px-2 py-1">
-                              {size.toFixed(2)}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {percentage.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            {threshold_percentages && (
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Threshold Percentages</h4>
+                <table className="border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="border px-2 py-1">Size (mm)</th>
+                      <th className="border px-2 py-1">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(threshold_percentages)
+                      .map(([size, perc]) => ({
+                        size: parseFloat(size),
+                        percentage: Number(perc),
+                      }))
+                      .sort((a, b) => b.size - a.size)
+                      .map(({ size, percentage }) => (
+                        <tr key={size}>
+                          <td className="border px-2 py-1">
+                            {size.toFixed(2)}
+                          </td>
+                          <td className="border px-2 py-1">
+                            {percentage.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-              {plot_image_base64 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Plot Image</h4>
-                  <img
-                    src={
-                      plot_image_base64.startsWith("data:")
-                        ? plot_image_base64
-                        : plot_image_base64.replace(
-                            "http://localhost:5180",
-                            import.meta.env.VITE_API_IP.replace(/\/$/, "")
-                          )
-                    }
-                    alt={`Plot for result ${idx + 1}`}
-                    className="border"
-                    style={{ maxWidth: "400px", maxHeight: "300px" }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })
-      )}
+            {plot_image_base64 && (
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Plot Image</h4>
+                <img
+                  src={
+                    plot_image_base64.startsWith("data:")
+                      ? plot_image_base64
+                      : plot_image_base64.replace(
+                          "http://localhost:5180",
+                          import.meta.env.VITE_API_IP.replace(/\/$/, "")
+                        )
+                  }
+                  alt={`Plot for result ${idx + 1}`}
+                  className="border"
+                  style={{ maxWidth: "400px", maxHeight: "300px" }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       <div className="flex justify-end space-x-4 mt-4">
         <Button onClick={onDiggingTimeClick} className="bg-blue-600 text-white">
           Digging Time
         </Button>
-        <Button onClick={onSave} className="bg-green-800 text-white">
-          Save
+        <Button
+          onClick={handleSaveClick}
+          className="bg-green-800 text-white flex items-center"
+          disabled={isSaving}
+        >
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Simpan"
+            )}
         </Button>
       </div>
     </div>
   );
-}
-
-function dataURLtoBlob(dataurl: string): Blob {
-  const arr = dataurl.split(",");
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  if (!mimeMatch) throw new Error("Invalid data URL");
-  const mime = mimeMatch[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new Blob([u8arr], { type: mime });
 }
