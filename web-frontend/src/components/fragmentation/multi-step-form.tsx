@@ -111,34 +111,38 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     setCurrentStep(10);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (overrides?: {
+    diggingTime?: string;
+    videoUri?: string;
+  }) => {
     try {
+      const data = overrides ? { ...formData, ...overrides } : formData;
       const dto = {
-        skala: formData.scale,
-        pilihan: formData.option,
-        ukuran: formData.size,
-        lokasi: formData.location,
-        tanggal: formData.date,
-        prioritas: parseInt(formData.priority),
-        litologi: formData.rockType,
-        ammoniumNitrate: formData.ammoniumNitrate,
-        volumeBlasting: formData.blastingVolume,
-        powderFactor: formData.powderFactor,
-        diggingTime: formData.diggingTime ?? null,
-        videoUri: formData.videoUri ?? null,
-        uploadedImageUrls: formData.images,
-        fragmentedImageUrls: formData.imagesFrag,
-        plotImageUrls: formData.finalAnalysisResults.map(
+        skala: data.scale,
+        pilihan: data.option,
+        ukuran: data.size,
+        lokasi: data.location,
+        tanggal: data.date,
+        prioritas: parseInt(data.priority),
+        litologi: data.rockType,
+        ammoniumNitrate: data.ammoniumNitrate,
+        volumeBlasting: data.blastingVolume,
+        powderFactor: data.powderFactor,
+        diggingTime: data.diggingTime ?? null,
+        videoUri: data.videoUri ?? null,
+        uploadedImageUrls: data.images,
+        fragmentedImageUrls: data.imagesFrag,
+        plotImageUrls: data.finalAnalysisResults.map(
           (a) => a.plot_image_base64
         ),
-        analysisJsonList: formData.finalAnalysisResults,
+        analysisJsonList: data.finalAnalysisResults,
       };
 
       const url =
-        isEdit && formData.id
-          ? `${apiUrl}/Fragmentation/${formData.id}`
+        isEdit && data.id
+          ? `${apiUrl}/Fragmentation/${data.id}`
           : `${apiUrl}/Fragmentation`;
-      const method = isEdit && formData.id ? "PUT" : "POST";
+      const method = isEdit && data.id ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -308,17 +312,13 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
             initialDiggingTime={formData.diggingTime}
             initialVideoUri={formData.videoUri}
             onSaveDiggingData={(digTime, videoUrl) => {
-              setFormData((prev) => {
-                const updated = {
-                  ...prev,
-                  diggingTime: digTime,
-                  videoUri: videoUrl,
-                };
-                setTimeout(() => {
-                  handleSave();
-                }, 0);
-                return updated;
-              });
+        
+              setFormData((prev) => ({
+                ...prev,
+                diggingTime: digTime,
+                videoUri: videoUrl,
+              }));
+              handleSave({ diggingTime: digTime, videoUri: videoUrl });
             }}
             onBack={() => setCurrentStep(10)}
           />

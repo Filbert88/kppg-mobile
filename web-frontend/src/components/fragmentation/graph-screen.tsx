@@ -69,10 +69,16 @@ export default function GraphScreen({
             }
 
             const data = await res.json();
+            console.log("data: ", data);
+            const correctedUrl = data.url.replace(
+              "http://localhost:5180/",
+              import.meta.env.VITE_API_IP
+            );
+            console.log("corrected url: ",correctedUrl);
             return {
               ...result,
-              plotFileUrl: data.url,
-              plot_image_base64: null,
+              plotFileUrl: correctedUrl,
+              plot_image_base64: correctedUrl,
             };
           } catch (err) {
             console.error("Error uploading plot image:", err);
@@ -89,6 +95,8 @@ export default function GraphScreen({
     uploadAllPlots();
   }, []);
 
+  console.log(import.meta.env.VITE_API_IP);
+
   return (
     <div className="p-4 bg-white w-[70%]">
       <h2 className="text-xl font-bold mb-4">Graph Screen</h2>
@@ -100,7 +108,7 @@ export default function GraphScreen({
       ) : (
         formData.finalAnalysisResults.map((result, idx) => {
           const { kuzram, threshold_percentages, plot_image_base64 } = result;
-
+          console.log("url: ", plot_image_base64);
           return (
             <div key={idx} className="border p-4 mb-4 rounded-md">
               <h3 className="font-semibold text-lg">Result {idx + 1}</h3>
@@ -149,7 +157,7 @@ export default function GraphScreen({
                           size: parseFloat(size),
                           percentage: Number(perc),
                         }))
-                        .sort((a, b) => a.size - b.size)
+                        .sort((a, b) => b.size - a.size)
                         .map(({ size, percentage }) => (
                           <tr key={size}>
                             <td className="border px-2 py-1">
@@ -169,7 +177,14 @@ export default function GraphScreen({
                 <div className="mt-4">
                   <h4 className="font-semibold mb-2">Plot Image</h4>
                   <img
-                    src={plot_image_base64}
+                    src={
+                      plot_image_base64.startsWith("data:")
+                        ? plot_image_base64
+                        : plot_image_base64.replace(
+                            "http://localhost:5180",
+                            import.meta.env.VITE_API_IP.replace(/\/$/, "")
+                          )
+                    }
                     alt={`Plot for result ${idx + 1}`}
                     className="border"
                     style={{ maxWidth: "400px", maxHeight: "300px" }}
