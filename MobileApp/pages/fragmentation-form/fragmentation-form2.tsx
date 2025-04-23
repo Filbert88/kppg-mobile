@@ -24,6 +24,10 @@ export default function FragmentationForm2() {
   const {formData, updateForm, resetForm} = useContext(FormContext);
   const {litologi, ammoniumNitrate, volumeBlasting} = formData;
 
+  // --- validation error state ---
+  const [ammoniumError, setAmmoniumError] = useState<string>('');
+  const [volumeError, setVolumeError] = useState<string>('');
+
   const currentPowderFactor = formData.powderFactor;
 
   const [litologiOpen, setLitologiOpen] = useState(false);
@@ -39,30 +43,52 @@ export default function FragmentationForm2() {
   }, [litologiOpen]);
 
   useEffect(() => {
-    if (ammoniumNitrate && volumeBlasting) {
+    if (ammoniumNitrate && volumeBlasting && !ammoniumError && !volumeError) {
       const q = parseFloat(ammoniumNitrate);
       const v = parseFloat(volumeBlasting);
       if (!isNaN(q) && !isNaN(v) && v !== 0) {
-        const powderFactor = (q / v).toFixed(2);
-        if (currentPowderFactor !== powderFactor) {
-          updateForm({powderFactor});
+        const pf = (q / v).toFixed(2);
+        if (formData.powderFactor !== pf) {
+          updateForm({powderFactor: pf});
         }
-      } else {
-        if (currentPowderFactor !== '') {
-          updateForm({powderFactor: ''});
-        }
-      }
-    } else {
-      if (currentPowderFactor !== '') {
+      } else if (formData.powderFactor !== '') {
         updateForm({powderFactor: ''});
       }
+    } else if (formData.powderFactor !== '') {
+      updateForm({powderFactor: ''});
     }
-  }, [ammoniumNitrate, volumeBlasting, currentPowderFactor, updateForm]);
+  }, [
+    ammoniumNitrate,
+    volumeBlasting,
+    ammoniumError,
+    volumeError,
+    formData.powderFactor,
+    updateForm,
+  ]);
 
   const isFormValid =
     litologi.trim() !== '' &&
     ammoniumNitrate.trim() !== '' &&
     volumeBlasting.trim() !== '';
+
+  // --- handlers with validation ---
+  const handleAmmoniumChange = (text: string) => {
+    updateForm({ammoniumNitrate: text});
+    if (text !== '' && isNaN(Number(text))) {
+      setAmmoniumError('Masukkan angka yang valid');
+    } else {
+      setAmmoniumError('');
+    }
+  };
+
+  const handleVolumeChange = (text: string) => {
+    updateForm({volumeBlasting: text});
+    if (text !== '' && isNaN(Number(text))) {
+      setVolumeError('Masukkan angka yang valid');
+    } else {
+      setVolumeError('');
+    }
+  };
 
   const handleCancelEdit = () => {
     resetForm();
@@ -127,12 +153,15 @@ export default function FragmentationForm2() {
                 <TextInput
                   placeholder="Masukkan jumlah..."
                   value={ammoniumNitrate}
-                  onChangeText={text => updateForm({ammoniumNitrate: text})}
+                  onChangeText={handleAmmoniumChange}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                   className="flex-1 text-black"
                 />
               </View>
+              {ammoniumError !== '' && (
+                <Text className="text-red-500 mt-1">{ammoniumError}</Text>
+              )}
             </View>
 
             {/* Volume Blasting */}
@@ -144,12 +173,15 @@ export default function FragmentationForm2() {
                 <TextInput
                   placeholder="Masukkan volume..."
                   value={volumeBlasting}
-                  onChangeText={text => updateForm({volumeBlasting: text})}
+                  onChangeText={handleVolumeChange}
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                   className="flex-1 text-black"
                 />
               </View>
+              {volumeError !== '' && (
+                <Text className="text-red-500 mt-1">{volumeError}</Text>
+              )}
             </View>
           </View>
 
