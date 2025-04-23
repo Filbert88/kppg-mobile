@@ -50,6 +50,13 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
     },
   );
 
+    const anyModalOpen =
+      showCropper ||
+      showColorPicker ||
+      showLinePicker ||
+      showShapePicker ||
+      showErasePicker;
+
   // 1) When the user picks the "crop" tool, we capture, set `showCropper=true`, but do NOT unmount the container
   const handleToolSelect = (tool: Tool) => {
     if (activeTool === tool) {
@@ -101,12 +108,14 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
       {/* Always mount the drawing UI so ephemeral pixel data is not lost */}
       <View
         style={styles.container}
-        pointerEvents={showCropper ? 'none' : 'auto'}>
+        pointerEvents={anyModalOpen ? 'none' : 'auto'}>
         <ReactNativeZoomableView
           maxZoom={3}
           minZoom={0.5}
-          zoomEnabled={!showCropper && activeTool === null}
-          panEnabled={!showCropper && activeTool === null}
+          zoomEnabled={true}
+          panEnabled={true}
+          onShiftingBefore={(_, __, ___) => activeTool !== null}
+          onZoomBefore={(_, __, ___) => activeTool !== null}
           style={styles.zoomable}>
           <View collapsable={false} ref={drawingViewRef}>
             <ImageCanvasContainer
@@ -168,7 +177,10 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
               setSelectedColor(color);
               setShowColorPicker(false);
             }}
-            onClose={() => setShowColorPicker(false)}
+            onClose={() => {
+              setShowColorPicker(false);
+              setActiveTool(null);
+            }}
           />
         </Modal>
       )}
@@ -181,7 +193,10 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
               setLineThickness(thickness);
               setShowLinePicker(false);
             }}
-            onClose={() => setShowLinePicker(false)}
+            onClose={() => {
+              setShowLinePicker(false);
+              setActiveTool(null);
+            }}
           />
         </Modal>
       )}
@@ -191,10 +206,13 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
           <ShapePicker
             onSelect={(shapeType: string) => {
               setShowShapePicker(false);
-              setSelectedShapeType(shapeType)
+              setSelectedShapeType(shapeType);
               // handle shape creation
             }}
-            onClose={() => setShowShapePicker(false)}
+            onClose={() => {
+              setShowShapePicker(false);
+              setActiveTool(null);
+            }}
           />
         </Modal>
       )}
@@ -208,7 +226,10 @@ const EditingApp: React.FC<EditingAppProps> = ({initialImage, onClose}) => {
               setEraseThickness(thick);
               setShowErasePicker(false);
             }}
-            onClose={() => setShowErasePicker(false)}
+            onClose={() => {
+              setShowErasePicker(false);
+              setActiveTool(null);
+            }}
           />
         </Modal>
       )}

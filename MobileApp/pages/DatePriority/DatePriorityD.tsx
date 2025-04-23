@@ -8,6 +8,7 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {Calendar, ChevronDown} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -32,6 +33,7 @@ const DatePriorityD = () => {
 
   const [hasInitialized, setHasInitialized] = useState(false);
   const [availablePriorities, setAvailablePriorities] = useState<number[]>([]);
+  const [loadingPriority, setLoadingPriority] = useState(false);
 
   useEffect(() => {
     if (!hasInitialized) {
@@ -55,47 +57,56 @@ const DatePriorityD = () => {
   };
 
   const fetchNextPriority = async (date: string) => {
+    // tell the UI we’re loading (optional)
+    setLoadingPriority(true);
+
+    let used: number[] = [];
     const isOnline = (await NetInfo.fetch()).isConnected;
 
     if (isOnline) {
+      // AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       try {
-        const response = await fetch(
+        const resp = await fetch(
           `${API_BASE_URL}/api/DepthAverage/used-priorities?tanggal=${date}`,
+          {signal: controller.signal},
         );
-        const used: number[] = await response.json();
+        clearTimeout(timeoutId);
 
-        let nextPriority = 1;
-        const allAvailable: number[] = [];
-        while (allAvailable.length < 10) {
-          if (!used.includes(nextPriority)) {
-            allAvailable.push(nextPriority);
-          }
-          nextPriority++;
+        if (!resp.ok) {
+          throw new Error(`Server returned ${resp.status}`);
         }
-
-        setFormData({prioritas: allAvailable[0]});
-        setAvailablePriorities(allAvailable);
-      } catch (error) {
-        console.error('Failed to fetch used priorities:', error);
+        used = await resp.json();
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.warn('Fetch failed or timed out, falling back to local:', err);
+        const localData = await dbService.getAllData();
+        used = localData.filter(d => d.tanggal === date).map(d => d.prioritas);
       }
     } else {
+      // offline: local only
       const localData = await dbService.getAllData();
-      const used = localData
-        .filter((d: any) => d.tanggal === date)
-        .map((d: any) => d.prioritas);
-
-      const available: number[] = [];
-      let current = 1;
-      while (available.length < 10) {
-        if (!used.includes(current)) {
-          available.push(current);
-        }
-        current++;
-      }
-
-      setFormData({prioritas: available[0]});
-      setAvailablePriorities(available);
+      used = localData.filter(d => d.tanggal === date).map(d => d.prioritas);
     }
+
+    // build up to 10 free priorities
+    const allAvailable: number[] = [];
+    let candidate = 1;
+    while (allAvailable.length < 10) {
+      if (!used.includes(candidate)) {
+        allAvailable.push(candidate);
+      }
+      candidate++;
+    }
+
+    // populate dropdown & default form value
+    setAvailablePriorities(allAvailable);
+    setFormData({prioritas: allAvailable[0]});
+
+    // done loading (optional)
+    setLoadingPriority(false);
   };
 
   const isFormValid = formData.tanggal?.trim() !== '' && formData.prioritas > 0;
@@ -122,9 +133,13 @@ const DatePriorityD = () => {
             <TouchableOpacity
               className="bg-white rounded-full py-3 px-4 flex-row items-center justify-between"
               onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}>
-              <Text className="text-gray-400">
-                {formData.prioritas || 'Masukkan prioritas...'}
-              </Text>
+              {loadingPriority ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Text className="text-gray-400">
+                  {formData.prioritas || 'Masukkan prioritas...'}
+                </Text>
+              )}
               <ChevronDown width={20} height={20} color="#6b7280" />
             </TouchableOpacity>
 

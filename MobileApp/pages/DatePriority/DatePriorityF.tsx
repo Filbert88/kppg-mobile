@@ -8,6 +8,7 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {Calendar, ChevronDown} from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -32,6 +33,7 @@ const DatePriorityF = () => {
 
   const [hasInitialized, setHasInitialized] = useState(false);
   const [availablePriorities, setAvailablePriorities] = useState<number[]>([]);
+  const [loadingPriority, setLoadingPriority] = useState(false);
 
   useEffect(() => {
     if (!hasInitialized) {
@@ -49,57 +51,62 @@ const DatePriorityF = () => {
     if (selectedDate) {
       const formattedDate = selectedDate.toISOString().split('T')[0];
       updateForm({tanggal: formattedDate});
+      console.log("hit")
       fetchNextPriority(formattedDate);
     }
   };
 
-  const fetchNextPriority = async (date: string) => {
-    const isOnline = (await NetInfo.fetch()).isConnected;
+    const fetchNextPriority = async (date: string) => {
+      setLoadingPriority(true);
+      let used: number[] = [];
+      const isOnline = (await NetInfo.fetch()).isConnected;
 
-    if (isOnline) {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/Fragmentation/used-priorities?tanggal=${date}`,
-        );
-        const used: number[] = await response.json();
+      if (isOnline) {
+        // create an AbortController to cancel fetch after timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        let nextPriority = 1;
-        const allAvailable: number[] = [];
-        while (allAvailable.length < 10) {
-          if (!used.includes(nextPriority)) {
-            allAvailable.push(nextPriority);
+        try {
+          const resp = await fetch(
+            `${API_BASE_URL}/api/Fragmentation/used-priorities?tanggal=${date}`,
+            {signal: controller.signal},
+          );
+          clearTimeout(timeoutId);
+
+          if (!resp.ok) {
+            throw new Error(`Server returned ${resp.status}`);
           }
-          nextPriority++;
+          used = await resp.json();
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.warn('Fetch failed or timed out, using local data:', err);
+          const localData = await dbService.getFragmentationData();
+          used = localData
+            .filter((d: any) => d.tanggal === date)
+            .map((d: any) => d.prioritas);
         }
-
-        updateForm({prioritas: allAvailable[0]});
-        setAvailablePriorities(allAvailable);
-      } catch (error) {
-        console.error('Failed to fetch used priorities:', error);
+      } else {
+        // offline: local only
+        const localData = await dbService.getFragmentationData();
+        used = localData
+          .filter((d: any) => d.tanggal === date)
+          .map((d: any) => d.prioritas);
       }
-    } else {
-      const localData = await dbService.getFragmentationData();
-      const used = localData
-        .filter((d: any) => d.tanggal === date)
-        .map((d: any) => d.prioritas);
 
-      const available: number[] = [];
-      let current = 1;
-      while (available.length < 10) {
-        if (!used.includes(current)) {
-          available.push(current);
+      // build up to 10 free priorities
+      const allAvailable: number[] = [];
+      let candidate = 1;
+      while (allAvailable.length < 10) {
+        if (!used.includes(candidate)) {
+          allAvailable.push(candidate);
         }
-        current++;
-      }
-      let nextPriority = 1;
-      while (used.includes(nextPriority)) {
-        nextPriority++;
+        candidate++;
       }
 
-      updateForm({prioritas: available[0]});
-      setAvailablePriorities(available);
-    }
-  };
+      updateForm({prioritas: allAvailable[0]});
+      setAvailablePriorities(allAvailable);
+      setLoadingPriority(false);
+    };
 
   const isFormValid = formData.tanggal?.trim() !== '' && formData.prioritas > 0;
 
@@ -125,9 +132,13 @@ const DatePriorityF = () => {
             <TouchableOpacity
               className="bg-white rounded-full py-3 px-4 flex-row items-center justify-between"
               onPress={() => setShowPriorityDropdown(!showPriorityDropdown)}>
-              <Text className="text-gray-400">
-                {formData.prioritas || 'Masukkan prioritas...'}
-              </Text>
+              {loadingPriority ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Text className="text-gray-400">
+                  {formData.prioritas || 'Masukkan prioritas...'}
+                </Text>
+              )}
               <ChevronDown width={20} height={20} color="#6b7280" />
             </TouchableOpacity>
 

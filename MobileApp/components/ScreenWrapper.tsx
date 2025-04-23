@@ -1,4 +1,4 @@
-import React, { ComponentType } from 'react';
+import React, { ComponentType, useEffect } from 'react';
 import MainLayout from '../MainLayout';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -15,6 +15,17 @@ const ScreenWrapper = <T extends keyof RootStackParamList>({
   ...props
 }: ScreenWrapperProps<T>) => {
    const onBackPress = customBackAction || (() => navigation.goBack());
+
+   
+  useEffect(() => {
+    if (!customBackAction) return;
+
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      e.preventDefault();
+      customBackAction();
+    });
+    return unsubscribe;
+  }, [navigation, customBackAction]);
   return (
     <MainLayout navigation={navigation} onBackPress={onBackPress}>
       <Component navigation={navigation} {...props} />

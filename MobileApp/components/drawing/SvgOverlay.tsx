@@ -71,10 +71,33 @@ function hitTestShape(
   py: number,
   s: Shape,
 ): 'border' | 'inside' | 'outside' {
-  // bounding box check
-  const inBox =
-    px >= s.x && px <= s.x + s.width && py >= s.y && py <= s.y + s.height;
-  if (!inBox) return 'outside';
+
+
+    const outerThreshold = Math.max(s.strokeWidth * 1.5, 20);
+
+    // actual box
+    const xMin = s.x;
+    const xMax = s.x + s.width;
+    const yMin = s.y;
+    const yMax = s.y + s.height;
+
+    // expanded box
+    const exMin = xMin - outerThreshold;
+    const exMax = xMax + outerThreshold;
+    const eyMin = yMin - outerThreshold;
+    const eyMax = yMax + outerThreshold;
+
+    // if you're beyond the expanded box => definitely outside
+    if (px < exMin || px > exMax || py < eyMin || py > eyMax) {
+      console.log("outside")
+      return 'outside';
+    }
+
+    // if you're within the expanded but *outside* the real box => still border
+    if (px < xMin || px > xMax || py < yMin || py > yMax) {
+      return 'border';
+    }
+
 
   // if near edges => "border"
   const threshold = s.strokeWidth * 1.5;
@@ -127,7 +150,7 @@ function distance(p1: Point, p2: Point) {
   return Math.hypot(p1.x - p2.x, p1.y - p2.y);
 }
 /** check if within threshold=10 px */
-function isNear(p1: Point, p2: Point, threshold = 10) {
+function isNear(p1: Point, p2: Point, threshold = 20) {
   return distance(p1, p2) < threshold;
 }
 
@@ -277,27 +300,52 @@ export default function SvgOverlay({
           // ---------- 5) SELECTION (activeTool===null) ----------
           if (activeTool === null) {
             // A) check shape
-            const shapeSel = shapes.find(s => {
-              return isPointInShape(locationX, locationY, s);
-            });
+            const shapeSel = shapes.find(
+              s => hitTestShape(locationX, locationY, s) !== 'outside',
+            );
             if (shapeSel) {
-              const corners = shapeCorners(shapeSel);
-              let foundCorner: CornerKey | null = null;
-              for (const key in corners) {
-                if (isNear(p, corners[key as keyof typeof corners], 10)) {
-                  foundCorner = key as CornerKey;
-                  break;
-                }
-              }
+              const hitResult = hitTestShape(locationX, locationY, shapeSel);
+              console.log("hit result ", hitResult)
               setSelectedElement({type: 'shape', id: shapeSel.id});
               setInitialTouch(p);
               setInitialShape(shapeSel);
-              if (foundCorner) {
+
+              if (hitResult === 'border') {
                 setDragMode('resize');
+                setResizeCorner(null);
+                const corners = shapeCorners(shapeSel);
+                let foundCorner: CornerKey | null = null;
+                for (const key in corners) {
+                  if (isNear(p, corners[key as CornerKey])) {
+                    console.log('near');
+                    foundCorner = key as CornerKey;
+                    break;
+                  }
+                  console.log('no near');
+                }
+
                 setResizeCorner(foundCorner);
               } else {
-                setDragMode('move');
-                setResizeCorner(null);
+                // check for corner hit
+                const corners = shapeCorners(shapeSel);
+                let foundCorner: CornerKey | null = null;
+                for (const key in corners) {
+                  if (isNear(p, corners[key as CornerKey])) {
+                    console.log("near")
+                    foundCorner = key as CornerKey;
+                    break;
+                  }
+                  console.log("no near")
+                }
+                if (foundCorner) {
+                  console.log("resize")
+                  setDragMode('resize');
+                  setResizeCorner(foundCorner);
+                } else {
+                  console.log("drag")
+                  setDragMode('move');
+                  setResizeCorner(null);
+                }
               }
               return;
             }
@@ -627,25 +675,25 @@ export default function SvgOverlay({
                   <Circle
                     cx={corners.topLeft.x}
                     cy={corners.topLeft.y}
-                    r={5}
+                    r={10}
                     fill="blue"
                   />
                   <Circle
                     cx={corners.topRight.x}
                     cy={corners.topRight.y}
-                    r={5}
+                    r={10}
                     fill="blue"
                   />
                   <Circle
                     cx={corners.bottomLeft.x}
                     cy={corners.bottomLeft.y}
-                    r={5}
+                    r={10}
                     fill="blue"
                   />
                   <Circle
                     cx={corners.bottomRight.x}
                     cy={corners.bottomRight.y}
-                    r={5}
+                    r={10}
                     fill="blue"
                   />
                 </React.Fragment>
