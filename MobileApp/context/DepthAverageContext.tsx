@@ -154,8 +154,11 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
                         const text = await retry.text();
                         console.log(text)
                         if (retry.ok) {
+                          if (data.localId != null) {
+                            await dbService.deleteData(data.localId, 'DepthAverage');
+                          }
                           setFormData({prioritas: nextPriority});
-                          resolve(true); // ✅ Success
+                          resolve(true); 
                         } else {
                           console.error('Retry failed');
                           resolve(false);

@@ -22,6 +22,7 @@ export interface AnalysisResult {
 
 export interface FragmentationData {
   id?: number;
+  localId?: number;
   imageUris: string[];
   skala: string;
   pilihan: string;
@@ -58,6 +59,7 @@ interface FormContextProps {
 export const FormContext = createContext<FormContextProps>({
   formData: {
     id: NaN,
+    localId: NaN,
     imageUris: [],
     skala: '',
     pilihan: '',
@@ -86,6 +88,7 @@ export const FormContext = createContext<FormContextProps>({
 export const FormProvider = ({children}: {children: ReactNode}) => {
   const [formData, setFormData] = useState<FragmentationData>({
     id: NaN,
+    localId: NaN,
     imageUris: [],
     skala: '',
     pilihan: '',
@@ -117,6 +120,7 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
   const resetForm = () => {
     setFormData({
       id: NaN,
+      localId: NaN,
       imageUris: [],
       skala: '',
       pilihan: '',
@@ -139,109 +143,29 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
     });
   };
 
-  const dummyPayload: Partial<FragmentationData> = {
-    skala: 'Skala Dummyaaa',
-    pilihan: 'Pilihan dazxczxcxzcdasdsaDummaaay',
-    ukuran: 'Ukuran Dummy',
-    prioritas: 1,
-    lokasi: 'Lokasi Dummy',
-    tanggal: new Date().toISOString(),
-    litologi: 'Litologi Dusddsdsdmmy',
-    ammoniumNitrate: '123',
-    volumeBlasting: '456',
-    powderFactor: '7.89',
-    diggingTime: '45 minutes',
-    videoUri: 'http://example.com/video.mp4',
-
-    uploadedImageUrls: [
-      `${API_BASE_URL}/Imagdsdasdes/image1.jpg`,
-      `${API_BASE_URL}/Images/image2.jpg`,
-    ],
-
-    fragmentedResults: [
-      {
-        imageData: `${API_BASE_URL}/Images/fragment1.jpg`,
-        conversionFactor: 0.123,
-      },
-      {
-        imageData: `${API_BASE_URL}/Images/fragment2.jpg`,
-        conversionFactor: 0.456,
-      },
-    ],
-
-    finalAnalysisResults: [
-      {
-        plot_image_base64: `${API_BASE_URL}/Images/plot1.png`,
-        kuzram: {
-          P10: 5,
-          P20: 10,
-          P80: 60,
-          P90: 75,
-          X50: 45,
-          percentage_above_60: 30.0,
-          percentage_below_60: 70.0,
-        },
-        threshold_percentages: {
-          '10': 8,
-          '20': 15,
-          '30': 20,
-          '40': 30,
-          '50': 10,
-          '60': 17,
-        },
-      },
-      {
-        plot_image_base64: `${API_BASE_URL}/Images/paat2.png`,
-        kuzram: {
-          P10: 3,
-          P20: 6,
-          P80: 70,
-          P90: 85,
-          X50: 55,
-          percentage_above_60: 25.0,
-          percentage_below_60: 75.0,
-        },
-        threshold_percentages: {
-          '10': 7,
-          '20': 12,
-          '30': 22,
-          '40': 33,
-          '50': 18,
-          '60': 8,
-        },
-      },
-    ],
-  };
-
-  // useEffect(() => {
-  //   saveToDatabase(dummyPayload);
-  // }, []);
-
   const saveToDatabase = async (
     overrideData?: Partial<FragmentationData>,
   ): Promise<boolean> => {
-    // 1) merge overrideData if any
-    let payload = overrideData ? {...formData, ...overrideData} : {...formData};
+    const payload = overrideData
+      ? {...formData, ...overrideData}
+      : {...formData};
 
     try {
       const net = await NetInfo.fetch();
 
       if (net.isConnected) {
-        // 2) make sure prioritas is a real integer
+        // 1) Ensure we have a priority
         if (!payload.prioritas || isNaN(payload.prioritas)) {
           const dateParam = encodeURIComponent(payload.tanggal);
-          console.log(dateParam);
           const prioRes = await fetch(
             `${API_BASE_URL}/api/Fragmentation/next-priority?tanggal=${dateParam}`,
           );
-          if (!prioRes.ok) {
+          if (!prioRes.ok)
             throw new Error(`Couldn't get next‐priority: ${prioRes.status}`);
-          }
-          const nextPrio = await prioRes.json();
-          payload.prioritas = nextPrio;
+          payload.prioritas = await prioRes.json();
         }
 
-        // 3) build the exact DTO C# Create wants
+        // 2) Build the DTO exactly as the server expects
         const dto = {
           skala: payload.skala,
           pilihan: payload.pilihan,
@@ -263,71 +187,98 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
           analysisJsonList: payload.finalAnalysisResults,
         };
 
-        // 4) POST to ASP.NET
-        const res = await fetch(`${API_BASE_URL}/api/Fragmentation`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(dto),
-        });
+        let res: Response;
 
-        // 5) conflict handling
-        if (res.status === 409) {
-          const {existingPriorities} = await res.json();
-          const sorted = existingPriorities.sort(
-            (a: number, b: number) => a - b,
-          );
-          let newPrio = 1;
-          for (let i = 0; i < sorted.length; i++) {
-            if (sorted[i] === newPrio) newPrio++;
-            else if (sorted[i] > newPrio) break;
-          }
-          return new Promise(resolve => {
-            Alert.alert(
-              'Priority Conflict',
-              `Priority ${dto.prioritas} on ${dto.tanggal} is taken. I will retry as ${newPrio}.`,
-              [
-                {
-                  text: 'OK',
-                  onPress: async () => {
-                    dto.prioritas = newPrio;
-                    const retry = await fetch(
-                      `${API_BASE_URL}/api/Fragmentation`,
-                      {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(dto),
-                      },
-                    );
-                    if (retry.ok) {
-                      const created = await retry.json();
-                      updateForm({id: created.id, prioritas: newPrio});
-                      resolve(true);
-                    } else {
-                      console.error('Retry failed:', retry.status);
-                      resolve(false);
-                    }
-                  },
-                },
-              ],
-            );
+        if (payload.id != null && !isNaN(payload.id)) {
+          // —— UPDATE existing record ——
+          res = await fetch(`${API_BASE_URL}/api/Fragmentation/${payload.id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dto),
           });
-        }
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Update failed (${res.status}): ${err}`);
+          }
+          return true;
+        } else {
+          // —— CREATE new record ——
+          res = await fetch(`${API_BASE_URL}/api/Fragmentation`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dto),
+          });
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Server responded ${res.status}: ${text}`);
-        }
+          // conflict handling identical to DepthAverage
+          if (res.status === 409) {
+            const {existingPriorities} = await res.json();
+            const sorted = existingPriorities.sort(
+              (a: number, b: number) => a - b,
+            );
+            let newPrio = 1;
+            for (const p of sorted) {
+              if (p === newPrio) newPrio++;
+              else if (p > newPrio) break;
+            }
 
-        // 6) on success store the returned id
-        const created = await res.json();
-        updateForm({id: created.id, prioritas: dto.prioritas});
+            return new Promise(resolve => {
+              Alert.alert(
+                'Priority Conflict',
+                `Priority ${dto.prioritas} is taken on ${dto.tanggal}. Retrying as ${newPrio}.`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: async () => {
+                      dto.prioritas = newPrio;
+                      const retry = await fetch(
+                        `${API_BASE_URL}/api/Fragmentation`,
+                        {
+                          method: 'POST',
+                          headers: {'Content-Type': 'application/json'},
+                          body: JSON.stringify(dto),
+                        },
+                      );
+                      if (retry.ok) {
+                        const created = await retry.json();
+                        updateForm({id: created.id, prioritas: newPrio});
+                        // delete local placeholder now that it's on server
+                        if (payload.localId != null) {
+                          await dbService.deleteData(
+                            payload.localId,
+                            'FragmentationData',
+                          );
+                        }
+                        resolve(true);
+                      } else {
+                        console.error('Retry failed', retry.status);
+                        resolve(false);
+                      }
+                    },
+                  },
+                ],
+              );
+            });
+          }
+
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Create failed (${res.status}): ${text}`);
+          }
+
+          // on success, grab the new server id & clean up local
+          const created = await res.json();
+          updateForm({id: created.id, prioritas: dto.prioritas});
+          if (payload.localId != null) {
+            await dbService.deleteData(payload.localId, 'FragmentationData');
+          }
+          return true;
+        }
       } else {
-        // 7) offline: save whole formData into SQLite
+        // —— OFFLINE: upsert to SQLite ——
         await dbService.init();
         await dbService.saveOrUpdateFragmentationData(payload as any);
+        return true;
       }
-
-      return true;
     } catch (err) {
       console.error('Save failed:', err);
       return false;

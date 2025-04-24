@@ -256,6 +256,8 @@ const FragmentationHistoryIncomplete = () => {
       // You may add an "id" property to your FragmentationData type in the FormContext.
       // For now, we spread all fields from the record.
       // Note: Adjust fields if necessary.
+      id: undefined, // no server ID yet
+      localId: record.id,
       rawImageUris: record.images ? record.images.map(img => img.imageUri) : [],
       skala: record.skala,
       pilihan: record.pilihan,
@@ -267,8 +269,7 @@ const FragmentationHistoryIncomplete = () => {
       volumeBlasting: record.volumeBlasting,
       powderFactor: record.powderFactor,
       // Optionally store the record id if updating later:
-      id: record.id,
-      isEdit: true, // Mark as editing
+      isEdit: false, // Mark as editing
       origin: 'FragmentationHistoryIncomplete',
     });
     // Navigate to FragmentationForm4 (or whichever form screen is appropriate for editing)
