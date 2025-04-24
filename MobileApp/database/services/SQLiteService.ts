@@ -330,15 +330,15 @@ export default class SQLiteService {
     }
   }
 
-  async deleteData(id: number) {
+  async deleteData(id: number, model: 'DepthAverage' | 'FragmentationData') {
     if (!this.db) return;
     try {
-      await this.db.executeSql(`DELETE FROM DepthAverage WHERE id = ?`, [id]);
-      console.log('Data deleted');
+      await this.db.executeSql(`DELETE FROM ${model} WHERE id = ?`, [id]);
+      console.log(`Data with id ${id} deleted from ${model}`);
     } catch (error) {
-      console.error('Failed to delete data:', error);
+      console.error(`Failed to delete data from ${model}:`, error);
     }
-  }
+  }  
 
   async clearAllData() {
     if (!this.db) return;

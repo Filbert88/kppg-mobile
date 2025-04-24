@@ -1,4 +1,4 @@
-// FragmentationResult.tsx
+// src/screens/FragmentationResult.tsx
 import React, {useContext} from 'react';
 import {
   View,
@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../types/navigation';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../../types/navigation';
 import {FormContext} from '../../context/FragmentationContext';
 import {API_IP} from '@env';
 import {useToast} from '../../context/ToastContext';
@@ -28,25 +28,23 @@ export default function FragmentationResult() {
   const {showToast} = useToast();
   const screenWidth = Dimensions.get('window').width;
 
-  const result = formData?.finalAnalysisResults?.[0];
-
+  const result = formData.finalAnalysisResults?.[0];
   const imageUri =
-    result?.plot_image_base64?.replace?.('localhost', API_IP) ?? null;
+    result?.plot_image_base64.replace('localhost', API_IP) ?? null;
 
-  const summaryArray =
-    result?.threshold_percentages
-      ? Object.entries(result.threshold_percentages)
-          .map(([size, pct]) => ({
-            size: parseFloat(size),
-            pct,
-          }))
-          .sort((a, b) => b.size - a.size)
-      : [];
+  const summaryArray = result?.threshold_percentages
+    ? Object.entries(result.threshold_percentages)
+        .map(([size, pct]) => ({size: parseFloat(size), pct}))
+        .sort((a, b) => b.size - a.size)
+    : [];
 
   const onSave = async () => {
-    const ok = await saveToDatabase?.();
+    const ok = await saveToDatabase();
     if (ok) {
-      showToast('Save Fragmentation success', 'success');
+      showToast(
+        formData.id != null ? 'Fragmentation updated' : 'Fragmentation saved',
+        'success',
+      );
       navigation.navigate('Homepage');
     } else {
       showToast('Failed saving fragmentation', 'error');
@@ -99,7 +97,6 @@ export default function FragmentationResult() {
         )}
       </ScrollView>
 
-      {/* Bottom center: Tambah Digging Time */}
       <View style={styles.bottomCenter}>
         <TouchableOpacity
           style={styles.centerButton}
@@ -109,13 +106,9 @@ export default function FragmentationResult() {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom right: Simpan */}
       <View style={styles.bottomRight}>
         <TouchableOpacity
-          style={[
-            styles.saveButton,
-            !isValid && {backgroundColor: '#9ca3af'},
-          ]}
+          style={[styles.saveButton, !isValid && {backgroundColor: '#9ca3af'}]}
           onPress={onSave}
           disabled={!isValid}>
           <Text style={styles.saveText}>Simpan</Text>

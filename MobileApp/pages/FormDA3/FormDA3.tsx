@@ -66,11 +66,12 @@ const FormDA3 = () => {
     console.log("hit")
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/DepthAverage/${formData.id}`,
+        `${API_BASE_URL}/api/DepthAverage/${formData.id}/`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            id: formData.id,  
             lokasi: formData.lokasi,
             tanggal: formData.tanggal,
             average: formData.average,
@@ -81,6 +82,7 @@ const FormDA3 = () => {
           }),
         }
       );
+      console.log(response)
       if (!response.ok) throw new Error('Update failed');
       navigation.navigate('DAHistory');
     } catch (error) {

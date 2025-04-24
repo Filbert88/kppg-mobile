@@ -91,10 +91,10 @@ export default function DiggingTimePage() {
     setIsStopwatchOpen(false);
   }
 
-    const resetStopwatch = () => {
-      setIsRunning(false);
-      setElapsedTime(0);
-    };
+  const resetStopwatch = () => {
+    setIsRunning(false);
+    setElapsedTime(0);
+  };
 
   // Save manual time
   function saveManualTime() {
@@ -120,49 +120,42 @@ export default function DiggingTimePage() {
   }
 
   // Final save
-  async function handleSave() {
+  const handleSave = async () => {
     if (!savedTime) {
       showToast('No time recorded', 'error');
       return;
     }
-    try {
-      let uploadedVideoUrl = null;
-      if (videoFile?.uri && !videoFile.uploadedUrl) {
-        const fd = new FormData();
-        fd.append('file', {
-          uri: videoFile.uri.startsWith('content://')
-            ? 'file://' + videoFile.uri
-            : videoFile.uri,
-          type: videoFile.type || 'video/mp4',
-          name: videoFile.fileName || 'video.mp4',
-        });
-        const res = await fetch(`${API_BASE_URL}/api/upload/upload-video`, {
-          method: 'POST',
-          headers: {'Content-Type': 'multipart/form-data'},
-          body: fd,
-        });
-        const json = await res.json();
-        uploadedVideoUrl = json.url;
-      } else if (videoFile?.uploadedUrl) {
-        uploadedVideoUrl = videoFile.uploadedUrl;
-      }
-      if (uploadedVideoUrl && !videoFile.uploadedUrl) {
-        setVideoFile({...videoFile, uploadedUrl: uploadedVideoUrl});
-      }
-      const success = await saveToDatabase({
-        diggingTime: savedTime,
-        videoUri: uploadedVideoUrl,
+    let uploadedVideoUrl = videoFile?.uploadedUrl ?? null;
+    if (videoFile?.uri && !videoFile.uploadedUrl) {
+      const fd = new FormData();
+      fd.append('file', {
+        uri: videoFile.uri.startsWith('content://')
+          ? 'file://' + videoFile.uri
+          : videoFile.uri,
+        type: videoFile.type || 'video/mp4',
+        name: videoFile.fileName || 'video.mp4',
+      } as any);
+      const res = await fetch(`${API_BASE_URL}/api/upload/upload-video`, {
+        method: 'POST',
+        headers: {'Content-Type': 'multipart/form-data'},
+        body: fd,
       });
-      if (success) {
-        showToast(`Saved digging time: ${savedTime}`, 'success');
-        navigation.navigate('FragmentationHistoryDone');
-      } else {
-        showToast('Failed to save data', 'error');
-      }
-    } catch {
+      const json = await res.json();
+      uploadedVideoUrl = json.url;
+      setVideoFile({...videoFile, uploadedUrl: uploadedVideoUrl});
+    }
+
+    const ok = await saveToDatabase({
+      diggingTime: savedTime,
+      videoUri: uploadedVideoUrl,
+    });
+    if (ok) {
+      showToast(`Saved digging time: ${savedTime}`, 'success');
+      navigation.navigate('FragmentationHistoryDone');
+    } else {
       showToast('Failed to save data', 'error');
     }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container}>

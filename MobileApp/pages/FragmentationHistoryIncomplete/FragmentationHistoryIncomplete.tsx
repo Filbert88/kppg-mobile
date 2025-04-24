@@ -1,4 +1,3 @@
-
 import React, {useState, useEffect, useContext} from 'react';
 import {
   SafeAreaView,
@@ -28,7 +27,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types/navigation';
 import {dbService} from '../../database/services/dbService'; // Adjust the path as needed
 import {FormContext} from '../../context/FragmentationContext';
-import { useToast } from '../../context/ToastContext';
+import {useToast} from '../../context/ToastContext';
 
 // Define your FragmentationData type based on what is stored in your DB.
 // For this example, we assume that your DB returns the following fields:
@@ -70,156 +69,6 @@ type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'FragmentationHistory'
 >;
-
-// --------------------
-// Done Fragmentation Card
-// --------------------
-const DoneFragmentationCard = ({data}: {data: FragmentationData}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  // If no summaryData is provided, compute summary from the measurement field in the first image result.
-  let summaryRows: {size: string; percent: string}[] = [];
-  if (!data.summaryData && data.images && data.images.length > 0) {
-    const firstImageResult = data.images[0].resultData;
-    if (firstImageResult && firstImageResult.measurement) {
-      try {
-        // Parse measurement JSON and convert to array of rows.
-        const measurementObj = JSON.parse(firstImageResult.measurement);
-        // Here each key-value becomes a row.
-        summaryRows = Object.entries(measurementObj).map(([key, value]) => ({
-          size: key, // You could rename this if needed.
-          percent: value.toString(),
-        }));
-      } catch (error) {
-        console.error('Error parsing measurement JSON:', error);
-      }
-    }
-  } else if (data.summaryData) {
-    summaryRows = data.summaryData;
-  }
-  return (
-    <View style={styles.doneCard}>
-      <Text style={styles.cardTitle}>
-        {data.title || `Fragmentation Record #${data.id}`}
-      </Text>
-
-      <View style={styles.cardContent}>
-        {/* Left Column - Image and Graph */}
-        <View style={styles.cardLeftColumn}>
-          {/* Rock Image */}
-          <View style={styles.imageContainer}>
-            {data.images && data.images.length > 0 ? (
-              <Image
-                source={{uri: data.images[0].imageUri}}
-                style={styles.rockImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.noImageContainer}>
-                <Camera width={24} height={24} color="#9ca3af" />
-                <Text style={styles.noImageText}>No image</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Graph Image */}
-          <View style={styles.graphContainer}>
-            {/* For this example, we'll display the rock image as a placeholder.
-                Replace with your actual graph image URI if available. */}
-            {data.images && data.images.length > 0 ? (
-              <Image
-                source={{uri: data.images[0].imageUri}}
-                style={styles.graphImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.noGraphContainer}>
-                <Text style={styles.noGraphText}>No graph data</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Right Column - Details */}
-        <View style={styles.cardRightColumn}>
-          <View style={styles.detailGroup}>
-            <View style={styles.detailRow}>
-              <MapPin
-                width={16}
-                height={16}
-                color="#6b7280"
-                style={styles.icon}
-              />
-              <Text style={styles.detailText}>
-                Lokasi: <Text style={styles.detailValue}>{data.lokasi}</Text>
-              </Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Calendar
-                width={16}
-                height={16}
-                color="#6b7280"
-                style={styles.icon}
-              />
-              <Text style={styles.detailText}>
-                Tanggal: <Text style={styles.detailValue}>{data.tanggal}</Text>
-              </Text>
-            </View>
-            {data.prioritas !== undefined && (
-              <View style={styles.detailRow}>
-                <Flag
-                  width={16}
-                  height={16}
-                  color="#6b7280"
-                  style={styles.icon}
-                />
-                <Text style={styles.detailText}>
-                  Prioritas:{' '}
-                  <Text style={styles.detailValue}>{data.prioritas}</Text>
-                </Text>
-              </View>
-            )}
-            {data.skala && (
-              <View style={styles.detailRow}>
-                <Grid
-                  width={16}
-                  height={16}
-                  color="#6b7280"
-                  style={styles.icon}
-                />
-                <Text style={styles.detailText}>
-                  Skala: <Text style={styles.detailValue}>{data.skala}</Text>
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={styles.summaryToggleButton}
-            onPress={() => setIsExpanded(!isExpanded)}>
-            <Text style={styles.summaryToggleText}>Lihat Ringkasan</Text>
-            {isExpanded ? (
-              <ChevronUp width={20} height={20} color="#4b5563" />
-            ) : (
-              <ChevronDown width={20} height={20} color="#4b5563" />
-            )}
-          </TouchableOpacity>
-
-          {isExpanded && data.summaryData && (
-            <View style={styles.summarySection}>
-              <Text style={styles.summaryTitle}>Ringkasan</Text>
-              {data.summaryData.map((item, index) => (
-                <View key={index} style={styles.summaryRow}>
-                  <Text style={styles.summarySize}>{item.size} μm</Text>
-                  <Text style={styles.summaryPercent}>{item.percent}%</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-};
 
 // --------------------
 // Undone Fragmentation Card
@@ -345,7 +194,7 @@ const FragmentationHistoryIncomplete = () => {
   >([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<'all' | 'done' | 'undone'>('all');
-  const {showToast} = useToast()
+  const {showToast} = useToast();
   // Fetch fragmentation data from SQLite on mount.
   useEffect(() => {
     const fetchData = async () => {
@@ -353,7 +202,7 @@ const FragmentationHistoryIncomplete = () => {
         // Ensure the database is initialized.
         await dbService.init();
         const records = await dbService.getFragmentationData();
-        console.log("record: ",records)
+        console.log('record: ', records);
         // Compute done/undone status:
         // Record is "done" if each image has non-null resultData.
         const updatedRecords = records.map((record: any) => {
@@ -369,7 +218,7 @@ const FragmentationHistoryIncomplete = () => {
         });
         setFragmentationData(updatedRecords);
       } catch (error) {
-        showToast("Failed to Load Fragmentation Data", "error")
+        showToast('Failed to Load Fragmentation Data', 'error');
         console.error('Error fetching fragmentation data:', error);
       } finally {
         setLoading(false);
@@ -379,7 +228,7 @@ const FragmentationHistoryIncomplete = () => {
     fetchData();
   }, []);
 
-  console.log("data: ", fragmentationData)
+  console.log('data: ', fragmentationData);
 
   // Filter records by status
   const filteredData = fragmentationData.filter(item => {
@@ -391,7 +240,7 @@ const FragmentationHistoryIncomplete = () => {
   const handleDelete = async (id: number) => {
     try {
       // Call SQLite service delete function (adjust as needed).
-      await dbService.deleteData(id);
+      await dbService.deleteData(id, 'FragmentationData');
       setFragmentationData(prev => prev.filter(item => item.id !== id));
     } catch (error) {
       console.error('Error deleting record:', error);
@@ -407,6 +256,8 @@ const FragmentationHistoryIncomplete = () => {
       // You may add an "id" property to your FragmentationData type in the FormContext.
       // For now, we spread all fields from the record.
       // Note: Adjust fields if necessary.
+      id: undefined, // no server ID yet
+      localId: record.id,
       rawImageUris: record.images ? record.images.map(img => img.imageUri) : [],
       skala: record.skala,
       pilihan: record.pilihan,
@@ -418,8 +269,7 @@ const FragmentationHistoryIncomplete = () => {
       volumeBlasting: record.volumeBlasting,
       powderFactor: record.powderFactor,
       // Optionally store the record id if updating later:
-      id: record.id,
-      isEdit: true, // Mark as editing
+      isEdit: false, // Mark as editing
       origin: 'FragmentationHistoryIncomplete',
     });
     // Navigate to FragmentationForm4 (or whichever form screen is appropriate for editing)
@@ -442,18 +292,14 @@ const FragmentationHistoryIncomplete = () => {
             <Text style={styles.emptyText}>Tidak ada data</Text>
           </View>
         ) : (
-          filteredData.map(data =>
-            data.status === 'done' ? (
-              <DoneFragmentationCard key={data.id} data={data} />
-            ) : (
-              <UndoneFragmentationCard
-                key={data.id}
-                data={data}
-                onDelete={handleDelete}
-                onContinue={handleContinue}
-              />
-            ),
-          )
+          filteredData.map(data => (
+            <UndoneFragmentationCard
+              key={data.id}
+              data={data}
+              onDelete={handleDelete}
+              onContinue={handleContinue}
+            />
+          ))
         )}
       </ScrollView>
 
