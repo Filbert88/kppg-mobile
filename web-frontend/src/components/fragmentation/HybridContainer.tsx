@@ -1,5 +1,5 @@
 "use client";
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,
@@ -71,7 +71,7 @@ const HybridContainer = forwardRef<HybridContainerRef, Props>(
     // Function untuk benar-benar load state ke canvas+overlay
     const doSetStateNow = useCallback((state: HybridContainerState) => {
       if (!pixelCanvasRef.current) return;
-      console.log("load ", state)
+      console.log("load ", state);
       pixelCanvasRef.current.loadDataURL(state.canvasData || "");
       setShapes(state.shapes || []);
       setLines(state.lines || []);
@@ -90,11 +90,11 @@ const HybridContainer = forwardRef<HybridContainerRef, Props>(
         console.log("masuk set editing state Hybrid Contianer");
         if (!pixelCanvasReady) {
           // jika PixelCanvas belum siap, simpan state dulu
-          console.log("CAnvas belum ready set di pending")
+          console.log("CAnvas belum ready set di pending");
           pendingStateRef.current = state;
         } else {
           // jika sudah siap, langsung set
-          console.log("Apply State sekarang")
+          console.log("Apply State sekarang");
           doSetStateNow(state);
         }
       },
@@ -105,7 +105,7 @@ const HybridContainer = forwardRef<HybridContainerRef, Props>(
       setPixelCanvasReady(true);
       // Jika ada pending state, load sekarang
       if (pendingStateRef.current) {
-        console.log("apply pending state ")
+        console.log("apply pending state ");
         doSetStateNow(pendingStateRef.current);
         pendingStateRef.current = null;
       }

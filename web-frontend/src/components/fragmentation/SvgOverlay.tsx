@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { ShapeType, Tool } from "./canvas";
+import { Tool, ShapeType } from "./image-uploaded-frag";
 
 export interface Shape {
   id: string;
