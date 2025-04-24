@@ -3,7 +3,7 @@ import React, {createContext, useState, FC, ReactNode, useEffect} from 'react';
 import {dbService} from '../database/services/dbService';
 import {Alert} from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import {API_BASE_URL, API_IP} from '@env';
+import {API_BASE_URL} from '@env';
 export interface KuzramMetrics {
   P10: number;
   P20: number;
@@ -182,11 +182,12 @@ export const FormProvider = ({children}: {children: ReactNode}) => {
           uploadedImageUrls: payload.uploadedImageUrls,
           fragmentedImageUrls: payload.fragmentedResults.map(f => f.imageData),
           plotImageUrls: payload.finalAnalysisResults.map(a =>
-            a.plot_image_base64.replace('localhost', API_IP),
+            a.plot_image_base64.replace('localhost:5180', API_BASE_URL.replace(/^https?:\/\//, '')),
           ),
           analysisJsonList: payload.finalAnalysisResults,
         };
 
+        console.log("dto: ", dto);
         let res: Response;
 
         if (payload.id != null && !isNaN(payload.id)) {
