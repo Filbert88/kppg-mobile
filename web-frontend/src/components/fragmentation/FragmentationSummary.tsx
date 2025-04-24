@@ -12,7 +12,15 @@ export default function FragmentationSummaryPage({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`${apiUrl}/Fragmentation`);
+        const res = await fetch(`${apiUrl}/Fragmentation`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+        });
+        
         const rawData = await res.json();
 
         const formattedData = rawData.map((item: any) => {

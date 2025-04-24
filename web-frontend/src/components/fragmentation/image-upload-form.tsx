@@ -466,6 +466,10 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
               `${apiUrl}/Upload/upload`,
               {
                 method: "POST",
+                headers: {
+                  'Accept': 'application/json',
+                  'ngrok-skip-browser-warning': 'true'
+                },
                 body: formDataUpload,
               }
             );
@@ -510,6 +514,10 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
               `${apiUrl}/Fragmentation/multi-fragment`,
               {
                 method: "POST",
+                headers: {
+                  'Accept': 'application/json',
+                  'ngrok-skip-browser-warning': 'true'
+                },
                 body: formDataFragment,
               }
             );

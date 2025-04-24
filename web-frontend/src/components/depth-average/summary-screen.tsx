@@ -31,7 +31,12 @@ export default function SummaryScreen({ onEdit }: SummaryScreenProps) {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const res = await fetch(`${apiUrl}/DepthAverage`);
+        const res = await fetch(`${apiUrl}/DepthAverage`, {
+          headers: {
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         const json = await res.json();
         const mapped = json.map((item: any): DepthAverageItem => ({
           id: item.id,

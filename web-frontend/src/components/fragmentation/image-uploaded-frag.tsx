@@ -519,6 +519,10 @@ const ImageUploadedFrag = forwardRef<
             `${apiUrl}/Upload/upload`,
             {
               method: "POST",
+              headers: {
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+              },
               body: formDataUpload,
             }
           );
@@ -598,6 +602,10 @@ const ImageUploadedFrag = forwardRef<
           `${apiUrl}/Fragmentation/fragmentation-analysis`,
           {
             method: "POST",
+            headers: {
+              'Accept': 'application/json',
+              'ngrok-skip-browser-warning': 'true'
+            },
             body: analysisFormData,
           }
         );

@@ -67,6 +67,10 @@ export default function ImageUploadScreen({
       fd.append("file", file);
       const uploadRes = await fetch(`${apiUrl}/Upload/upload`, {
         method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
         body: fd,
       });
       if (!uploadRes.ok) throw new Error("Upload failed");
@@ -78,6 +82,10 @@ export default function ImageUploadScreen({
       ocrFd.append("file", file);
       const ocrRes = await fetch(`${apiUrl}/ocr`, {
         method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
         body: ocrFd,
       });
       if (!ocrRes.ok) throw new Error("OCR failed");

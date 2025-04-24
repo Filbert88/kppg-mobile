@@ -107,19 +107,24 @@ export default function DepthAverageForm({
 
     try {
       if (isEdit && formData.id) {
-        const res = await fetch(
-          `${apiUrl}/DepthAverage/${formData.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }
-        );
+        const res = await fetch(`${apiUrl}/DepthAverage/${formData.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify(payload),
+        });
         if (!res.ok) throw new Error("Failed to update");
       } else {
         let res = await fetch(`${apiUrl}/DepthAverage`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
           body: JSON.stringify([payload]),
         });
 
@@ -139,7 +144,11 @@ export default function DepthAverageForm({
 
           res = await fetch(`${apiUrl}/DepthAverage`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "ngrok-skip-browser-warning": "true",
+            },
             body: JSON.stringify([payload]),
           });
 
