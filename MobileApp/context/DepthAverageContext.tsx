@@ -17,6 +17,7 @@ export type DepthAverageData = {
 
 type FormDataType = {
   id: number | null;
+  localId: number | null;
   imageUri: string | null;
   jumlahLubang: string;
   lokasi: string;
@@ -42,6 +43,7 @@ type DepthAverageContextType = {
 
 const defaultFormData: FormDataType = {
   id: NaN,
+  localId: null,
   imageUri: null,
   jumlahLubang: '',
   lokasi: '',
@@ -124,28 +126,33 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
                   {
                     text: 'OK',
                     onPress: async () => {
-                      const updatedFormData = {
-                        ...formData,
-                        prioritas: nextPriority,
-                        kedalaman: JSON.stringify(formData.kedalaman),
-                        synced: 1,
-                      };
+                      console.log("next prio", nextPriority)
+                      const retryBody = [
+                        {
+                          lokasi: data.lokasi,
+                          tanggal: data.tanggal,
+                          prioritas: nextPriority,
+                          jumlahLubang: data.jumlahLubang,
+                          average: data.average,
+                          kedalaman: JSON.stringify(data.kedalaman),
+                          imageUri: data.imageUri,
+                          synced: 1,
+                        },
+                      ];
 
-                      const {id, ...dataWithoutId} = updatedFormData;
-                      const cleanData = isNaN(id as number)
-                        ? dataWithoutId
-                        : updatedFormData;
-
+                      console.log("retry: ", retryBody)
                       try {
                         const retry = await fetch(
                           `${API_BASE_URL}/api/DepthAverage`,
                           {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify([cleanData]),
+                            body: JSON.stringify(retryBody),
                           },
                         );
 
+                        const text = await retry.text();
+                        console.log(text)
                         if (retry.ok) {
                           setFormData({prioritas: nextPriority});
                           resolve(true); // ✅ Success
@@ -165,6 +172,13 @@ export const DepthAverageProvider = ({children}: {children: ReactNode}) => {
           }
 
           throw new Error('Failed to upload to server');
+        }
+
+        if (response.ok) {
+          if (data.localId != null) {
+            await dbService.deleteData(data.localId, 'DepthAverage');
+          }
+          return true;
         }
 
         console.log('Data sent to API');

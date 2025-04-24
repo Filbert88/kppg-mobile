@@ -161,7 +161,7 @@ const DepthAverageUpload = () => {
   
     if (success) {
       Alert.alert('Berhasil', 'Data disimpan secara offline.');
-      navigation.goBack();
+      navigation.navigate('DAHistoryIncomplete');
     } else {
       Alert.alert('Gagal', 'Gagal menyimpan data secara offline.');
     }

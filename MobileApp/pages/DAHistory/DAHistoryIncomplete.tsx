@@ -166,7 +166,8 @@ const DAHistoryIncomplete = () => {
 
     // Seed the form context with selected record
     setFormData({
-      id: item.id,
+      id: null,
+      localId: item.id,
       imageUri: item.image ?? null,
       jumlahLubang: item.jumlahLubang ?? '',
       lokasi: item.location,
@@ -174,7 +175,7 @@ const DAHistoryIncomplete = () => {
       kedalaman: item.kedalaman ?? {},
       average: item.average.replace(' cm', ''), // strip unit
       prioritas: item.prioritas,
-      isEdit: true,
+      isEdit: false,
       origin: 'DAHistoryIncomplete',
     });
 
