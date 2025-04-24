@@ -28,7 +28,12 @@ export default function FragmentationForm3() {
   const handleCancelEdit = () => {
     resetForm();
     if (formData.origin === 'FragmentationHistoryIncomplete') {
-      navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+      navigation.navigate('FragmentationHistoryIncomplete');
+    }else if (formData.origin === 'DepthAverageFragmention1') {
+      navigation.navigate('DepthAverageFragmention1', {
+        priority: formData.prioritas,
+        tanggal: formData.tanggal,
+      });
     } else {
       navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }

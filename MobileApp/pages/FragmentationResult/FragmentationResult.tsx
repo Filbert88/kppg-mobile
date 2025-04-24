@@ -14,7 +14,7 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../types/navigation';
 import {FormContext} from '../../context/FragmentationContext';
-import {API_IP} from '@env';
+import {API_BASE_URL} from '@env';
 import {useToast} from '../../context/ToastContext';
 
 type NavProp = NativeStackNavigationProp<
@@ -30,8 +30,12 @@ export default function FragmentationResult() {
 
   const result = formData.finalAnalysisResults?.[0];
   const imageUri =
-    result?.plot_image_base64.replace('localhost', API_IP) ?? null;
+    result?.plot_image_base64.replace(
+      'localhost:5180',
+      API_BASE_URL.replace(/^https?:\/\//, ''),
+    ) ?? null;
 
+  console.log('imageuri', imageUri);
   const summaryArray = result?.threshold_percentages
     ? Object.entries(result.threshold_percentages)
         .map(([size, pct]) => ({size: parseFloat(size), pct}))

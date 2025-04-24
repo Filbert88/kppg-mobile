@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useContext} from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {RootStackParamList} from '../../types/navigation';
 import {API_BASE_URL} from '@env';
 import {useToast} from '../../context/ToastContext';
 import Video from 'react-native-video';
+import {FormContext} from '../../context/FragmentationContext';
 
 export interface FragmentationResponse {
   id: number;
@@ -86,6 +87,7 @@ const {width, height} = Dimensions.get('window');
 const DepthAverageFragmentation = () => {
   const route = useRoute<NavigationProps>();
   const {priority, tanggal} = route.params;
+  const {updateForm} = useContext(FormContext);
   const navigation = useNavigation<NavigationProp>();
   const [data, setData] = useState<FragmentationResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,9 +145,27 @@ const DepthAverageFragmentation = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const handleAddPhoto = () => {
-    // Implement add photo functionality
-    console.log('Add photo pressed');
+  const handleAddPhoto = (item: FragmentationResponse) => {
+    updateForm({
+      id: item.id,
+      isEdit: true,
+      origin: 'DepthAverageFragmention1',
+      skala: item.skala,
+      pilihan: item.pilihan,
+      ukuran: item.ukuran,
+      prioritas: item.prioritas,
+      lokasi: item.lokasi,
+      tanggal: item.tanggal,
+      litologi: item.litologi,
+      ammoniumNitrate: item.ammoniumNitrate,
+      volumeBlasting: item.volumeBlasting,
+      powderFactor: item.powderFactor,
+      diggingTime: item.diggingTime || undefined,
+      videoUri: item.videoUri || undefined,
+      rawImageUris: item.fragmentationImages.map(fi => fi.imageUri),
+    });
+
+    navigation.navigate('FragmentationForm4');
   };
 
   // Format date function
@@ -289,7 +309,7 @@ const DepthAverageFragmentation = () => {
                   <View style={styles.actionButtonsContainerNew}>
                     <TouchableOpacity
                       style={styles.addPhotoButton}
-                      onPress={handleAddPhoto}>
+                      onPress={() => handleAddPhoto(item)}>
                       <Text style={styles.addPhotoButtonText}>
                         + Tambah Foto
                       </Text>

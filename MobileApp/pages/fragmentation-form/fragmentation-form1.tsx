@@ -76,6 +76,11 @@ export default function FragmentationForm1() {
     resetForm();
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
+    } else if (formData.origin === 'DepthAverageFragmention1') {
+      navigation.navigate('DepthAverageFragmention1', {
+        priority: formData.prioritas,
+        tanggal: formData.tanggal,
+      });
     } else {
       navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
@@ -121,7 +126,7 @@ export default function FragmentationForm1() {
       ]);
     }
   };
-  const { rawImageUris, skala, pilihan, ukuran, lokasi } = formData;
+  const {rawImageUris, skala, pilihan, ukuran, lokasi} = formData;
 
   console.log('Form data ', formData);
 
@@ -130,7 +135,7 @@ export default function FragmentationForm1() {
     skala.trim() !== '' &&
     pilihan.trim() !== '' &&
     ukuran.trim() !== '' &&
-    lokasi.trim() !== ''
+    lokasi.trim() !== '';
 
   // Close other dropdown when one is opened
   const toggleSkalaDropdown = () => {

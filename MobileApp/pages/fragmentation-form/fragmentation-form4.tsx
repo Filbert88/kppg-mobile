@@ -179,6 +179,7 @@ export default function FragmentationForm4() {
         const body = await resp.json();
         uploadUrls.push(body.url);
       }
+      console.log("uploadurl: " ,uploadUrls);
       updateForm({uploadedImageUrls: uploadUrls});
 
       // 2. Call multi‑fragment with those uploaded files
@@ -190,6 +191,7 @@ export default function FragmentationForm4() {
           name: u.split('/').pop(),
         } as any);
       });
+      console.log(API_BASE_URL)
       const mfResp = await fetch(
         `${API_BASE_URL}/api/Fragmentation/multi-fragment`,
         {method: 'POST', body: multiForm},
@@ -237,7 +239,12 @@ export default function FragmentationForm4() {
     resetForm();
     if (formData.origin === 'FragmentationHistoryIncomplete') {
       navigation.navigate('FragmentationHistoryIncomplete'); // Go back to FragmentationHistoryIncomplete
-    } else {
+    } else if (formData.origin === 'DepthAverageFragmention1') {
+      navigation.navigate('DepthAverageFragmention1', {
+        priority: formData.prioritas,
+        tanggal: formData.tanggal,
+      });
+    }else {
       navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
