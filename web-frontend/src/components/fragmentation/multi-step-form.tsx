@@ -71,7 +71,7 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
     diggingTime: undefined,
     videoUri: undefined,
   });
-
+  console.log(flow)
   const updateFormData = (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,

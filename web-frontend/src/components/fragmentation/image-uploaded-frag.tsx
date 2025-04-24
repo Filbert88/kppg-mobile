@@ -243,16 +243,16 @@ const ImageUploadedFrag = forwardRef<
     setActiveTool("none");
   }
 
-  function saveCurrentEditingState() {
-    if (selectedImage && hybridContainerRef.current) {
-      const state = hybridContainerRef.current.getEditingState();
-      const normalizedSelectedImage = normalizeBase64Image(selectedImage);
-      setEditingStates((prev) => ({
-        ...prev,
-        [normalizedSelectedImage]: state,
-      }));
-    }
-  }
+  // function saveCurrentEditingState() {
+  //   if (selectedImage && hybridContainerRef.current) {
+  //     const state = hybridContainerRef.current.getEditingState();
+  //     const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+  //     setEditingStates((prev) => ({
+  //       ...prev,
+  //       [normalizedSelectedImage]: state,
+  //     }));
+  //   }
+  // }
 
   function switchImage(newImage: string) {
     if (selectedImage && hybridContainerRef.current) {

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, forwardRef, useRef } from "react";
 import HybridContainer, { HybridContainerRef } from "./HybridContainer";
-import { Tool } from "./canvas";
+import { Tool } from "./image-uploaded-frag";
 
 interface ImageContainerProps {
   backgroundImage: string;

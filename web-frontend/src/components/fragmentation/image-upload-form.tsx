@@ -202,12 +202,12 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
     }
 
     // Save current editing state
-    function saveCurrentEditingState() {
-      if (selectedImage && hybridContainerRef.current) {
-        const state = hybridContainerRef.current.getEditingState();
-        setEditingStates((prev) => ({ ...prev, [selectedImage]: state }));
-      }
-    }
+    // function saveCurrentEditingState() {
+    //   if (selectedImage && hybridContainerRef.current) {
+    //     const state = hybridContainerRef.current.getEditingState();
+    //     setEditingStates((prev) => ({ ...prev, [selectedImage]: state }));
+    //   }
+    // }
 
     // Switch current image
     // Switch current image
@@ -436,6 +436,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                   scale: 1, // Use 1:1 scaling
                   logging: true,
                   onclone: (clonedDoc) => {
+                    console.log(clonedDoc)
                     console.log("Document cloned for html2canvas");
                   },
                 });
@@ -506,6 +507,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             // Create form data with all files
             const formDataFragment = new FormData();
             filesToProcess.forEach((file, index) => {
+              console.log(index)
               formDataFragment.append("files", file);
             });
 
