@@ -35,8 +35,14 @@ export default function FilteredDepthAveragePage() {
       try {
         setIsLoading(true);
         const res = await fetch(
-          `${apiUrl}/DepthAverage/today?tanggal=${tanggal}&priority=${priority}`
-        );
+          `${apiUrl}/DepthAverage/today?tanggal=${tanggal}&priority=${priority}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
+          }
+        );  
         if (!res.ok) {
           setData([]);
           return;

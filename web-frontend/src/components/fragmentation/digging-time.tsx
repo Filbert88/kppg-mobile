@@ -148,6 +148,10 @@ export default function DiggingTimePage({
 
         const uploadRes = await fetch(`${apiUrl}/Upload/upload-video`, {
           method: "POST",
+          headers: {
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
           body: formData,
         });
         console.log(uploadRes);

@@ -17,7 +17,13 @@ export default function FilteredFragmentationPage() {
 
       try {
         const res = await fetch(
-          `${apiUrl}/Fragmentation/today?priority=${priority}&tanggal=${tanggal}`
+          `${apiUrl}/Fragmentation/today?priority=${priority}&tanggal=${tanggal}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
+          }
         );
 
         if (!res.ok) {

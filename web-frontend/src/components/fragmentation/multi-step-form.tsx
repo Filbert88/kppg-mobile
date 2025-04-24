@@ -147,7 +147,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
       const response = await fetch(url, {
         method,
         headers: {
-          "Content-Type": "application/json",
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify(dto),
       });
@@ -167,7 +169,9 @@ export default function MultiStepForm({ setActiveScreen }: MultiStepFormProps) {
           const retry = await fetch(`${apiUrl}/Fragmentation`, {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify(dto),
           });
