@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 interface AverageScreenProps {
   average: string;
@@ -9,6 +10,23 @@ interface AverageScreenProps {
 
 export default function AverageScreen({ average, onSave }: AverageScreenProps) {
   const isFormValid = average.trim() !== "";
+
+  const handleSave = async () => {
+    try {
+      await onSave();
+      toast({
+        title: "Success",
+        description: "Data berhasil disimpan!",
+        variant: "default",
+      });
+    } catch (err) {
+      toast({
+        title: "Gagal menyimpan data.",
+        variant: "destructive",
+      });
+      console.error(err);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col p-6 h-full min-h-[600px] w-full mt-10">
@@ -23,7 +41,7 @@ export default function AverageScreen({ average, onSave }: AverageScreenProps) {
 
       <div className="flex justify-end mt-4">
         <Button
-          onClick={onSave}
+          onClick={handleSave}
           disabled={!isFormValid}
           className={`${
             isFormValid

@@ -23,6 +23,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
 import html2canvas from "html2canvas";
+import { toast } from "@/hooks/use-toast";
 
 // Modal components
 import ColorPickerModal from "./modal/ColorPickerModal";
@@ -562,8 +563,15 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             console.log("Fragmentation completed for all images");
             setLoadingProgress(90);
+            toast({ title: "Success", description: "All images processed and uploaded.", variant: "default" });
           } catch (error) {
             console.error("Error in fragmentation processing:", error);
+            const message = error instanceof Error ? error.message : "Unknown error";
+            toast({
+              title: "Oops, something went wrong",
+              description: message,
+              variant: "destructive",
+            });
             setLoadingMessage(
               `Fragmentation error: ${
                 error instanceof Error ? error.message : "Unknown error"
