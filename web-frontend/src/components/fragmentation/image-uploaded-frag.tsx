@@ -1,5 +1,3 @@
-import type React from "react";
-
 import {
   useState,
   useEffect,
@@ -161,35 +159,35 @@ const ImageUploadedFrag = forwardRef<
     }
   }, [bgImage, editingStates]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (selectedImage && hybridContainerRef.current) {
-        const currentState = hybridContainerRef.current.getEditingState();
-        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     if (selectedImage && hybridContainerRef.current) {
+  //       const currentState = hybridContainerRef.current.getEditingState();
+  //       const normalizedSelectedImage = normalizeBase64Image(selectedImage);
 
-        setEditingStates((prev) => ({
-          ...prev,
-          [normalizedSelectedImage]: currentState,
-        }));
-        updateFormData("editingFragStates", {
-          // Use editingFragStates, not editingStates
-          ...editingStates,
-          [normalizedSelectedImage]: currentState,
-        });
-      }
+  //       setEditingStates((prev) => ({
+  //         ...prev,
+  //         [normalizedSelectedImage]: currentState,
+  //       }));
+  //       updateFormData("editingFragStates", {
+  //         // Use editingFragStates, not editingStates
+  //         ...editingStates,
+  //         [normalizedSelectedImage]: currentState,
+  //       });
+  //     }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        let newImageUrl = (event.target?.result as string) || "";
-        newImageUrl = normalizeBase64Image(newImageUrl);
-        const updatedImages = [...formData.imagesFrag, newImageUrl];
-        updateFormData("imagesFrag", updatedImages);
-        switchImage(newImageUrl);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  //     const reader = new FileReader();
+  //     reader.onload = (event) => {
+  //       let newImageUrl = (event.target?.result as string) || "";
+  //       newImageUrl = normalizeBase64Image(newImageUrl);
+  //       const updatedImages = [...formData.imagesFrag, newImageUrl];
+  //       updateFormData("imagesFrag", updatedImages);
+  //       switchImage(newImageUrl);
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
 
   const isFormValid = formData.imagesFrag.length > 0;
 
