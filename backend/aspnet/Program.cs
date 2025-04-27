@@ -9,9 +9,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         policy => policy
-            .AllowAnyOrigin()
+            .WithOrigins(
+                "https://kppg-mobile.vercel.app",  // your prod URL
+                "http://localhost:5173"             // your React dev server
+            )
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials()
+            );
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

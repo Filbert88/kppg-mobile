@@ -120,7 +120,6 @@ const DepthAverageFragmentation = () => {
         setData([json]);
       })
       .catch(err => {
-        showToast('Failed to fetch Depth Average data', 'error');
         console.error('Fetch error:', err);
       })
       .finally(() => setLoading(false));

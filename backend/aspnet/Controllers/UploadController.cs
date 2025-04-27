@@ -38,7 +38,7 @@ namespace aspnet.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var fileUrl = $"{Request.Scheme}://{Request.Host}/Images/{fileName}";
+            var fileUrl = $"{_envSettings.BaseUrl}/Images/{fileName}";
             return Ok(new { url = fileUrl });
         }
 
@@ -66,7 +66,8 @@ namespace aspnet.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var publicUrl = $"{Request.Scheme}://{Request.Host}/Videos/{uniqueFileName}";
+            var publicUrl = $"{_envSettings.BaseUrl}/Videos/{uniqueFileName}";
+
             return Ok(new { url = publicUrl });
         }
     }

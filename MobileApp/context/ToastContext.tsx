@@ -116,7 +116,7 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
       case "success":
         return "bg-green-500"
       case "error":
-        return "bg-red-500"
+        return "bg-[#f52516]"
       case "warning":
         return "bg-yellow-500"
       case "info":
