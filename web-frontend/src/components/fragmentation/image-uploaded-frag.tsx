@@ -1,5 +1,3 @@
-import type React from "react";
-
 import {
   useState,
   useEffect,
@@ -23,7 +21,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
 import html2canvas from "html2canvas";
-
+import { toast } from "@/hooks/use-toast";
 // Modal components
 import ColorPickerModal from "./modal/ColorPickerModal";
 import ShapePickerModal from "./modal/ShapePickerModal";
@@ -161,35 +159,35 @@ const ImageUploadedFrag = forwardRef<
     }
   }, [bgImage, editingStates]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (selectedImage && hybridContainerRef.current) {
-        const currentState = hybridContainerRef.current.getEditingState();
-        const normalizedSelectedImage = normalizeBase64Image(selectedImage);
+  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     if (selectedImage && hybridContainerRef.current) {
+  //       const currentState = hybridContainerRef.current.getEditingState();
+  //       const normalizedSelectedImage = normalizeBase64Image(selectedImage);
 
-        setEditingStates((prev) => ({
-          ...prev,
-          [normalizedSelectedImage]: currentState,
-        }));
-        updateFormData("editingFragStates", {
-          // Use editingFragStates, not editingStates
-          ...editingStates,
-          [normalizedSelectedImage]: currentState,
-        });
-      }
+  //       setEditingStates((prev) => ({
+  //         ...prev,
+  //         [normalizedSelectedImage]: currentState,
+  //       }));
+  //       updateFormData("editingFragStates", {
+  //         // Use editingFragStates, not editingStates
+  //         ...editingStates,
+  //         [normalizedSelectedImage]: currentState,
+  //       });
+  //     }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        let newImageUrl = (event.target?.result as string) || "";
-        newImageUrl = normalizeBase64Image(newImageUrl);
-        const updatedImages = [...formData.imagesFrag, newImageUrl];
-        updateFormData("imagesFrag", updatedImages);
-        switchImage(newImageUrl);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  //     const reader = new FileReader();
+  //     reader.onload = (event) => {
+  //       let newImageUrl = (event.target?.result as string) || "";
+  //       newImageUrl = normalizeBase64Image(newImageUrl);
+  //       const updatedImages = [...formData.imagesFrag, newImageUrl];
+  //       updateFormData("imagesFrag", updatedImages);
+  //       switchImage(newImageUrl);
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
 
   const isFormValid = formData.imagesFrag.length > 0;
 
@@ -639,20 +637,30 @@ const ImageUploadedFrag = forwardRef<
         // Small delay to show the 100% completion
         await new Promise((resolve) => setTimeout(resolve, 500));
         setIsLoading(false);
-
+        toast({ title: "Success", description: "All Fragmentation Analyzed Successfully", variant: "default" });
         // Move to the next step
         onNext();
       } catch (err: unknown) {
         setIsLoading(false);
         const msg = err instanceof Error ? err.message : "Unknown error";
+        toast({
+          title: "Error during fragmentation analysis",
+          description: msg,
+          variant: "destructive",
+        });
+    
         console.error("Fragmentation analysis error:", err);
-        alert(`Error during fragmentation analysis: ${msg}`);
       }
     } catch (error: unknown) {
       setIsLoading(false);
       const msg = error instanceof Error ? error.message : "Unknown error";
       console.error("General error during handleNext:", error);
-      alert(`Error: ${msg}`);
+      toast({
+        title: "Oops, something went wrong",
+        description: msg,
+        variant: "destructive",
+      });
+  
     }
   };
 
@@ -855,21 +863,6 @@ const ImageUploadedFrag = forwardRef<
             </div>
           )}
         </div>
-
-        {/* Upload Button */}
-        <div className="flex justify-center mt-4">
-          <label className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-full flex items-center cursor-pointer">
-            <span className="mr-2">+</span>
-            <span>Tambah Gambar</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
-          </label>
-        </div>
-
         {/* Crop Modal */}
         {showCropModal && bgImage && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -936,9 +929,10 @@ const ImageUploadedFrag = forwardRef<
             }}
           />
         )}
+        <div className="mt-8"></div>
 
         {/* Next Button */}
-        <div className="mt-6 flex justify-end absolute bottom-0 right-0">
+        <div className="mt-8 flex justify-end absolute -bottom-2 -right-4">
           <Button
             onClick={handleNext}
             disabled={!isFormValid}

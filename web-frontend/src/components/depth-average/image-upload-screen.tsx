@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, CheckCircle2, ImagePlus } from "lucide-react";
 import { apiUrl } from "@/lib/function";
+import { toast } from "@/hooks/use-toast";
 
 interface ImageUploadScreenProps {
   image: string | null;
@@ -56,7 +57,7 @@ export default function ImageUploadScreen({
     }
 
     /* ➜  Tambah baru / user memilih gambar baru → upload + OCR */
-    if (!file) return;           // button seharusnya sudah disabled
+    if (!file) return; // button seharusnya sudah disabled
 
     setIsLoading(true);
     setLoadingStage("uploading");
@@ -68,8 +69,8 @@ export default function ImageUploadScreen({
       const uploadRes = await fetch(`${apiUrl}/Upload/upload`, {
         method: "POST",
         headers: {
-          'Accept': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
+          Accept: "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: fd,
       });
@@ -83,8 +84,8 @@ export default function ImageUploadScreen({
       const ocrRes = await fetch(`${apiUrl}/ocr`, {
         method: "POST",
         headers: {
-          'Accept': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
+          Accept: "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: ocrFd,
       });
@@ -92,11 +93,11 @@ export default function ImageUploadScreen({
       const { ocr_result } = await ocrRes.json();
 
       const depths: string[] = Object.entries(ocr_result)
-      .sort(
-        ([a], [b]) =>
-          Number(a.replace(/^\D+/g, "")) - Number(b.replace(/^\D+/g, ""))
-      )
-      .map(([, v]) => v as string);  
+        .sort(
+          ([a], [b]) =>
+            Number(a.replace(/^\D+/g, "")) - Number(b.replace(/^\D+/g, ""))
+        )
+        .map(([, v]) => v as string);
 
       /* 3. Finish */
       setLoadingStage("completed");
@@ -106,9 +107,18 @@ export default function ImageUploadScreen({
         setLoadingStage(null);
         onNext();
       }, 800);
+      toast({
+        title: "Success",
+        description: "OCR processed successfully.",
+        variant: "default",
+      });
     } catch (err) {
       console.error(err);
-      alert("Failed to upload or process image");
+      toast({
+        variant: "destructive",
+        title: "Failed to upload or process image",
+        description: "Try to reshape the pictures.",
+      });
       setIsLoading(false);
       setLoadingStage(null);
     }
@@ -151,7 +161,10 @@ export default function ImageUploadScreen({
               {loadingStage === "uploading" && (
                 <>
                   <div className="relative">
-                    <Loader2 size={48} className="animate-spin text-green-600" />
+                    <Loader2
+                      size={48}
+                      className="animate-spin text-green-600"
+                    />
                     <Upload
                       size={20}
                       className="absolute inset-0 m-auto text-green-600"

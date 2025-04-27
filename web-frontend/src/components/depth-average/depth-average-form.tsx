@@ -86,19 +86,17 @@ export default function DepthAverageForm({
   };
 
   const handleSave = async () => {
-    const payload = {
+    // common fields for both create & update
+    const base = {
       jumlahLubang: formData.numberOfHoles.toString(),
       lokasi: formData.location,
       tanggal: formData.date,
       prioritas: Number(formData.priority),
       kedalaman: JSON.stringify(
-        formData.depths.reduce(
-          (acc: Record<string, string>, val: string, index: number) => {
-            acc[`kedalaman${index + 1}`] = val;
-            return acc;
-          },
-          {}
-        )
+        formData.depths.reduce((acc: Record<string, string>, v: any, i: any) => {
+          acc[`kedalaman${i + 1}`] = v;
+          return acc;
+        }, {})
       ),
       average: formData.average.replace(" cm", ""),
       imageUri: formData.image,
@@ -106,42 +104,56 @@ export default function DepthAverageForm({
     };
 
     try {
+      let res: Response;
+
       if (isEdit && formData.id) {
-        const res = await fetch(`${apiUrl}/DepthAverage/${formData.id}`, {
+        // —— UPDATE existing record ——
+        // PUT /api/DepthAverage/{id} expects a single DepthAverage object in the body
+        const updatePayload = { id: formData.id, ...base };
+
+        res = await fetch(`${apiUrl}/DepthAverage/${formData.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
             "ngrok-skip-browser-warning": "true",
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(updatePayload),
         });
-        if (!res.ok) throw new Error("Failed to update");
+
+        if (!res.ok) {
+          throw new Error(`Update failed (${res.status})`);
+        }
       } else {
-        let res = await fetch(`${apiUrl}/DepthAverage`, {
+        // —— CREATE new record ——
+        // POST /api/DepthAverage expects a JSON array at the root
+        const createItem = base; // no `id`
+        const createBody = [createItem]; //<-- **just an array** of items
+
+        res = await fetch(`${apiUrl}/DepthAverage`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
             "ngrok-skip-browser-warning": "true",
           },
-          body: JSON.stringify([payload]),
+          body: JSON.stringify(createBody), //<-- **no wrapper**!
         });
 
         if (res.status === 409) {
-          const data = await res.json();
-          const existing = data.existingPriorities.sort(
+          // handle priority conflict exactly as before…
+          const { existingPriorities } = await res.json();
+          const sorted = existingPriorities.sort(
             (a: number, b: number) => a - b
           );
-
           let newPriority = 1;
-          for (let i = 0; i < existing.length; i++) {
-            if (existing[i] === newPriority) newPriority++;
-            else if (existing[i] > newPriority) break;
+          for (const p of sorted) {
+            if (p === newPriority) newPriority++;
+            else if (p > newPriority) break;
           }
 
-          payload.prioritas = newPriority;
-
+          createItem.prioritas = newPriority;
+          // retry with new priority
           res = await fetch(`${apiUrl}/DepthAverage`, {
             method: "POST",
             headers: {
@@ -149,18 +161,16 @@ export default function DepthAverageForm({
               Accept: "application/json",
               "ngrok-skip-browser-warning": "true",
             },
-            body: JSON.stringify([payload]),
+            body: JSON.stringify([createItem]), //<-- still just an array
           });
-
           if (!res.ok) throw new Error("Retry failed");
-
           updateFormData("priority", newPriority.toString());
-          console.log("Saved with new priority:", newPriority);
         } else if (!res.ok) {
-          throw new Error("Failed to create");
+          throw new Error(`Create failed (${res.status})`);
         }
       }
 
+      // on success…
       setActiveScreen("home");
     } catch (err) {
       console.error("Save error:", err);
@@ -178,9 +188,9 @@ export default function DepthAverageForm({
           parseInt(b.replace("kedalaman", ""))
       )
       .map(([, val]) => val);
-
+    console.log("id", id);
     setFormData({
-      id,
+      id: id,
       location: lokasi,
       date: tanggal,
       priority: prioritas.toString(),
