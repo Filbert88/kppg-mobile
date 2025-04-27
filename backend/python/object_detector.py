@@ -18,7 +18,9 @@ def image_with_highest_green_percentage(folder_path, lower_green=(35, 50, 50), u
     valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
     best_file = None
     best_green_percentage = 0.0
+    i = 0
     for filename in os.listdir(folder_path):
+        # print("folder path: ",folder_path)
         name, ext = os.path.splitext(filename)
         if ext.lower() in valid_extensions:
             file_path = os.path.join(folder_path, filename)
@@ -26,9 +28,12 @@ def image_with_highest_green_percentage(folder_path, lower_green=(35, 50, 50), u
             if image is None:
                 continue
             perc = compute_green_percentage(image, lower_green, upper_green)
+            print(f"{filename}: {perc:.2f}% green")
             if perc > best_green_percentage:
                 best_green_percentage = perc
                 best_file = filename
+        i += 1
+    # print(i)
     return best_file, best_green_percentage
 
 def convert_white_to_transparent(input_path, output_path, threshold=240):
@@ -82,7 +87,7 @@ def extract_marker_properties(folder_path, marker_physical_cm=28.0,
                                                                      upper_green)
     if marker_filename is None:
         raise ValueError("No marker image found based on green detection.")
-    
+    print("filename:",marker_filename)
     marker_path = os.path.join(folder_path, marker_filename)
     
     # 2. Process the marker image: convert white background to transparency.
@@ -92,6 +97,7 @@ def extract_marker_properties(folder_path, marker_physical_cm=28.0,
     
     # 3. Measure the longest side (in pixels) of the processed marker image.
     longest_side_px, pt1, pt2 = measure_longest_side(marker_img)
+    print("longest:",longest_side_px)
     if longest_side_px == 0 or pt1 is None or pt2 is None:
         raise ValueError("Could not measure the longest side in the marker image.")
     

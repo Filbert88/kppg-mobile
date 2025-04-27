@@ -35,6 +35,7 @@ const DatePriorityD = () => {
   const [availablePriorities, setAvailablePriorities] = useState<number[]>([]);
   const [loadingPriority, setLoadingPriority] = useState(false);
 
+
   useEffect(() => {
     if (!hasInitialized) {
       console.log('reset');

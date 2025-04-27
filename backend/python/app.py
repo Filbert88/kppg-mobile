@@ -27,7 +27,7 @@ from matplotlib import pyplot as plt
 load_dotenv()
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5180").rstrip("/")
-
+logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 
 def run_full_fragmentation_analysis(image_path: str, A: float, K: float, Q: float, E: float, n: float, conversion: float):
@@ -176,6 +176,7 @@ def fragmentation_red_outline():
     """
     file = request.files.get("file")
     if not file or file.filename == "":
+        print("error sini 1")
         return jsonify({"error": "No file uploaded"}), 400
 
     try:
@@ -234,6 +235,8 @@ def fragmentation_red_outline():
         return jsonify(response)
 
     except Exception as e:
+        logging.error(f"Error in fragmentation_red_outline: {str(e)}")
+        print(f"Fragmentation failed: {str(e)}")
         return jsonify({"error": f"Fragmentation failed: {str(e)}"}), 500
 
 @app.route("/fragmentation-analysis", methods=["POST"])
