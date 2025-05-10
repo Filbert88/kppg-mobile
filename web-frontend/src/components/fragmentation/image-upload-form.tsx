@@ -258,6 +258,18 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
       },
     }));
 
+    function convertSizeToCentimeter(value: number, unit: string): number {
+      switch (unit) {
+        case "Meter (m)":
+          return value * 100;
+        case "Decimeter (dm)":
+          return value * 10;
+        case "Centimeter (cm)":
+        default:
+          return value;
+      }
+    }
+
     /**
      * handleNext:
      * Capture the current image editing container using html2canvas,
@@ -437,7 +449,7 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
                   scale: 1, // Use 1:1 scaling
                   logging: true,
                   onclone: (clonedDoc) => {
-                    console.log(clonedDoc)
+                    console.log(clonedDoc);
                     console.log("Document cloned for html2canvas");
                   },
                 });
@@ -464,17 +476,14 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
             const formDataUpload = new FormData();
             formDataUpload.append("file", file);
 
-            const uploadResponse = await fetch(
-              `${apiUrl}/Upload/upload`,
-              {
-                method: "POST",
-                headers: {
-                  'Accept': 'application/json',
-                  'ngrok-skip-browser-warning': 'true'
-                },
-                body: formDataUpload,
-              }
-            );
+            const uploadResponse = await fetch(`${apiUrl}/Upload/upload`, {
+              method: "POST",
+              headers: {
+                Accept: "application/json",
+                "ngrok-skip-browser-warning": "true",
+              },
+              body: formDataUpload,
+            });
 
             if (!uploadResponse.ok) {
               throw new Error(
@@ -507,8 +516,10 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             // Create form data with all files
             const formDataFragment = new FormData();
+            const convertedSize = convertSizeToCentimeter(Number(formData.size), formData.option);
+            formDataFragment.append("scale_value", convertedSize.toString());
             filesToProcess.forEach((file, index) => {
-              console.log(index)
+              console.log(index);
               formDataFragment.append("files", file);
             });
 
@@ -518,8 +529,8 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
               {
                 method: "POST",
                 headers: {
-                  'Accept': 'application/json',
-                  'ngrok-skip-browser-warning': 'true'
+                  Accept: "application/json",
+                  "ngrok-skip-browser-warning": "true",
                 },
                 body: formDataFragment,
               }
@@ -563,10 +574,15 @@ const ImageUploadForm = forwardRef<ImageUploadFormRef, ImageUploadFormProps>(
 
             console.log("Fragmentation completed for all images");
             setLoadingProgress(90);
-            toast({ title: "Success", description: "All images processed and uploaded.", variant: "default" });
+            toast({
+              title: "Success",
+              description: "All images processed and uploaded.",
+              variant: "default",
+            });
           } catch (error) {
             console.error("Error in fragmentation processing:", error);
-            const message = error instanceof Error ? error.message : "Unknown error";
+            const message =
+              error instanceof Error ? error.message : "Unknown error";
             toast({
               title: "Oops, something went wrong",
               description: message,
