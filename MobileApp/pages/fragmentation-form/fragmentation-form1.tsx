@@ -40,13 +40,15 @@ export default function FragmentationForm1() {
   const [skalaDropdownOpen, setSkalaDropdownOpen] = useState(false);
   const [pilihanDropdownOpen, setPilihanDropdownOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-
+  const [litologiOpen, setLitologiOpen] = useState(false);
   // Animation values
   const skalaDropdownHeight = useRef(new Animated.Value(0)).current;
   const pilihanDropdownHeight = useRef(new Animated.Value(0)).current;
+  const litologiHeight = useRef(new Animated.Value(0)).current;
 
   const skalaOptions = ['Skala Helm', 'Skala Bola', 'Skala Manual'];
   const pilihanOptions = ['Centimeter (cm)', 'Meter (m)', 'Decimeter (dm)'];
+  const litologiOptions = ['Claystone', 'Sandstone', 'Siltstone', 'Others'];
 
   useEffect(() => {
     const unblock = navigation.addListener('beforeRemove', e => {
@@ -103,6 +105,14 @@ export default function FragmentationForm1() {
     }).start();
   }, [pilihanDropdownOpen]);
 
+  useEffect(() => {
+    Animated.timing(litologiHeight, {
+      toValue: litologiOpen ? litologiOptions.length * 44 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [litologiOpen]);
+
   const handleImagePicker = async () => {
     const result = await launchImageLibrary({
       mediaType: 'photo',
@@ -126,7 +136,7 @@ export default function FragmentationForm1() {
       ]);
     }
   };
-  const {rawImageUris, skala, pilihan, ukuran, lokasi} = formData;
+  const {rawImageUris, skala, pilihan, ukuran, lokasi, litologi} = formData;
 
   console.log('Form data ', formData);
 
@@ -135,7 +145,8 @@ export default function FragmentationForm1() {
     skala.trim() !== '' &&
     pilihan.trim() !== '' &&
     ukuran.trim() !== '' &&
-    lokasi.trim() !== '';
+    lokasi.trim() !== '' &&
+    litologi.trim() !== '';
 
   // Close other dropdown when one is opened
   const toggleSkalaDropdown = () => {
@@ -297,6 +308,50 @@ export default function FragmentationForm1() {
                 />
                 <Edit stroke="#666" width={20} height={20} />
               </View>
+            </View>
+
+            {/* Litologi Batuan */}
+            <View className="gap-1 z-10">
+              <Text className="text-black font-black mb-1">
+                Litologi Batuan
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setLitologiOpen(o => !o)}
+                className={`w-full bg-rose-50 rounded-lg px-4 py-3 flex-row justify-between items-center ${
+                  litologiOpen ? 'rounded-b-none' : ''
+                }`}>
+                <Text
+                  className={`${litologi ? 'text-black' : 'text-gray-400'}`}>
+                  {litologi || 'Pilih Litologi...'}
+                </Text>
+                <ChevronDown
+                  stroke="#666"
+                  width={20}
+                  height={20}
+                  style={{
+                    transform: [{rotate: litologiOpen ? '180deg' : '0deg'}],
+                  }}
+                />
+              </TouchableOpacity>
+
+              <Animated.View
+                style={{height: litologiHeight, overflow: 'hidden'}}
+                className="w-full bg-white border-x border-b border-gray-300 rounded-b-lg shadow-md">
+                {litologiOptions.map((opt, idx) => (
+                  <TouchableOpacity
+                    key={opt}
+                    onPress={() => {
+                      updateForm({litologi: opt});
+                      setLitologiOpen(false);
+                    }}
+                    className={`px-4 py-3 border-b border-gray-100 ${
+                      idx === litologiOptions.length - 1 ? 'border-b-0' : ''
+                    }`}>
+                    <Text className="text-black">{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
             </View>
           </View>
 

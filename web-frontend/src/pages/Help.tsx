@@ -45,7 +45,7 @@ const Help: React.FC = () => {
       content: [
         "Aplikasi ini membantu Anda mengukur dan menganalisis dua jenis data:",
         "1) Fragmentasi Batuan, mengetahui distribusi ukuran batuan hasil blasting",
-        "2) 2)	Kedalaman Lubang (Depth Average), mengetahui rata-rata kedalaman lubang dengan memasukkan gambar sounding.",
+        "2) Kedalaman Lubang (Depth Average), mengetahui rata-rata kedalaman lubang dengan memasukkan gambar sounding.",
         "Anda dapat menyimpan riwayat pengukuran dan meninjau data.",
       ],
     },

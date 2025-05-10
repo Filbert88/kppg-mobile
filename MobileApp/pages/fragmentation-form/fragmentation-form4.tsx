@@ -148,6 +148,21 @@ export default function FragmentationForm4() {
     }
   };
 
+  function convertSizeToCentimeter(value: string, unit: string): number {
+    const numeric = parseFloat(value);
+    if (isNaN(numeric)) return 0;
+
+    switch (unit) {
+      case 'Meter (m)':
+        return numeric * 100;
+      case 'Decimeter (dm)':
+        return numeric * 10;
+      case 'Centimeter (cm)':
+      default:
+        return numeric;
+    }
+  }
+
   // Online "Next" button action.
   // For example, if online, you might continue to the next form in the workflow.
   const handleNext = async () => {
@@ -179,7 +194,7 @@ export default function FragmentationForm4() {
         const body = await resp.json();
         uploadUrls.push(body.url);
       }
-      console.log("uploadurl: " ,uploadUrls);
+      console.log('uploadurl: ', uploadUrls);
       updateForm({uploadedImageUrls: uploadUrls});
 
       // 2. Call multi‑fragment with those uploaded files
@@ -191,7 +206,9 @@ export default function FragmentationForm4() {
           name: u.split('/').pop(),
         } as any);
       });
-      console.log(API_BASE_URL)
+      console.log(API_BASE_URL);
+      const scaleValueCm = convertSizeToCentimeter(formData.ukuran, formData.pilihan);
+      multiForm.append('scale_value', scaleValueCm.toString());
       const mfResp = await fetch(
         `${API_BASE_URL}/api/Fragmentation/multi-fragment`,
         {method: 'POST', body: multiForm},
@@ -201,7 +218,7 @@ export default function FragmentationForm4() {
         throw new Error('Multi-fragmentation API failed');
       }
 
-      console.log("resp ", mfResp)
+      console.log('resp ', mfResp);
 
       // 3. Build your fragment URLs from mfResults
       //    e.g. your API returns just filename, so prefix with your static folder
@@ -244,7 +261,7 @@ export default function FragmentationForm4() {
         priority: formData.prioritas,
         tanggal: formData.tanggal,
       });
-    }else {
+    } else {
       navigation.navigate('FragmentationHistoryDone'); // Go back to FragmentationHistory
     }
   };
