@@ -210,7 +210,8 @@ def fragmentation_red_outline():
         print(cutouts_folder)
         
         # Call extract_marker_properties on the cutouts folder to get the marker info
-        _,_,conversion_factor = extract_marker_properties(cutouts_folder)
+        scale_value = float(request.form.get("scale_value", "28.0"))
+        _,_,conversion_factor = extract_marker_properties(cutouts_folder, marker_physical_cm=scale_value)
         marker_data = {
             "conversion_factor": conversion_factor
         }

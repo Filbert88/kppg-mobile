@@ -53,6 +53,7 @@ export default function BasicInfoForm({
     formData.size.trim() !== "" &&
     formData.location.trim() !== "" &&
     formData.date.trim() !== "" &&
+    formData.rockType.trim() !== "" &&
     formData.images.length > 0;
 
   return (
@@ -132,6 +133,7 @@ export default function BasicInfoForm({
             <div className="relative">
               <Input
                 id="size"
+                type="number"
                 value={formData.size}
                 onChange={(e) => updateFormData("size", e.target.value)}
                 placeholder="Masukkan ukuran..."
@@ -155,6 +157,26 @@ export default function BasicInfoForm({
               />
               <Edit2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="rockType" className="text-lg font-bold">
+              Litologi Batuan
+            </Label>
+            <Select
+              value={formData.rockType}
+              onValueChange={(value) => updateFormData("rockType", value)}
+            >
+              <SelectTrigger className="w-full bg-white rounded-full mt-1">
+                <SelectValue placeholder="Masukkan jenis..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Claystone">Claystone</SelectItem>
+                <SelectItem value="Sandstone">Sandstone</SelectItem>
+                <SelectItem value="Siltstone">Siltstone</SelectItem>
+                <SelectItem value="Others">Others</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
