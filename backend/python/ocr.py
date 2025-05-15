@@ -58,6 +58,6 @@ def OCR(image_path, temp_folder='temp_ocr', output_folder='output_ocr'):
 # Example usage
 # Outputnya bakal kesimpen di "output_ocr/{nama img}.json"
 # if __name__ == "__main__":
-#     img_path = "input_ocr/ocr5.jpg"
+#     img_path = "input_ocr/6.jpg"
 #     OCR(img_path)
     
