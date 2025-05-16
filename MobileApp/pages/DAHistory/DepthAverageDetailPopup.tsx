@@ -133,7 +133,7 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
                         i < kedalamanItems.length - 1 && styles.kedalamanBorder,
                       ]}>
                       <Text style={styles.kedalamanLabel}>{item.label}</Text>
-                      <Text style={styles.kedalamanValue}>{item.value} cm</Text>
+                      <Text style={styles.kedalamanValue}>{item.value} m</Text>
                     </View>
                   ))}
                 </View>

@@ -61,7 +61,7 @@ export default function DepthAverageForm({
           0
         );
         const avg = sum / depths.length;
-        updateFormData("average", `${avg.toFixed(1)} cm`);
+        updateFormData("average", `${avg.toFixed(1)} m`);
       }
     }
     setCurrentStep((prev) => prev + 1);
@@ -98,7 +98,7 @@ export default function DepthAverageForm({
           return acc;
         }, {})
       ),
-      average: formData.average.replace(" cm", ""),
+      average: formData.average.replace(' cm', '').replace(' m', ''),
       imageUri: formData.image,
       synced: 1,
     };

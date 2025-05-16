@@ -167,7 +167,7 @@ const DAHistory = () => {
       lokasi: item.location,
       tanggal: item.date,
       kedalaman: item.kedalaman ?? {},
-      average: item.average.replace(' cm', ''), // strip unit
+      average:item.average.replace(' cm', '').replace(' m', ''),
       prioritas: item.prioritas,
       isEdit: true,
       origin: 'DAHistory',

@@ -165,7 +165,7 @@ const DepthAverageDetailPopup: React.FC<DepthAverageDetailPopupProps> = ({
                         <span className="text-green-800 font-medium capitalize">
                           {item.label}
                         </span>
-                        <span className="text-green-700">{item.value} cm</span>
+                        <span className="text-green-700">{item.value} m</span>
                       </div>
                     ))}
                   </div>
