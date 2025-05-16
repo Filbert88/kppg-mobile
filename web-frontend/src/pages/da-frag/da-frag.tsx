@@ -55,7 +55,7 @@ export default function FilteredDepthAveragePage() {
           prioritas: item.prioritas,
           lokasi: item.lokasi,
           tanggal: item.tanggal.split("T")[0],
-          average: `${item.average} cm`,
+          average: `${item.average} m`,
           kedalaman:
             typeof item.kedalaman === "string"
               ? JSON.parse(item.kedalaman)
