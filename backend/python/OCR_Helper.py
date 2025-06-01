@@ -9,6 +9,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import shutil
 import re 
+import logging
+
+logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger("ppocr").setLevel(logging.ERROR)
+logging.getLogger("PIL").setLevel(logging.ERROR)
+
+os.environ["FLAGS_log_level"] = "3"
+os.environ["PPLOGGER_LEVEL"] = "ERROR"
 
 from paddleocr import PaddleOCR, draw_ocr
 # https://github.com/PaddlePaddle/PaddleOCR.git
@@ -257,7 +265,6 @@ def upscale_image(folder_input='temp_ocr/cells', folder_output='temp_ocr/upscale
 
         out_path = os.path.join(folder_output, path.name)
         cv2.imwrite(out_path, upscaled)
-        # print(f"[Saved] {out_path}")
 
 def add_padding(input_folder='temp_ocr/upscaled_cells', output_folder='temp_ocr/pad_cells'):
     """
@@ -285,213 +292,6 @@ def add_padding(input_folder='temp_ocr/upscaled_cells', output_folder='temp_ocr/
 
         out_path = os.path.join(output_folder, file_path.name)
         cv2.imwrite(out_path, padded_img)
-
-def merge_line(input_folder='temp_ocr/pad_cells', output_folder='temp_ocr/merged_line'):
-    
-    # # Create output directory if it doesn't exist
-    # os.makedirs(output_folder, exist_ok=True)
-    
-    # # Create a debug folder to save intermediate images
-    # debug_folder = os.path.join(output_folder, "debug")
-    # os.makedirs(debug_folder, exist_ok=True)
-    
-    # # Clear previous debug images
-    # for file in os.listdir(debug_folder):
-    #     file_path = os.path.join(debug_folder, file)
-    #     if os.path.isfile(file_path):
-    #         os.unlink(file_path)
-    
-    # grouped = defaultdict(list)
-    # # Group by row number
-    # for file_path in Path(input_folder).glob("cell_*.jpg"):
-    #     parts = file_path.stem.split("_")
-    #     if len(parts) == 3:
-    #         row = parts[1]
-    #         col = int(parts[2])
-    #         grouped[row].append((col, file_path))
-    
-    # # Process each row
-    # for row, items in grouped.items():
-    #     # print(f"\n[Processing] Row {row} with {len(items)} cells")
-        
-    #     # Sort by column number
-    #     sorted_items = sorted(items, key=lambda x: x[0])
-    #     images = []
-    #     valid_images = []
-    #     min_width = float('inf')
-        
-    #     # First pass: collect and validate images
-    #     for idx, (col, path) in enumerate(sorted_items):
-    #         # Read the image
-    #         img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
-    #         if img is None:
-    #             print(f"[Error] Cannot read {path}")
-    #             continue
-            
-    #         # Save original image for debugging
-    #         debug_path = os.path.join(debug_folder, f"original_r{row}_c{col}.jpg")
-    #         cv2.imwrite(debug_path, img)
-            
-    #         # Basic image info
-    #         # print(f"Image {idx} (col {col}): shape={img.shape}, dtype={img.dtype}, mean={np.mean(img):.1f}")
-            
-    #         # Make sure image has 3 channels (BGR)
-    #         if len(img.shape) == 2:
-    #             img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    #             # print(f"  - Converted grayscale to BGR")
-    #         elif img.shape[2] == 4:  # RGBA
-    #             img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-    #             # print(f"  - Converted RGBA to BGR")
-            
-    #         # Skip if image is completely white
-    #         white_threshold = 250
-    #         if np.mean(img) >= white_threshold:
-    #             print(f"  - [Skipped] Image is too white (mean={np.mean(img):.1f})")
-    #             continue
-            
-    #         # Store the image
-    #         images.append(img)
-    #         valid_images.append((col, img))
-            
-    #         # Track minimum width (for small images)
-    #         if img.shape[1] < min_width:
-    #             min_width = img.shape[1]
-        
-    #     if not valid_images:
-    #         print(f"[Skipped] Row {row} not merged (no valid images)")
-    #         continue
-        
-    #     # Ensure minimum width is reasonable
-    #     if min_width < 5:
-    #         min_width = 5  # Set a minimum width to avoid extremely thin images
-    #         print(f"  - Adjusted minimum width to {min_width} pixels")
-        
-    #     # Calculate the median height for better consistency
-    #     heights = [img.shape[0] for _, img in valid_images]
-    #     target_height = max(img.shape[0] for _, img in valid_images)
-
-    #     widths = [img.shape[1] for _, img in valid_images]
-    #     target_width = int(np.median(widths))
-        
-    #     # print(f"Target height: {target_height}, Minimum width: {min_width}")
-        
-    #     # Second pass: resize images to consistent height
-    #     processed_images = []
-    #     for col, img in valid_images:
-    #         # Resize to target height while preserving aspect ratio
-    #         aspect = img.shape[1] / img.shape[0]
-    #         new_width = max(int(target_height * aspect), min_width)
-            
-    #         # Use INTER_AREA for downsampling, INTER_LINEAR for upsampling
-    #         interpolation = cv2.INTER_AREA if img.shape[0] > target_height else cv2.INTER_LINEAR
-    #         resized = cv2.resize(img, (target_width, target_height), interpolation=interpolation)
-    #         resized = resized.astype(np.uint8)
-            
-            
-    #         # Save resized image for debugging
-    #         debug_path = os.path.join(debug_folder, f"resized_r{row}_c{col}.jpg")
-    #         cv2.imwrite(debug_path, resized)
-            
-    #         # Enhance contrast for small images
-    #         if new_width < 20 or target_height < 20:
-    #             # print(f"  - Enhancing contrast for small image (col {col})")
-    #             # Convert to LAB color space
-    #             lab = cv2.cvtColor(resized, cv2.COLOR_BGR2LAB)
-    #             l, a, b = cv2.split(lab)
-    #             # Apply CLAHE to L channel
-    #             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    #             cl = clahe.apply(l)
-    #             # Merge channels
-    #             limg = cv2.merge((cl, a, b))
-    #             # Convert back to BGR
-    #             resized = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-                
-    #             # Save enhanced image
-    #             debug_path = os.path.join(debug_folder, f"enhanced_r{row}_c{col}.jpg")
-    #             cv2.imwrite(debug_path, resized)
-            
-    #         processed_images.append(resized)
-        
-    #     # Handle special case of single image
-    #     if len(processed_images) == 1:
-    #         out_path = os.path.join(output_folder, f"line_merged_{row}.jpg")
-    #         cv2.imwrite(out_path, processed_images[0])
-    #         # print(f"[Saved] {out_path} (single image)")
-    #         # Also copy to debug folder
-    #         shutil.copy(out_path, os.path.join(debug_folder, f"final_r{row}.jpg"))
-    #         continue
-        
-    #     try:
-    #         # Ensure all images have compatible types
-    #         for i in range(len(processed_images)):
-    #             processed_images[i] = processed_images[i].astype(np.uint8)
-            
-    #         # Create a border around each image to help visualize the concatenation
-    #         bordered_images = []
-    #         for img in processed_images:
-    #             bordered = cv2.copyMakeBorder(
-    #                 img, 
-    #                 top=1, bottom=1, left=1, right=1,
-    #                 borderType=cv2.BORDER_CONSTANT,
-    #                 value=[0, 0, 255]  # Red border
-    #             )
-    #             bordered_images.append(bordered)
-            
-    #         # Save bordered images
-    #         for i, img in enumerate(bordered_images):
-    #             debug_path = os.path.join(debug_folder, f"bordered_r{row}_c{i}.jpg")
-    #             cv2.imwrite(debug_path, img)
-            
-    #         # Try to concatenate with borders
-    #         try:
-    #             merged_with_borders = cv2.hconcat(bordered_images)
-    #             debug_path = os.path.join(debug_folder, f"merged_with_borders_r{row}.jpg")
-    #             cv2.imwrite(debug_path, merged_with_borders)
-    #         except Exception as e:
-    #             print(f"  - Failed to merge with borders: {e}")
-            
-    #         # Concatenate the original processed images
-    #         merged = cv2.vconcat(processed_images)
-            
-    #         # Apply additional contrast enhancement to the merged image
-    #         lab = cv2.cvtColor(merged, cv2.COLOR_BGR2LAB)
-    #         l, a, b = cv2.split(lab)
-    #         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    #         cl = clahe.apply(l)
-    #         limg = cv2.merge((cl, a, b))
-    #         final_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-            
-    #         # Save the pre-contrast enhanced version for debugging
-    #         debug_path = os.path.join(debug_folder, f"pre_contrast_r{row}.jpg")
-    #         cv2.imwrite(debug_path, merged)
-            
-    #         # Save the final merged image
-    #         out_path = os.path.join(output_folder, f"line_merged_{row}.jpg")
-    #         cv2.imwrite(out_path, final_img)
-            
-    #         # Also save to debug folder
-    #         shutil.copy(out_path, os.path.join(debug_folder, f"final_r{row}.jpg"))
-            
-    #         # print(f"[Saved] {out_path}")
-            
-    #         # Check if the output is still too white
-    #         if np.mean(final_img) >= 250:
-    #             print(f"[Warning] Merged image is still very white (mean={np.mean(final_img):.1f})")
-                
-    #     except Exception as e:
-    #         print(f"[Failed] Merging row {row}: {e}")
-    #         # Print shape info
-    #         # for i, img in enumerate(processed_images):
-    #             # print(f"  Image {i} shape: {img.shape}, dtype: {img.dtype}")
-            
-    #         # Try to save individual processed images for debugging
-    #         for i, img in enumerate(processed_images):
-    #             try:
-    #                 debug_path = os.path.join(debug_folder, f"failed_concat_r{row}_c{i}.jpg")
-    #                 cv2.imwrite(debug_path, img)
-    #             except Exception as e2:
-    #                 print(f"  - Failed to save debug image {i}: {e2}")
-    return
 
 def merge_line(input_folder='temp_ocr/pad_cells', output_folder='temp_ocr/merged_line', cells_per_row=3):
     os.makedirs(output_folder, exist_ok=True)
@@ -544,57 +344,72 @@ def merge_line(input_folder='temp_ocr/pad_cells', output_folder='temp_ocr/merged
             for img in images
         ]
 
-        # Split into chunks of 3 cells
+        # Split into chunks of cells_per_row
         row_chunks = [resized_images[i:i + cells_per_row] for i in range(0, len(resized_images), cells_per_row)]
-
-        # Horizontally merge each row group
         merged_rows = []
+
         for i, row_imgs in enumerate(row_chunks):
-            # Match row height
             h = target_height
-            row_imgs = [cv2.resize(img, (img.shape[1], h)) for img in row_imgs]
-            row_merged = cv2.hconcat(row_imgs).astype(np.uint8)
+            # For rows except the last, pad/stretch as before
+            if i != len(row_chunks) - 1 or len(row_imgs) == cells_per_row:
+                row_imgs = [cv2.resize(img, (img.shape[1], h)) for img in row_imgs]
+                row_merged = cv2.hconcat(row_imgs).astype(np.uint8)
+            else:
+                # For the last row: do NOT stretch, pad with white if needed
+                widths = [img.shape[1] for img in row_imgs]
+                row_width = sum(widths)
+                target_width = max(sum([img.shape[1] for img in chunk]) for chunk in row_chunks)
+                # Create white background
+                row_merged = np.ones((h, target_width, 3), dtype=np.uint8) * 255
+                x = 0
+                for img in row_imgs:
+                    w = img.shape[1]
+                    row_merged[:, x:x+w] = img
+                    x += w
             merged_rows.append(row_merged)
 
-        # Ensure consistent width for vconcat
+        # Ensure all rows have the same width for vconcat
         target_width = max(row.shape[1] for row in merged_rows)
-        merged_rows = [
-            cv2.resize(row, (target_width, row.shape[0]), interpolation=cv2.INTER_LINEAR).astype(np.uint8)
-            for row in merged_rows
-        ]
+        padded_rows = []
+        for row_img in merged_rows:
+            h, w, c = row_img.shape
+            if w < target_width:
+                pad = np.ones((h, target_width - w, 3), dtype=np.uint8) * 255
+                row_img = np.concatenate([row_img, pad], axis=1)
+            padded_rows.append(row_img)
 
-        final_img = cv2.vconcat(merged_rows)
+        final_img = cv2.vconcat(padded_rows)
 
         out_path = os.path.join(output_folder, f"line_merged_{row}.jpg")
         cv2.imwrite(out_path, final_img)
         shutil.copy(out_path, os.path.join(debug_folder, f"final_r{row}.jpg"))
-        print(f"[Saved] {out_path}")
 
-def increase_brightness(input_folder='temp_ocr/merged_line', output_folder='temp_ocr/final', beta=40):
-    """
-    Increase brightness of all images in a folder and save them to another folder.
-
-    Args:
-        input_folder (str): Path to input images.
-        output_folder (str): Path to save brightened images.
-        beta (int): Brightness value to add (0–100 recommended).
-    """
-
+def clean_image(input_folder='temp_ocr/merged_line', output_folder='temp_ocr/cleaned'):
     os.makedirs(output_folder, exist_ok=True)
-    image_files = list(Path(input_folder).glob("*.[jp][pn]g"))
+    # Supported image file extensions
+    exts = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff')
 
-    for path in image_files:
-        img = cv2.imread(str(path))
-        if img is None:
-            print(f"[Skipped] Could not read {path.name}")
+    for filename in os.listdir(input_folder):
+        if not filename.lower().endswith(exts):
             continue
+        input_path = os.path.join(input_folder, filename)
+        img = cv2.imread(input_path)
+        if img is None:
+            continue
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, solid = cv2.threshold(gray, 70, 255, cv2.THRESH_BINARY_INV)
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(solid, connectivity=8)
+        min_area = 4000
+        mask = np.zeros_like(solid)
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] > min_area:
+                mask[labels == i] = 255
+        result = cv2.bitwise_not(mask)
 
-        # Increase brightness by adding beta to all pixels
-        bright = cv2.convertScaleAbs(img, alpha=1.0, beta=beta)
-
-        out_path = os.path.join(output_folder, path.name)
-        cv2.imwrite(out_path, bright)
-        print(f"[Saved] {out_path}")
+        # Prepare output filename
+        base, ext = os.path.splitext(filename)
+        out_path = os.path.join(output_folder, f"clean_{base}{ext}")
+        cv2.imwrite(out_path, result)
 
 def remove_images_without_enough_black_pixels(folder_path="temp_ocr", black_threshold=50, min_black_pixel_count=10):
     """
@@ -652,162 +467,7 @@ def remove_images_without_enough_black_pixels(folder_path="temp_ocr", black_thre
             # Too few black pixels found - remove the image
             os.remove(img_path)
             removed_count += 1
-            # print(f"Removed {img_path} (black pixel count: {black_pixel_count})")
-    
-    # print(f"Checked {total_count} images, removed {removed_count} images with fewer than {min_black_pixel_count} black pixels.")
     return 
-
-def crop_images_to_black_content(folder_path="temp_ocr", black_threshold=70, margin_size=7, padding=10):
-    # """
-    # Processes images in a folder by cropping from leftmost to rightmost black pixel.
-    # Uses the same approach as the original cropping algorithm with added padding.
-    
-    # Args:
-    #     folder_path: Path to the folder containing images
-    #     black_threshold: Threshold for detecting black pixels (0-255)
-    #     margin_size: Size of top/bottom margin to add to output images
-    #     padding: Extra padding to include on either side of black content
-        
-    # Returns:
-    #     int: Number of images processed
-    # """
-    # # Check if folder exists
-    # if not os.path.exists(folder_path):
-    #     print(f"Folder {folder_path} not found.")
-    #     return 0
-    
-    # # Get all image files in the folder
-    # image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
-    # image_files = []
-    # for ext in image_extensions:
-    #     image_files.extend(Path(folder_path).glob(f"*{ext}"))
-    
-    # if not image_files:
-    #     print(f"No image files found in {folder_path}")
-    #     return 0
-    
-    # processed_count = 0
-    
-    # # Process each image
-    # for img_path in image_files:
-    #     try:
-    #         # Read the image
-    #         image = cv2.imread(str(img_path))
-            
-    #         if image is None:
-    #             print(f"Could not read {img_path}, skipping.")
-    #             continue
-            
-    #         # Get original dimensions
-    #         height, width = image.shape[:2]
-            
-    #         # Convert to grayscale
-    #         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
-    #         # Apply threshold to create binary image
-    #         _, binary_image = cv2.threshold(gray_image, black_threshold, 255, cv2.THRESH_BINARY_INV)
-            
-    #         # Find coordinates of black pixels (non-zero in binary image)
-    #         non_zero_coords = np.column_stack(np.where(binary_image > 0))
-            
-    #         # If no black pixels found, skip further processing
-    #         if non_zero_coords.size > 0:
-    #             # Get column coordinates (x-coordinates) of black pixels
-    #             # In np.where [0] is rows (y) and [1] is columns (x)
-    #             # Here we need to look at [1] indices for horizontal (x) coordinates
-    #             leftmost_black = non_zero_coords[:, 1].min()
-    #             rightmost_black = non_zero_coords[:, 1].max()
-                
-    #             # Calculate crop boundaries with added padding
-    #             left_crop = max(leftmost_black - padding, 0)
-    #             right_crop = min(rightmost_black + padding, width)
-                
-    #             # Crop the image horizontally
-    #             cropped = image[:, left_crop:right_crop]
-                
-    #             # Add top and bottom margins
-    #             cropped_height, cropped_width = cropped.shape[:2]
-                
-    #             # Create new white image with margins
-    #             result = np.ones((cropped_height + 2 * margin_size, cropped_width, 3), dtype=np.uint8) * 255
-                
-    #             # Place the cropped image in the center with margins
-    #             result[margin_size:margin_size + cropped_height, :] = cropped
-                
-    #             # Save the resulting image, overwriting the original
-    #             cv2.imwrite(str(img_path), result)
-                
-    #             processed_count += 1
-    #             print(f"Processed {img_path} - cropped from x={left_crop} to x={right_crop}, added {margin_size}px margins")
-    #         else:
-    #             print(f"No black pixels found in {img_path}, skipping.")
-                
-    #     except Exception as e:
-    #         print(f"Error processing {img_path}: {e}")
-    
-    # print(f"Successfully processed {processed_count} out of {len(image_files)} images.")
-    return 
- 
-def enhance_images_for_paddleocr(folder_path="temp_ocr/merged_line"):
-    """
-    Enhance images to improve text clarity for PaddleOCR without losing content.
-
-    - Upscales resolution (4x)
-    - Applies CLAHE contrast enhancement
-    - Optional denoise/sharpen
-    - No binary thresholding (preserves detail)
-
-    Args:
-        folder_path: Folder with images to enhance (in-place)
-    """
-    if not os.path.exists(folder_path):
-        print(f"Folder {folder_path} not found.")
-        return 0
-
-    image_files = []
-    for ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-        image_files.extend(Path(folder_path).glob(f"*{ext}"))
-
-    if not image_files:
-        print(f"No image files found in {folder_path}")
-        return 0
-
-    processed = 0
-
-    for img_path in image_files:
-        try:
-            image = cv2.imread(str(img_path))
-            if image is None:
-                print(f"[Skipped] Cannot read {img_path.name}")
-                continue
-
-            # Step 1: Upscale for better OCR
-            image = cv2.resize(image, None, fx=4.0, fy=4.0, interpolation=cv2.INTER_CUBIC)
-
-            # Step 2: Convert to grayscale
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-            # Step 3: Apply CLAHE for local contrast
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            enhanced = clahe.apply(gray)
-
-            # Step 4 (optional): sharpen
-            sharpen_kernel = np.array([[0, -1, 0],
-                                       [-1, 5, -1],
-                                       [0, -1, 0]])
-            sharpened = cv2.filter2D(enhanced, -1, sharpen_kernel)
-
-            # Step 5: convert back to BGR (PaddleOCR works better with 3-channel)
-            final = cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
-
-            cv2.imwrite(str(img_path), final)
-            processed += 1
-
-        except Exception as e:
-            print(f"[Error] Processing {img_path.name}: {e}")
-
-    print(f"[Done] Enhanced {processed} images for PaddleOCR.")
-    return processed
 
 def convert_char(text_list):
     """
@@ -821,9 +481,9 @@ def convert_char(text_list):
     """
     # Character mapping for common OCR misrecognitions
     mapping = {
-        'A': '4', 'B': '8', 'm': '3', 'G': '6', 'I': '1', 'O': '0', 
+        '||': '', 'PM': '', '1 1': '', '| |': '', 'A': '4', 'B': '8', 'm': '3', 'G': '6', 'I': '1', 'O': '0', 
         'S': '5', 's': '5', 'T': '7', 'Z': '2', 'l': '1', 'M': '3', 'g': '9', 
-        ',': '.', '+': '7', '-': '', 'D': '', '/': '1', '|': '1', '\\': '1'
+        ',': '.', '+': '7', '-': '', 'D': '', '/': '1', '|': '1'
     }
     
     if not text_list:
@@ -832,10 +492,54 @@ def convert_char(text_list):
     # Process each string in the list
     processed_list = []
     for text in text_list:
+        text = re.sub(r'pm', '', text, flags=re.IGNORECASE)
         processed_text = ''.join(mapping.get(char, char) for char in text)
         processed_list.append(processed_text)
     
     return processed_list
+ 
+def sort_ocr_boxes(boxes, txts, scores, y_thresh=20):
+    """
+    boxes: list of 4-point polygons (from PaddleOCR)
+    txts, scores: parallel lists
+    y_thresh: vertical tolerance to cluster into rows (in pixels)
+    Returns: lists sorted as desired
+    """
+    # Get each box’s center y,x for sorting
+    centers = [np.mean(box, axis=0) for box in boxes]
+    centers = np.array(centers)
+    ys = centers[:, 1]
+    xs = centers[:, 0]
+
+    # Cluster into rows: assign row_idx for each box
+    row_indices = []
+    current_row = 0
+    sorted_y = np.argsort(ys)
+    last_y = None
+    for i in sorted_y:
+        if last_y is None or abs(ys[i] - last_y) > y_thresh:
+            current_row += 1
+        row_indices.append((current_row, i))
+        last_y = ys[i]
+
+    # Group boxes by row
+    row_groups = {}
+    for row, idx in row_indices:
+        row_groups.setdefault(row, []).append(idx)
+
+    # Sort each row left-to-right
+    sorted_indices = []
+    for row in sorted(row_groups.keys()):
+        row_idxs = row_groups[row]
+        # Sort row by x
+        row_sorted = sorted(row_idxs, key=lambda idx: xs[idx])
+        sorted_indices.extend(row_sorted)
+
+    # Apply sorted order
+    sorted_boxes = [boxes[i] for i in sorted_indices]
+    sorted_txts = [txts[i] for i in sorted_indices]
+    sorted_scores = [scores[i] for i in sorted_indices]
+    return sorted_boxes, sorted_txts, sorted_scores
 
 def perform_ocr(img_path, font_path='south-park.ttf', output_dir='temp_ocr/detected'):
     """
@@ -861,16 +565,17 @@ def perform_ocr(img_path, font_path='south-park.ttf', output_dir='temp_ocr/detec
             use_angle_cls=True,          # Detect text at different angles
             rec_algorithm='SVTR_LCNet',  # More advanced recognition algorithm
             det_algorithm='DB',          # Enhanced detection algorithm
-            det_db_thresh=0.2,           # Lower threshold for better detection of faint text
-            det_db_box_thresh=0.25,      # Lower box threshold for detecting unclear boundaries
+            det_db_thresh=0.05,           # Lower threshold for better detection of faint text
+            det_db_box_thresh=0.2,      # Lower box threshold for detecting unclear boundaries
             det_db_unclip_ratio=2.0,     # Higher ratio to better group characters in handwriting
             use_dilation=True,           # Help connect broken character strokes
             use_gpu=True,                # Use GPU if available for better performance
             enable_mkldnn=True,          # Enable Intel acceleration if available
             rec_batch_num=6,             # Increased batch size for recognition
             max_batch_size=12,           # Higher batch size for processing
-            drop_score=0.4,              # Lower confidence threshold to catch more potential text
-            det_limit_side_len=960       # Higher resolution limit for better detail capture
+            drop_score=0.1,              # Lower confidence threshold to catch more potential text
+            det_limit_side_len=960,       # Higher resolution limit for better detail capture
+            # conf_threshold=0.2
         )
         result = ocr.ocr(img_path, cls=False)
     except Exception as e:
@@ -890,6 +595,8 @@ def perform_ocr(img_path, font_path='south-park.ttf', output_dir='temp_ocr/detec
         txts = [line[1][0] for line in result[0]]
         scores = [line[1][1] for line in result[0]]
 
+        boxes, txts, scores = sort_ocr_boxes(boxes, txts, scores, y_thresh=20)
+
         # Save visualization if font is provided
         os.makedirs(output_dir, exist_ok=True)
         im_show = draw_ocr(image, boxes, txts, scores, font_path=font_path)
@@ -900,9 +607,9 @@ def perform_ocr(img_path, font_path='south-park.ttf', output_dir='temp_ocr/detec
     except Exception as e:
         print(f"Error saving OCR visualization for {img_path}: {e}")
         return txts if 'txts' in locals() else []
-
+    
     return txts
- 
+  
 def parse(data):
     """
     Clean and convert OCR raw output into decimal-formatted values.
@@ -926,6 +633,10 @@ def parse(data):
         for item in sublist:
             if not item:
                 continue
+            
+            # Exclude if contains 'PM' (case-insensitive)
+            if 'pm' in item.lower():
+                continue
 
             # Remove unwanted characters
             item = item.replace(",", "").replace(".", "")
@@ -948,8 +659,6 @@ def parse(data):
                 continue
             else:
                 continue
-
-            print(f"from: {digits}, to: {formatted}")
 
             processed.append(formatted)
 
@@ -1013,29 +722,29 @@ def ocr_pipeline(image_path, output_base=None, temp_dir=None):
         upscale_image()
         add_padding()
         merge_line()
+        clean_image()
         remove_images_without_enough_black_pixels('temp_ocr/merged_line')
-        # enhance_images_for_paddleocr('temp_ocr/merged_line')
-        # increase_brightness()
         
         # Perform OCR on each line
         all_texts = {}
-        temp_ocr_folder = Path("temp_ocr/merged_line")
-        pattern = re.compile(r"^line_merged_\d{2}\.jpg$")
+        temp_ocr_folder = Path("temp_ocr/cleaned")
+        # pattern = re.compile(r"^cleaned_\d{2}\.jpg$")
+        debug = {}
 
         for file_path in sorted(temp_ocr_folder.glob("*.jpg")):
-            if not pattern.match(file_path.name):
-                continue  # Skip files not matching 'final_rXX.jpg'
+            # if not pattern.match(file_path.name):
+            #     continue  # Skip files not matching 'final_rXX.jpg'
 
             try:
                 file_path_str = str(file_path)
                 texts = perform_ocr(file_path_str)
-                # print(f"text: {texts}")
+                debug[file_path_str] = texts
                 all_texts[file_path_str] = convert_char(texts)
             except Exception as e:
                 print(f"Error processing {file_path.name}: {e}")
     except Exception as e:
             print(f"Error: {e}")
-    # print(all_texts)
+    print(f"Debug info: {debug}")        
     return all_texts
                 
 def write_to_json(arr, filename='result.json'):
