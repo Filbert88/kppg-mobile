@@ -575,7 +575,7 @@ const ImageUploadedFrag = forwardRef<
 
         // Add analysis parameters to form data
         analysisFormData.append("A", "5.955");
-        analysisFormData.append("K", K.toString());
+        analysisFormData.append("K", K.toFixed(3));
         analysisFormData.append("Q", formData.ammoniumNitrate);
         analysisFormData.append("E", "100");
         analysisFormData.append("n", "1.851");
