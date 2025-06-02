@@ -181,7 +181,7 @@ export default function FragmentationForm5() {
       const K = Q / V;
 
       faForm.append('A', '5.955');
-      faForm.append('K', K.toString());
+      faForm.append('K', K.toFixed(3));
       faForm.append('Q', formData.ammoniumNitrate);
       faForm.append('E', '100');
       faForm.append('n', '1.851');

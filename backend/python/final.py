@@ -137,7 +137,7 @@ def extract_and_save_cutouts(image_path,conversion,output_dir="bw-cutout",invert
     print(f"Annotated image saved to: {output_path}")
         # --- Compute threshold percentages ---
     # Define thresholds in mm
-    thresholds_mm = [5000, 4000, 3000, 2500, 2000, 1750, 1500, 1250, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 75, 50, 25, 10]
+    thresholds_mm = [1500, 1400, 1300, 1200, 1100, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 75, 50, 25, 10]
     # Convert measured longest sides from pixels to mm
     converted_sizes = [m * conversion * 10 for m in longest_sides_pixels]
     

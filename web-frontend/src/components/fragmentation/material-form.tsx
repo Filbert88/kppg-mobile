@@ -31,7 +31,7 @@ export default function MaterialForm({
         : parseFloat(formData.blastingVolume);
 
     if (!isNaN(Q) && !isNaN(V) && V !== 0) {
-      const calculatedPowderFactor = (Q / V).toFixed(2);
+      const calculatedPowderFactor = (Q / V).toFixed(3);
       updateFormData("powderFactor", calculatedPowderFactor);
     } else {
       updateFormData("powderFactor", "");

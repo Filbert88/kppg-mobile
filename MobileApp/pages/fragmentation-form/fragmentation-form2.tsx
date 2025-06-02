@@ -33,7 +33,7 @@ export default function FragmentationForm2() {
       const q = parseFloat(ammoniumNitrate);
       const v = parseFloat(volumeBlasting);
       if (!isNaN(q) && !isNaN(v) && v !== 0) {
-        const pf = (q / v).toFixed(2);
+        const pf = (q / v).toFixed(3);
         if (formData.powderFactor !== pf) {
           updateForm({powderFactor: pf});
         }
