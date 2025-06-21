@@ -139,8 +139,8 @@ def extract_and_save_cutouts(image_path,conversion,output_dir="bw-cutout",invert
     # Define thresholds in mm
     thresholds_mm = [1500, 1400, 1300, 1200, 1100, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 75, 50, 25, 10]
     # Convert measured longest sides from pixels to mm
-    converted_sizes = [m * conversion * 10 for m in longest_sides_pixels]
-    
+    max_original_pixel_value = max(longest_sides_pixels)
+    converted_sizes = [m * conversion * 10 for m in longest_sides_pixels if m != max_original_pixel_value]
     threshold_percentages = {}
     total_measurements = len(converted_sizes)
     if total_measurements > 0:
@@ -169,7 +169,8 @@ def combined_plot(kuzram_data, measurements_pixels, conversion, save_path="combi
         plt.axvline(kuzram_data["P90"], color='orange', linestyle='--', label=f'P90 = {kuzram_data["P90"]:.2f} cm')
     plt.axvline(kuzram_data["X50"], color='magenta', linestyle='-.', label=f'X50 = {kuzram_data["X50"]:.2f} cm')
     if len(measurements_pixels) > 1:
-        valid_pixels = measurements_pixels[1:]  # Exclude the first measurement if desired
+        max_value = max(measurements_pixels)
+        valid_pixels = [pixel for pixel in measurements_pixels if pixel != max_value]  
         measurements_cm = [m * conversion for m in valid_pixels]
         sorted_meas = np.sort(measurements_cm)
         n = len(sorted_meas)
