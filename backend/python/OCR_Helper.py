@@ -149,7 +149,7 @@ def extract_by_corners(image_path, corners, output_path='temp_ocr/red_box/croppe
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         cv2.imwrite(output_path, warped)
-
+ 
 def extract_rows(img_path='temp_ocr/red_box/cropped.jpg', output_base="temp_ocr/rows"):
     """
     Precisely divide an image into 30 equally tall rows and save each as a single image.
@@ -228,7 +228,7 @@ def extract_cell(input_folder="temp_ocr/rows", output_folder="temp_ocr/cells"):
 
             # Add padding but keep inside image bounds
             x1 = max(0, int(round(cx_float_start)) - 2)
-            x2 = min(w, int(round(cx_float_end)) + 12)
+            x2 = min(w, int(round(cx_float_end)) + 2)
 
             cell_img = img[:, x1:x2]
 
@@ -565,17 +565,16 @@ def perform_ocr(img_path, font_path='south-park.ttf', output_dir='temp_ocr/detec
             use_angle_cls=True,          # Detect text at different angles
             rec_algorithm='SVTR_LCNet',  # More advanced recognition algorithm
             det_algorithm='DB',          # Enhanced detection algorithm
-            det_db_thresh=0.05,           # Lower threshold for better detection of faint text
-            det_db_box_thresh=0.2,      # Lower box threshold for detecting unclear boundaries
+            det_db_thresh=0.01,           # Lower threshold for better detection of faint text
+            det_db_box_thresh=0.05,      # Lower box threshold for detecting unclear boundaries
             det_db_unclip_ratio=2.0,     # Higher ratio to better group characters in handwriting
             use_dilation=True,           # Help connect broken character strokes
             use_gpu=True,                # Use GPU if available for better performance
             enable_mkldnn=True,          # Enable Intel acceleration if available
-            rec_batch_num=6,             # Increased batch size for recognition
-            max_batch_size=12,           # Higher batch size for processing
-            drop_score=0.1,              # Lower confidence threshold to catch more potential text
-            det_limit_side_len=960,       # Higher resolution limit for better detail capture
-            # conf_threshold=0.2
+            rec_batch_num=3,             # Increased batch size for recognition
+            max_batch_size=6,           # Higher batch size for processing
+            drop_score=0.00,              # Lower confidence threshold to catch more potential text
+            det_limit_side_len=1920,       # Higher resolution limit for better detail capture
         )
         result = ocr.ocr(img_path, cls=False)
     except Exception as e:
