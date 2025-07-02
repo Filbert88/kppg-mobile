@@ -28,8 +28,8 @@ def fragmentation_to_outline(input_path, output_dir="output_frag"):
 
 # Example usage
 if __name__ == "__main__":
-    img_path = "input_frag/5.jpeg"
-    output = "output_frag/5.jpeg"
+    img_path = "input_frag/1.jpeg"
+    output = "output_frag/1.jpeg"
     fragmentation_to_outline(img_path, output)
 
     

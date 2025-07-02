@@ -236,7 +236,7 @@ def extract_cell(input_folder="temp_ocr/rows", output_folder="temp_ocr/cells"):
             out_path = os.path.join(output_folder, out_name)
             cv2.imwrite(out_path, cell_img)
 
-def upscale_image(folder_input='temp_ocr/cells', folder_output='temp_ocr/upscaled_cells', scale=12.0):
+def upscale_image(folder_input='temp_ocr/cells', folder_output='temp_ocr/upscaled_cells', scale=4.0):
     """
     Upscale all images in a folder and save them to another folder.
 
@@ -399,7 +399,7 @@ def clean_image(input_folder='temp_ocr/merged_line', output_folder='temp_ocr/cle
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, solid = cv2.threshold(gray, 70, 255, cv2.THRESH_BINARY_INV)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(solid, connectivity=8)
-        min_area = 4000
+        min_area = 600
         mask = np.zeros_like(solid)
         for i in range(1, num_labels):
             if stats[i, cv2.CC_STAT_AREA] > min_area:
@@ -411,7 +411,7 @@ def clean_image(input_folder='temp_ocr/merged_line', output_folder='temp_ocr/cle
         out_path = os.path.join(output_folder, f"clean_{base}{ext}")
         cv2.imwrite(out_path, result)
 
-def remove_images_without_enough_black_pixels(folder_path="temp_ocr", black_threshold=50, min_black_pixel_count=10):
+def remove_images_without_enough_black_pixels(folder_path="temp_ocr", black_threshold=70, min_black_pixel_count=2):
     """
     Scans a folder for images and removes any that don't contain enough
     pixels darker than the specified threshold.
