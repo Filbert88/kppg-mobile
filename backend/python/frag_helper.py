@@ -17,11 +17,16 @@ class SegmentAnythingPipeline:
         return model
 
     def generate_masks(self, image):
-        mask_generator = SamAutomaticMaskGenerator(self.sam)
+        mask_generator = SamAutomaticMaskGenerator(
+            self.sam,
+            points_per_side=64,
+            pred_iou_thresh=0.8,
+            stability_score_thresh=0.9,
+            crop_n_layers=0,
+            min_mask_region_area=250 
+        )
         masks = mask_generator.generate(image)
         return masks
-
-        
 
     def save_segmentation_result(self, image, masks, output_path):
         # Create a black background image with white regions and black outlines

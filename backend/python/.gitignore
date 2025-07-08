@@ -1,5 +1,5 @@
 *.pth
-venv
+venv*
 __pycache__
 *png
 *jpg
@@ -7,3 +7,5 @@ __pycache__
 *webp
 *json
 .env
+segment-anything
+tes*
