@@ -158,7 +158,9 @@ def combined_plot(kuzram_data, measurements_pixels, conversion, save_path="combi
     plt.figure(figsize=(10, 8))
     sizes = kuzram_data["sizes"]
     distribution = kuzram_data["distribution"]
+    
     plt.plot(sizes, distribution, label=f"Kuz-Ram Distribution\nX50 = {kuzram_data['X50']:.2f} cm", linestyle='-', color='blue')
+
     if kuzram_data["P10"] is not None:
         plt.axvline(kuzram_data["P10"], color='green', linestyle='--', label=f'P10 = {kuzram_data["P10"]:.2f} cm')
     if kuzram_data["P20"] is not None:
@@ -167,7 +169,9 @@ def combined_plot(kuzram_data, measurements_pixels, conversion, save_path="combi
         plt.axvline(kuzram_data["P80"], color='purple', linestyle='--', label=f'P80 = {kuzram_data["P80"]:.2f} cm')
     if kuzram_data["P90"] is not None:
         plt.axvline(kuzram_data["P90"], color='orange', linestyle='--', label=f'P90 = {kuzram_data["P90"]:.2f} cm')
+
     plt.axvline(kuzram_data["X50"], color='magenta', linestyle='-.', label=f'X50 = {kuzram_data["X50"]:.2f} cm')
+
     if len(measurements_pixels) > 1:
         max_value = max(measurements_pixels)
         valid_pixels = [pixel for pixel in measurements_pixels if pixel != max_value]  
@@ -176,6 +180,10 @@ def combined_plot(kuzram_data, measurements_pixels, conversion, save_path="combi
         n = len(sorted_meas)
         cumulative_percentage = np.arange(1, n + 1) / n * 100
         plt.plot(sorted_meas, cumulative_percentage, marker='o', linestyle='-', label="CDF of Object Sizes", color='red')
+        
+        # Set x-axis limit to the maximum CDF measurement
+        plt.xlim(0, max(sorted_meas) * 1.05)  # 5% padding for better visibility
+
     plt.xlabel("Size (cm)")
     plt.ylabel("Cumulative Percentage (%)")
     plt.title("Combined Kuz-Ram Distribution and CDF")
@@ -191,7 +199,7 @@ if __name__ == "__main__":
     E = 100     # Relative weight strength (e.g., ANFO vs. TNT)
     n = 1.851   # Uniformity index
     kuzram_data = compute_kuz_ram_data(A, K, Q, E, n)
-    image_path = "mainfoto.jpg"
+    image_path = "main.jpg"
     conversion = 0.1203
     _, _, longest_sides_pixels,threshold = extract_and_save_cutouts(image_path,conversion)
     combined_plot(kuzram_data, longest_sides_pixels, conversion,save_path="combined_plot.png")
